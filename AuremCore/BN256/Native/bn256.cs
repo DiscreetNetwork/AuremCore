@@ -32,6 +32,24 @@ namespace AuremCore.BN256.Native
             [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
 
         [DllImport("bn256")]
+        public static extern void GFpExp([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] bits);
+
+        [DllImport("bn256")]
+        public static extern void GFpInvert([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
+
+        [DllImport("bn256")]
+        public static extern void GFpSqrt([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
+
+        [DllImport("bn256")]
+        public static extern void GFpAdd([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+
+        [DllImport("bn256")]
         public static extern void RandomG1(ref G1 g1, ref Scalar k);
 
         [DllImport("bn256")]
