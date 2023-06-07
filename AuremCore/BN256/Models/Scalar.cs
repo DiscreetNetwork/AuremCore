@@ -12,5 +12,10 @@ namespace AuremCore.BN256.Models
     {
         [MarshalAs(UnmanagedType.Struct)]
         public BN n;
+
+        public Scalar()
+        {
+            n = new BN();
+        }
     }
 }

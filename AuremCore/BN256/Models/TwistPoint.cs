@@ -21,5 +21,13 @@ namespace AuremCore.BN256.Models
 
         [MarshalAs (UnmanagedType.Struct)]
         public GFp2 t;
+
+        public TwistPoint()
+        {
+            x = new GFp2();
+            y = new GFp2();
+            z = new GFp2();
+            t = new GFp2();
+        }
     }
 }

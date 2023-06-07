@@ -12,5 +12,10 @@ namespace AuremCore.BN256.Models
     {
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 129)]
         public byte[] bytes;
+
+        public G2Enc()
+        {
+            bytes = new byte[129];
+        }
     }
 }

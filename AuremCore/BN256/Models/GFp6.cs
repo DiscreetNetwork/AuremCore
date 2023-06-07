@@ -18,5 +18,12 @@ namespace AuremCore.BN256.Models
 
         [MarshalAs(UnmanagedType.Struct)]
         public GFp2 z;
+
+        public GFp6()
+        {
+            x = new GFp2();
+            y = new GFp2();
+            z = new GFp2();
+        }
     }
 }

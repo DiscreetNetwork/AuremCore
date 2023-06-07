@@ -36,6 +36,14 @@ namespace AuremCore.BN256.Native
             GC.SuppressFinalize(this);
         }
 
+        public delegate int ScalarBitlenDelegate(ref Scalar k);
+        public delegate int ScalarBitDelegate(ref Scalar k, int i);
+        public delegate void GFpMulDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+                                            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a,
+                                            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+        public delegate void NewGFpDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, long x);
+        public delegate void GFpNegDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
         public delegate void RandomG1Delegate(ref G1 g1, ref Scalar k);
         public delegate void ScalarBaseMultG1Delegate(ref G1 gk, ref Scalar k);
         [return: MarshalAs(UnmanagedType.Struct)]
@@ -101,6 +109,11 @@ namespace AuremCore.BN256.Native
         public delegate GT Miller_1Delegate(ref G1 p, ref G2 q);
         public delegate void FinalizeDelegate(ref GT gt);
 
+        public ScalarBitlenDelegate ScalarBitlen;
+        public ScalarBitDelegate ScalarBit;
+        public GFpMulDelegate GFpMul;
+        public NewGFpDelegate NewGFp;
+        public GFpNegDelegate GFpNeg;
         public RandomG1Delegate RandomG1;
         public ScalarBaseMultG1Delegate ScalarBaseMultG1;
         public ScalarBaseMultG1_1Delegate ScalarBaseMultG1_1;
@@ -146,6 +159,9 @@ namespace AuremCore.BN256.Native
         public Miller_1Delegate Miller_1;
         public FinalizeDelegate GTFinalize;
 
+        public delegate void TestIfWorksDelegate(ref int a, int b);
+        public TestIfWorksDelegate TestIfWorks;
+
         static Native()
         {
             if (RuntimeInformation.ProcessArchitecture == Architecture.X86 && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -179,7 +195,57 @@ namespace AuremCore.BN256.Native
 
             Instance = new Native();
 
+            Console.WriteLine(_handle.ToString());
+            if (NativeLibrary.TryGetExport(_handle, "TestIfWorks", out IntPtr _TestIfWorksHandle))
+            {
+                Instance.TestIfWorks = Marshal.GetDelegateForFunctionPointer<TestIfWorksDelegate>(_TestIfWorksHandle);
+            }
+            else
+            {
+                Instance.TestIfWorks = (ref int a, int b) => { throw new Exception("failed to load this endpoint. Internal fatal exception in native library. "); }; 
+            }
+
             // begin loading endpoints
+            if (NativeLibrary.TryGetExport(_handle, "ScalarBitlen", out IntPtr _ScalarBitlenHandle))
+            {
+                Instance.ScalarBitlen = Marshal.GetDelegateForFunctionPointer<ScalarBitlenDelegate>(_ScalarBitlenHandle);
+            }
+            else
+            {
+                Instance.ScalarBitlen = (ref Scalar k) => { throw new EntryPointNotFoundException("failed to find endpoint \"ScalarBitlen\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "ScalarBit", out IntPtr _ScalarBitHandle))
+            {
+                Instance.ScalarBit = Marshal.GetDelegateForFunctionPointer<ScalarBitDelegate>(_ScalarBitHandle);
+            }
+            else
+            {
+                Instance.ScalarBit = (ref Scalar k, int i) => { throw new EntryPointNotFoundException("failed to find endpoint \"ScalarBit\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFpMul", out IntPtr _GFpMulHandle))
+            {
+                Instance.GFpMul = Marshal.GetDelegateForFunctionPointer<GFpMulDelegate>(_GFpMulHandle);
+            }
+            else
+            {
+                Instance.GFpMul = (ulong[] c, ulong[] a, ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpMul\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "NewGFp", out IntPtr _NewGFpHandle))
+            {
+                Instance.NewGFp = Marshal.GetDelegateForFunctionPointer<NewGFpDelegate>(_NewGFpHandle);
+            }
+            else
+            {
+                Instance.NewGFp = (ulong[] a, long x) => { throw new EntryPointNotFoundException("failed to find endpoint \"NewGFp\" in library \"bn256\""); };
+            } // GFpNeg
+            if (NativeLibrary.TryGetExport(_handle, "GFpNeg", out IntPtr _GFpNegHandle))
+            {
+                Instance.GFpNeg = Marshal.GetDelegateForFunctionPointer<GFpNegDelegate>(_GFpNegHandle);
+            }
+            else
+            {
+                Instance.GFpNeg = (ulong[] c, ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpNeg\" in library \"bn256\""); };
+            }
             if (NativeLibrary.TryGetExport(_handle, "RandomG1", out IntPtr _RandomG1Handle))
             {
                 Instance.RandomG1 = Marshal.GetDelegateForFunctionPointer<RandomG1Delegate>(_RandomG1Handle);

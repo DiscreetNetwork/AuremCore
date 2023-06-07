@@ -14,5 +14,11 @@ namespace AuremCore.BN256.Models
         public ulong[] x;
         [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)]
         public ulong[] y;
+
+        public GFp2()
+        {
+            x = new ulong[4];
+            y = new ulong[4];
+        }
     }
 }

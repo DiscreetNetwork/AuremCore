@@ -12,5 +12,10 @@ namespace AuremCore.BN256.Models
     {
         [MarshalAs(UnmanagedType.Struct)]
         public GFp12 p;
+
+        public GT()
+        {
+            p = new GFp12();
+        }
     }
 }

@@ -12,5 +12,10 @@ namespace AuremCore.BN256.Models
     {
         [MarshalAs(UnmanagedType.Struct)]
         public CurvePoint p;
+
+        public G1()
+        {
+            p = new CurvePoint();
+        }
     }
 }

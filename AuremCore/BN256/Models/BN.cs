@@ -12,5 +12,10 @@ namespace AuremCore.BN256.Models
     {
         [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U4, SizeConst = 16)]
         public uint[] array;
+
+        public BN()
+        {
+            array = new uint[16];
+        }
     }
 }
