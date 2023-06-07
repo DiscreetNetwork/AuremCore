@@ -33,7 +33,7 @@ namespace AuremCore.BN256.Models
 
         public override string ToString()
         {
-            return $"{PrintUtil.Hexify(Util.FpToBytes(x))}, {PrintUtil.Hexify(Util.FpToBytes(y))}, {PrintUtil.Hexify(Util.FpToBytes(z))}, {PrintUtil.Hexify(Util.FpToBytes(t))}";
+            return $"{PrintUtil.Hexify(Util.FpToBytes(x), true)}, {PrintUtil.Hexify(Util.FpToBytes(y), true)}, {PrintUtil.Hexify(Util.FpToBytes(z), true)}, {PrintUtil.Hexify(Util.FpToBytes(t), true)}";
         }
     }
 }

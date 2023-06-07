@@ -50,6 +50,26 @@ namespace AuremCore.BN256.Native
             [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
 
         [DllImport("bn256")]
+        public static extern void GFpSub([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a,
+            [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+
+        [DllImport("bn256")]
+        public static extern void GFp2Add(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp2Sub(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp2Mul(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp2Square(ref GFp2 c, ref GFp2 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp2Invert(ref GFp2 c, ref GFp2 a);
+
+        [DllImport("bn256")]
         public static extern void RandomG1(ref G1 g1, ref Scalar k);
 
         [DllImport("bn256")]

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AuremCore.BN256.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -16,6 +17,13 @@ namespace AuremCore.BN256.Models
         public G2Enc()
         {
             bytes = new byte[129];
+        }
+
+        public override string ToString()
+        {
+            var bs = new byte[128];
+            Array.Copy(bytes, 1, bs, 0, 128);
+            return $"{bytes[0]}: {PrintUtil.Hexify(bs)}";
         }
     }
 }

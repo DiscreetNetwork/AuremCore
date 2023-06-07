@@ -120,13 +120,73 @@ namespace AuremCore
             var obytes = Util.FpToBytes(o);
             Console.WriteLine($"\t{{\n\t\t{PrintUtil.Hexify(zbytes)},\n\t\t{PrintUtil.Hexify(obytes)}\n\t}},\n\t{{\n\t\t  {PrintUtil.Hexify(zbytes)},\n\t\t{PrintUtil.Hexify(obytes)}\n\t}}");
             */
-            G1 g = new G1();
+            /*G1 g = new G1();
             G1Enc gEnc = new G1Enc();
             Scalar k = new Scalar();
             k.n.array[0] = 1234567890;
             Native.Instance.ScalarBaseMultG1(ref g, ref k);
             Native.Instance.MarshalG1(ref gEnc, ref g);
             Console.WriteLine(PrintUtil.Hexify(gEnc.bytes));
+            Native.Instance.HashG1(ref g, Encoding.ASCII.GetBytes("discreet"), (ulong)Encoding.ASCII.GetBytes("discreet").Length, new byte[0], 0);
+            Native.Instance.MarshalG1(ref gEnc, ref g);
+            Console.WriteLine(PrintUtil.Hexify(gEnc.bytes));
+            Console.WriteLine(g.p.ToString());
+            G1 gX = new G1();
+            Scalar x = new Scalar();
+            x.n.array[0] = 123456789;
+
+            G1 gbase = new G1 { 
+                p = new CurvePoint {
+                    x = new ulong[4] { 0xaa298958ef632957, 0x2a7c4bea0099349e, 0x92e4852421fa5b77, 0xfe4daac9663cd805 },
+                    y = new ulong[4] { 0x4341a3d715860914, 0x259110952ad07fa1, 0xf2852dd76a0f108c, 0xc81cfc9a62383c1b },
+                    z = new ulong[4] { 0x9969f7a19353a3e7, 0x614a4adf2e77a411, 0xde237b9e47139055, 0x06785cb51cfe4a70 },
+                    t = new ulong[4] { 0x9969f7a19353a3e7, 0x614a4adf2e77a411, 0xde237b9e47139055, 0x06785cb51cfe4a70 },
+                }
+            };
+
+             
+
+            Native.Instance.ScalarMultG1(ref gX, ref gbase, ref x);
+            Native.Instance.MarshalG1(ref gEnc, ref gX);
+            Console.WriteLine(PrintUtil.Hexify(gEnc.bytes));
+
+            G1 gX_actual = new G1();
+            Native.Instance.ScalarMultG1(ref gX_actual, ref g, ref x);
+            Native.Instance.MarshalG1(ref gEnc, ref gX_actual);
+            Console.WriteLine(PrintUtil.Hexify(gEnc.bytes));*/
+
+            G2 g = new G2();
+            Scalar k2 = new Scalar();
+            k2.n.array[0] = 292929292;
+            G2Enc g2Enc = new G2Enc();
+            //G2 h = new G2();
+            Native.Instance.ScalarBaseMultG2(ref g, ref  k2);
+            //Native.Instance.AddG2(ref h, ref g, ref g);
+            //Native.Instance.MarshalG2(ref g2Enc, ref h);
+            //Console.WriteLine(h.p.ToString());
+            Native.Instance.MarshalG2(ref g2Enc, ref g);
+            Console.WriteLine(g2Enc.ToString());
+            //ulong[] z = new ulong[4];
+            //ulong[] o = new ulong[4];
+            //Native.Instance.NewGFp(z, 0);
+            //Native.Instance.NewGFp(o, 1);
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(z), true));
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(o), true));
+            //Console.WriteLine("\n\n");
+            //Console.WriteLine(g.p.ToString());
+
+            /*GFp2 a = new GFp2();
+            GFp2 b = new GFp2();
+            GFp2 c = new GFp2();
+
+            Native.Instance.NewGFp(a.x, 59230818);
+            Native.Instance.NewGFp(a.y, 12930170972);
+            Native.Instance.NewGFp(b.x, 871290387612);
+            Native.Instance.NewGFp(b.y, -1237373738389);
+
+
+            Native.Instance.GFp2Invert(ref c, ref b);
+            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c.x), true) + ", " + PrintUtil.Hexify(Util.FpToBytes(c.y), true));*/
         }
     }
 }

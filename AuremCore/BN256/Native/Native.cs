@@ -53,6 +53,12 @@ namespace AuremCore.BN256.Native
         public delegate void GFpInvertDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
         public delegate void GFpSqrtDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a);
         public delegate void GFpAddDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+        public delegate void GFpSubDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+        public delegate void GFp2AddDelegate(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+        public delegate void GFp2SubDelegate(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+        public delegate void GFp2MulDelegate(ref GFp2 c, ref GFp2 a, ref GFp2 b);
+        public delegate void GFp2SquareDelegate(ref GFp2 c, ref GFp2 a);
+        public delegate void GFp2InvertDelegate(ref GFp2 c, ref GFp2 a);
         public delegate void RandomG1Delegate(ref G1 g1, ref Scalar k);
         [return: MarshalAs(UnmanagedType.Struct)]
         public delegate G1 RandomG1_1Delegate();
@@ -136,6 +142,12 @@ namespace AuremCore.BN256.Native
         public GFpInvertDelegate GFpInvert;
         public GFpSqrtDelegate GFpSqrt;
         public GFpAddDelegate GFpAdd;
+        public GFpSubDelegate GFpSub;
+        public GFp2AddDelegate GFp2Add;
+        public GFp2SubDelegate GFp2Sub;
+        public GFp2MulDelegate GFp2Mul;
+        public GFp2SquareDelegate GFp2Square;
+        public GFp2InvertDelegate GFp2Invert;
         public RandomG1Delegate RandomG1;
         public RandomG1_1Delegate RandomG1_1;
         public ScalarBaseMultG1Delegate ScalarBaseMultG1;
@@ -298,6 +310,54 @@ namespace AuremCore.BN256.Native
             else
             {
                 Instance.GFpAdd = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpAdd\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFpSub", out IntPtr _GFpSubHandle))
+            {
+                Instance.GFpSub = Marshal.GetDelegateForFunctionPointer<GFpSubDelegate>(_GFpSubHandle);
+            }
+            else
+            {
+                Instance.GFpSub = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSub\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2Add", out IntPtr _GFp2AddHandle))
+            {
+                Instance.GFp2Add = Marshal.GetDelegateForFunctionPointer<GFp2AddDelegate>(_GFp2AddHandle);
+            }
+            else
+            {
+                Instance.GFp2Add = (ref GFp2 c, ref GFp2 a, ref GFp2 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Add\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2Sub", out IntPtr _GFp2SubHandle))
+            {
+                Instance.GFp2Sub = Marshal.GetDelegateForFunctionPointer<GFp2SubDelegate>(_GFp2SubHandle);
+            }
+            else
+            {
+                Instance.GFp2Sub = (ref GFp2 c, ref GFp2 a, ref GFp2 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Sub\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2Mul", out IntPtr _GFp2MulHandle))
+            {
+                Instance.GFp2Mul = Marshal.GetDelegateForFunctionPointer<GFp2MulDelegate>(_GFp2MulHandle);
+            }
+            else
+            {
+                Instance.GFp2Mul = (ref GFp2 c, ref GFp2 a, ref GFp2 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Mul\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2Square", out IntPtr _GFp2SquareHandle))
+            {
+                Instance.GFp2Square = Marshal.GetDelegateForFunctionPointer<GFp2SquareDelegate>(_GFp2SquareHandle);
+            }
+            else
+            {
+                Instance.GFp2Square = (ref GFp2 c, ref GFp2 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Square\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2Invert", out IntPtr _GFp2InvertHandle))
+            {
+                Instance.GFp2Invert = Marshal.GetDelegateForFunctionPointer<GFp2InvertDelegate>(_GFp2InvertHandle);
+            }
+            else
+            {
+                Instance.GFp2Invert = (ref GFp2 c, ref GFp2 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Invert\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "RandomG1", out IntPtr _RandomG1Handle))
             {

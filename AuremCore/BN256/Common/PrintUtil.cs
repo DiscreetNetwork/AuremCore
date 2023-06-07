@@ -8,7 +8,7 @@ namespace AuremCore.BN256.Common
 {
     internal static class PrintUtil
     {
-        public static string Hexify(byte[] bytes)
+        public static string Hexify(byte[] bytes, bool bigEndian = false)
         {
             if (bytes == null) return "";
 
@@ -31,13 +31,24 @@ namespace AuremCore.BN256.Common
                 for (int i = 0; i < bytes.Length / 8; i++)
                 {
                     rv.Append("0x");
-                    for (int j = 7; j >= 0; j--)
+                    if (bigEndian)
                     {
-                        rv.Append("0123456789abcdef"[bytes[8 * i + j] >> 4]);
-                        rv.Append("0123456789abcdef"[bytes[8 * i + j] & 0xf]);
+                        for (int j = 0; j < 8; j++)
+                        {
+                            rv.Append("0123456789abcdef"[bytes[8 * i + j] >> 4]);
+                            rv.Append("0123456789abcdef"[bytes[8 * i + j] & 0xf]);
+                        }
+                    }
+                    else
+                    {
+                        for (int j = 7; j >= 0; j--)
+                        {
+                            rv.Append("0123456789abcdef"[bytes[8 * i + j] >> 4]);
+                            rv.Append("0123456789abcdef"[bytes[8 * i + j] & 0xf]);
+                        }
                     }
 
-                    if (i < bytes.Length/8 - 1)
+                    if (i < bytes.Length / 8 - 1)
                     {
                         rv.Append(", ");
                     }
