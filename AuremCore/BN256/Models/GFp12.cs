@@ -21,5 +21,10 @@ namespace AuremCore.BN256.Models
             x = new GFp6();
             y = new GFp6();
         }
+
+        public override string ToString()
+        {
+            return $"{{{x}, {y}}}";
+        }
     }
 }

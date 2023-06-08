@@ -25,5 +25,10 @@ namespace AuremCore.BN256.Models
             y = new GFp2();
             z = new GFp2();
         }
+
+        public override string ToString()
+        {
+            return $"{{{x}, {y}, {z}}}";
+        }
     }
 }

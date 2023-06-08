@@ -59,6 +59,33 @@ namespace AuremCore.BN256.Native
         public delegate void GFp2MulDelegate(ref GFp2 c, ref GFp2 a, ref GFp2 b);
         public delegate void GFp2SquareDelegate(ref GFp2 c, ref GFp2 a);
         public delegate void GFp2InvertDelegate(ref GFp2 c, ref GFp2 a);
+        public delegate void GFp2MulXiDelegate(ref GFp2 c, ref GFp2 a);
+        public delegate void GFp6FrobeniusDelegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp6FrobeniusP2Delegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp6FrobeniusP4Delegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp6AddDelegate(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+        public delegate void GFp6SubDelegate(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+        public delegate void GFp6MulDelegate(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+        public delegate void GFp6MulScalarDelegate(ref GFp6 c, ref GFp6 a, ref GFp2 b);
+        public delegate void GFp6MulGFpDelegate(ref GFp6 c, ref GFp6 a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+        public delegate void GFp6MulTauDelegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp6SquareDelegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp6InvertDelegate(ref GFp6 c, ref GFp6 a);
+        public delegate void GFp12ConjugateDelegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12NegDelegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12FrobeniusDelegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12FrobeniusP2Delegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12FrobeniusP4Delegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12AddDelegate(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+        public delegate void GFp12SubDelegate(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+        public delegate void GFp12MulDelegate(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+        public delegate void GFp12MulScalarDelegate(ref GFp12 c, ref GFp12 a, ref GFp6 b);
+        public delegate void GFp12SquareDelegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12InvertDelegate(ref GFp12 c, ref GFp12 a);
+        public delegate void GFp12ExpDelegate(ref GFp12 c, ref GFp12 a, ref Scalar power);
+        public delegate void LineFuncAddDelegate(ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref TwistPoint p, ref CurvePoint q, ref GFp2 rr2);
+        public delegate void LineFuncDoubleDelegate(ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref CurvePoint q);
+        public delegate void MulLineDelegate(ref GFp12 ret, ref GFp2 a, ref GFp2 b, ref GFp2 c);
         public delegate void RandomG1Delegate(ref G1 g1, ref Scalar k);
         [return: MarshalAs(UnmanagedType.Struct)]
         public delegate G1 RandomG1_1Delegate();
@@ -148,6 +175,33 @@ namespace AuremCore.BN256.Native
         public GFp2MulDelegate GFp2Mul;
         public GFp2SquareDelegate GFp2Square;
         public GFp2InvertDelegate GFp2Invert;
+        public GFp2MulXiDelegate GFp2MulXi;
+        public GFp6FrobeniusDelegate GFp6Frobenius;
+        public GFp6FrobeniusP2Delegate GFp6FrobeniusP2;
+        public GFp6FrobeniusP4Delegate GFp6FrobeniusP4;
+        public GFp6AddDelegate GFp6Add;
+        public GFp6SubDelegate GFp6Sub;
+        public GFp6MulDelegate GFp6Mul;
+        public GFp6MulScalarDelegate GFp6MulScalar;
+        public GFp6MulGFpDelegate GFp6MulGFp;
+        public GFp6MulTauDelegate GFp6MulTau;
+        public GFp6SquareDelegate GFp6Square;
+        public GFp6InvertDelegate GFp6Invert;
+        public GFp12ConjugateDelegate GFp12Conjugate;
+        public GFp12NegDelegate GFp12Neg;
+        public GFp12FrobeniusDelegate GFp12Frobenius;
+        public GFp12FrobeniusP2Delegate GFp12FrobeniusP2;
+        public GFp12FrobeniusP4Delegate GFp12FrobeniusP4;
+        public GFp12AddDelegate GFp12Add;
+        public GFp12SubDelegate GFp12Sub;
+        public GFp12MulDelegate GFp12Mul;
+        public GFp12MulScalarDelegate GFp12MulScalar;
+        public GFp12SquareDelegate GFp12Square;
+        public GFp12InvertDelegate GFp12Invert;
+        public GFp12ExpDelegate GFp12Exp;
+        public LineFuncAddDelegate LineFuncAdd;
+        public LineFuncDoubleDelegate LineFuncDouble;
+        public MulLineDelegate MulLine;
         public RandomG1Delegate RandomG1;
         public RandomG1_1Delegate RandomG1_1;
         public ScalarBaseMultG1Delegate ScalarBaseMultG1;
@@ -358,6 +412,222 @@ namespace AuremCore.BN256.Native
             else
             {
                 Instance.GFp2Invert = (ref GFp2 c, ref GFp2 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2Invert\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp2MulXi", out IntPtr _GFp2MulXiHandle))
+            {
+                Instance.GFp2MulXi = Marshal.GetDelegateForFunctionPointer<GFp2MulXiDelegate>(_GFp2MulXiHandle);
+            }
+            else
+            {
+                Instance.GFp2MulXi = (ref GFp2 c, ref GFp2 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp2MulXi\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Frobenius", out IntPtr _GFp6FrobeniusHandle))
+            {
+                Instance.GFp6Frobenius = Marshal.GetDelegateForFunctionPointer<GFp6FrobeniusDelegate>(_GFp6FrobeniusHandle);
+            }
+            else
+            {
+                Instance.GFp6Frobenius = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Frobenius\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6FrobeniusP2", out IntPtr _GFp6FrobeniusP2Handle))
+            {
+                Instance.GFp6FrobeniusP2 = Marshal.GetDelegateForFunctionPointer<GFp6FrobeniusP2Delegate>(_GFp6FrobeniusP2Handle);
+            }
+            else
+            {
+                Instance.GFp6FrobeniusP2 = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6FrobeniusP2\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6FrobeniusP4", out IntPtr _GFp6FrobeniusP4Handle))
+            {
+                Instance.GFp6FrobeniusP4 = Marshal.GetDelegateForFunctionPointer<GFp6FrobeniusP4Delegate>(_GFp6FrobeniusP4Handle);
+            }
+            else
+            {
+                Instance.GFp6FrobeniusP4 = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6FrobeniusP4\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Add", out IntPtr _GFp6AddHandle))
+            {
+                Instance.GFp6Add = Marshal.GetDelegateForFunctionPointer<GFp6AddDelegate>(_GFp6AddHandle);
+            }
+            else
+            {
+                Instance.GFp6Add = (ref GFp6 c, ref GFp6 a, ref GFp6 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Add\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Sub", out IntPtr _GFp6SubHandle))
+            {
+                Instance.GFp6Sub = Marshal.GetDelegateForFunctionPointer<GFp6SubDelegate>(_GFp6SubHandle);
+            }
+            else
+            {
+                Instance.GFp6Sub = (ref GFp6 c, ref GFp6 a, ref GFp6 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Sub\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Mul", out IntPtr _GFp6MulHandle))
+            {
+                Instance.GFp6Mul = Marshal.GetDelegateForFunctionPointer<GFp6MulDelegate>(_GFp6MulHandle);
+            }
+            else
+            {
+                Instance.GFp6Mul = (ref GFp6 c, ref GFp6 a, ref GFp6 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Mul\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6MulScalar", out IntPtr _GFp6MulScalarHandle))
+            {
+                Instance.GFp6MulScalar = Marshal.GetDelegateForFunctionPointer<GFp6MulScalarDelegate>(_GFp6MulScalarHandle);
+            }
+            else
+            {
+                Instance.GFp6MulScalar = (ref GFp6 c, ref GFp6 a, ref GFp2 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6MulScalar\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6MulGFp", out IntPtr _GFp6MulGFpHandle))
+            {
+                Instance.GFp6MulGFp = Marshal.GetDelegateForFunctionPointer<GFp6MulGFpDelegate>(_GFp6MulGFpHandle);
+            }
+            else
+            {
+                Instance.GFp6MulGFp = (ref GFp6 c, ref GFp6 a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6MulGFp\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6MulTau", out IntPtr _GFp6MulTauHandle))
+            {
+                Instance.GFp6MulTau = Marshal.GetDelegateForFunctionPointer<GFp6MulTauDelegate>(_GFp6MulTauHandle);
+            }
+            else
+            {
+                Instance.GFp6MulTau = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6MulTau\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Square", out IntPtr _GFp6SquareHandle))
+            {
+                Instance.GFp6Square = Marshal.GetDelegateForFunctionPointer<GFp6SquareDelegate>(_GFp6SquareHandle);
+            }
+            else
+            {
+                Instance.GFp6Square = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Square\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp6Invert", out IntPtr _GFp6InvertHandle))
+            {
+                Instance.GFp6Invert = Marshal.GetDelegateForFunctionPointer<GFp6InvertDelegate>(_GFp6InvertHandle);
+            }
+            else
+            {
+                Instance.GFp6Invert = (ref GFp6 c, ref GFp6 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp6Invert\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Conjugate", out IntPtr _GFp12ConjugateHandle))
+            {
+                Instance.GFp12Conjugate = Marshal.GetDelegateForFunctionPointer<GFp12ConjugateDelegate>(_GFp12ConjugateHandle);
+            }
+            else
+            {
+                Instance.GFp12Conjugate = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Conjugate\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Neg", out IntPtr _GFp12NegHandle))
+            {
+                Instance.GFp12Neg = Marshal.GetDelegateForFunctionPointer<GFp12NegDelegate>(_GFp12NegHandle);
+            }
+            else
+            {
+                Instance.GFp12Neg = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Neg\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Frobenius", out IntPtr _GFp12FrobeniusHandle))
+            {
+                Instance.GFp12Frobenius = Marshal.GetDelegateForFunctionPointer<GFp12FrobeniusDelegate>(_GFp12FrobeniusHandle);
+            }
+            else
+            {
+                Instance.GFp12Frobenius = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Frobenius\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12FrobeniusP2", out IntPtr _GFp12FrobeniusP2Handle))
+            {
+                Instance.GFp12FrobeniusP2 = Marshal.GetDelegateForFunctionPointer<GFp12FrobeniusP2Delegate>(_GFp12FrobeniusP2Handle);
+            }
+            else
+            {
+                Instance.GFp12FrobeniusP2 = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12FrobeniusP2\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12FrobeniusP4", out IntPtr _GFp12FrobeniusP4Handle))
+            {
+                Instance.GFp12FrobeniusP4 = Marshal.GetDelegateForFunctionPointer<GFp12FrobeniusP4Delegate>(_GFp12FrobeniusP4Handle);
+            }
+            else
+            {
+                Instance.GFp12FrobeniusP4 = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12FrobeniusP4\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Add", out IntPtr _GFp12AddHandle))
+            {
+                Instance.GFp12Add = Marshal.GetDelegateForFunctionPointer<GFp12AddDelegate>(_GFp12AddHandle);
+            }
+            else
+            {
+                Instance.GFp12Add = (ref GFp12 c, ref GFp12 a, ref GFp12 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Add\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Sub", out IntPtr _GFp12SubHandle))
+            {
+                Instance.GFp12Sub = Marshal.GetDelegateForFunctionPointer<GFp12SubDelegate>(_GFp12SubHandle);
+            }
+            else
+            {
+                Instance.GFp12Sub = (ref GFp12 c, ref GFp12 a, ref GFp12 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Sub\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Mul", out IntPtr _GFp12MulHandle))
+            {
+                Instance.GFp12Mul = Marshal.GetDelegateForFunctionPointer<GFp12MulDelegate>(_GFp12MulHandle);
+            }
+            else
+            {
+                Instance.GFp12Mul = (ref GFp12 c, ref GFp12 a, ref GFp12 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Mul\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12MulScalar", out IntPtr _GFp12MulScalarHandle))
+            {
+                Instance.GFp12MulScalar = Marshal.GetDelegateForFunctionPointer<GFp12MulScalarDelegate>(_GFp12MulScalarHandle);
+            }
+            else
+            {
+                Instance.GFp12MulScalar = (ref GFp12 c, ref GFp12 a, ref GFp6 b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12MulScalar\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Square", out IntPtr _GFp12SquareHandle))
+            {
+                Instance.GFp12Square = Marshal.GetDelegateForFunctionPointer<GFp12SquareDelegate>(_GFp12SquareHandle);
+            }
+            else
+            {
+                Instance.GFp12Square = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Square\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Invert", out IntPtr _GFp12InvertHandle))
+            {
+                Instance.GFp12Invert = Marshal.GetDelegateForFunctionPointer<GFp12InvertDelegate>(_GFp12InvertHandle);
+            }
+            else
+            {
+                Instance.GFp12Invert = (ref GFp12 c, ref GFp12 a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Invert\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "GFp12Exp", out IntPtr _GFp12ExpHandle))
+            {
+                Instance.GFp12Exp = Marshal.GetDelegateForFunctionPointer<GFp12ExpDelegate>(_GFp12ExpHandle);
+            }
+            else
+            {
+                Instance.GFp12Exp = (ref GFp12 c, ref GFp12 a, ref Scalar power) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFp12Exp\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "LineFuncAdd", out IntPtr _LineFuncAddHandle))
+            {
+                Instance.LineFuncAdd = Marshal.GetDelegateForFunctionPointer<LineFuncAddDelegate>(_LineFuncAddHandle);
+            }
+            else
+            {
+                Instance.LineFuncAdd = (ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref TwistPoint p, ref CurvePoint q, ref GFp2 rr2) => { throw new EntryPointNotFoundException("failed to find endpoint \"LineFuncAdd\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "LineFuncDouble", out IntPtr _LineFuncDoubleHandle))
+            {
+                Instance.LineFuncDouble = Marshal.GetDelegateForFunctionPointer<LineFuncDoubleDelegate>(_LineFuncDoubleHandle);
+            }
+            else
+            {
+                Instance.LineFuncDouble = (ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref CurvePoint q) => { throw new EntryPointNotFoundException("failed to find endpoint \"LineFuncDouble\" in library \"bn256\""); };
+            }
+            if (NativeLibrary.TryGetExport(_handle, "MulLine", out IntPtr _MulLineHandle))
+            {
+                Instance.MulLine = Marshal.GetDelegateForFunctionPointer<MulLineDelegate>(_MulLineHandle);
+            }
+            else
+            {
+                Instance.MulLine = (ref GFp12 ret, ref GFp2 a, ref GFp2 b, ref GFp2 c) => { throw new EntryPointNotFoundException("failed to find endpoint \"MulLine\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "RandomG1", out IntPtr _RandomG1Handle))
             {

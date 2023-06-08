@@ -70,6 +70,87 @@ namespace AuremCore.BN256.Native
         public static extern void GFp2Invert(ref GFp2 c, ref GFp2 a);
 
         [DllImport("bn256")]
+        public static extern void GFp2MulXi(ref GFp2 c, ref GFp2 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Frobenius(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6FrobeniusP2(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6FrobeniusP4(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Add(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Sub(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Mul(ref GFp6 c, ref GFp6 a, ref GFp6 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp6MulScalar(ref GFp6 c, ref GFp6 a, ref GFp2 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp6MulGFp(ref GFp6 c, ref GFp6 a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
+
+        [DllImport("bn256")]
+        public static extern void GFp6MulTau(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Square(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp6Invert(ref GFp6 c, ref GFp6 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Conjugate(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Neg(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Frobenius(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12FrobeniusP2(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12FrobeniusP4(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Add(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Sub(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Mul(ref GFp12 c, ref GFp12 a, ref GFp12 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp12MulScalar(ref GFp12 c, ref GFp12 a, ref GFp6 b);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Square(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Invert(ref GFp12 c, ref GFp12 a);
+
+        [DllImport("bn256")]
+        public static extern void GFp12Exp(ref GFp12 c, ref GFp12 a, ref Scalar power);
+
+        [DllImport("bn256")]
+        public static extern void LineFuncAdd(ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref TwistPoint p, ref CurvePoint q, ref GFp2 rr2);
+
+        [DllImport("bn256")]
+        public static extern void LineFuncDouble(ref GFp2 a, ref GFp2 b, ref GFp2 c, ref TwistPoint rout, ref TwistPoint r, ref CurvePoint q);
+
+        [DllImport("bn256")]
+        public static extern void MulLine(ref GFp12 ret, ref GFp2 a, ref GFp2 b, ref GFp2 c);
+
+        [DllImport("bn256")]
         public static extern void RandomG1(ref G1 g1, ref Scalar k);
 
         [DllImport("bn256")]

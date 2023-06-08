@@ -30,7 +30,7 @@ namespace AuremCore.BN256.Common
                 rv.Append("{");
                 for (int i = 0; i < bytes.Length / 8; i++)
                 {
-                    rv.Append("0x");
+                    //rv.Append("0x");
                     if (bigEndian)
                     {
                         for (int j = 0; j < 8; j++)
