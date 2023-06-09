@@ -18,7 +18,7 @@ namespace AuremCore.Crypto.BN256
 
         private static readonly RNGCryptoServiceProvider csp = new();
 
-        private static BigInteger RandomScalar()
+        public static BigInteger RandomScalar()
         {
             byte[] data = new byte[65];
             csp.GetBytes(data, 0, 64);
@@ -81,6 +81,11 @@ namespace AuremCore.Crypto.BN256
 
         public void Add(SecretKey a) => Add(a.s);
 
+        public SecretKey Add(SecretKey a, SecretKey b)
+        {
+            return a + b;
+        }
+
         public void Sub(BigInteger a)
         {
             s = BigInteger.Abs((s - a) % Constants.Order);
@@ -106,6 +111,26 @@ namespace AuremCore.Crypto.BN256
             }
 
             return false;
+        }
+
+        public VerificationKey VerificationKey()
+        {
+            return new VerificationKey(new G2().ScalarBaseMult(this));
+        }
+
+        public Signature Sign(byte[] msg)
+        {
+            return new Signature { Sig = new G1().ScalarMult(G1.Hash(msg), this) };
+        }
+
+        public byte[] Marshal() => s.ToByteArray();
+
+        public SecretKey Unmarshal(byte[] data)
+        {
+            s = new BigInteger(data);
+            scalar = new();
+            BN.ToBN(s, scalar.n.array);
+            return this;
         }
     }
 }
