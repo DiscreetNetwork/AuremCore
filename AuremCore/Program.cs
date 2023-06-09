@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Text;
-using AuremCore.BN256.Common;
-using AuremCore.BN256.Models;
-using AuremCore.BN256.Native;
+using AuremCore.Crypto.BN256.Common;
+using AuremCore.Crypto.BN256.Models;
+using AuremCore.Crypto.BN256.Native;
 
 namespace AuremCore
 {

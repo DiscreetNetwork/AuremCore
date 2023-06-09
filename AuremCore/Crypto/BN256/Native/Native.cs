@@ -1,4 +1,4 @@
-﻿using AuremCore.BN256.Models;
+﻿using AuremCore.Crypto.BN256.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +13,7 @@ using System.Threading.Tasks;
  * (c)2023 Discreet
  */
 
-namespace AuremCore.BN256.Native
+namespace AuremCore.Crypto.BN256.Native
 {
     internal class Native : IDisposable
     {
@@ -315,7 +315,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpMul = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpMul\" in library \"bn256\""); };
+                Instance.GFpMul = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpMul\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "NewGFp", out IntPtr _NewGFpHandle))
             {
@@ -323,7 +323,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.NewGFp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, long x) => { throw new EntryPointNotFoundException("failed to find endpoint \"NewGFp\" in library \"bn256\""); };
+                Instance.NewGFp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, x) => { throw new EntryPointNotFoundException("failed to find endpoint \"NewGFp\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpNeg", out IntPtr _GFpNegHandle))
             {
@@ -331,7 +331,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpNeg = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpNeg\" in library \"bn256\""); };
+                Instance.GFpNeg = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpNeg\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpExp", out IntPtr _GFpExpHandle))
             {
@@ -339,7 +339,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpExp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] bits) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpExp\" in library \"bn256\""); };
+                Instance.GFpExp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] bits) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpExp\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpInvert", out IntPtr _GFpInvertHandle))
             {
@@ -347,7 +347,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpInvert = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpInvert\" in library \"bn256\""); };
+                Instance.GFpInvert = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpInvert\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpSqrt", out IntPtr _GFpSqrtHandle))
             {
@@ -355,7 +355,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpSqrt = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSqrt\" in library \"bn256\""); };
+                Instance.GFpSqrt = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSqrt\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpAdd", out IntPtr _GFpAddHandle))
             {
@@ -363,7 +363,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpAdd = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpAdd\" in library \"bn256\""); };
+                Instance.GFpAdd = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpAdd\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpSub", out IntPtr _GFpSubHandle))
             {
@@ -371,7 +371,7 @@ namespace AuremCore.BN256.Native
             }
             else
             {
-                Instance.GFpSub = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSub\" in library \"bn256\""); };
+                Instance.GFpSub = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSub\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFp2Add", out IntPtr _GFp2AddHandle))
             {

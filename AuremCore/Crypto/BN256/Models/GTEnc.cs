@@ -5,17 +5,17 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.BN256.Models
+namespace AuremCore.Crypto.BN256.Models
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct GT
+    internal struct GTEnc
     {
-        [MarshalAs(UnmanagedType.Struct)]
-        public GFp12 p;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 384)]
+        public byte[] bytes;
 
-        public GT()
+        public GTEnc()
         {
-            p = new GFp12();
+            bytes = new byte[384];
         }
     }
 }

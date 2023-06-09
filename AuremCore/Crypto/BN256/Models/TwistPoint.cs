@@ -1,12 +1,13 @@
-﻿using AuremCore.BN256.Common;
+﻿using AuremCore.Crypto.BN256.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.BN256.Models
+namespace AuremCore.Crypto.BN256.Models
 {
     [StructLayout(LayoutKind.Sequential)]
     internal struct TwistPoint
@@ -20,7 +21,7 @@ namespace AuremCore.BN256.Models
         [MarshalAs(UnmanagedType.Struct)]
         public GFp2 z;
 
-        [MarshalAs (UnmanagedType.Struct)]
+        [MarshalAs(UnmanagedType.Struct)]
         public GFp2 t;
 
         public TwistPoint()
@@ -29,6 +30,26 @@ namespace AuremCore.BN256.Models
             y = new GFp2();
             z = new GFp2();
             t = new GFp2();
+        }
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (obj == null) return false;
+
+            if (obj is TwistPoint b)
+            {
+                return x.Equals(b.x) && y.Equals(b.y) && z.Equals(b.z) && t.Equals(b.t);
+            }
+
+            return false;
+        }
+
+        public void Set(TwistPoint a)
+        {
+            x.Set(a.x);
+            y.Set(a.y);
+            z.Set(a.z);
+            t.Set(a.t);
         }
 
         public override string ToString()

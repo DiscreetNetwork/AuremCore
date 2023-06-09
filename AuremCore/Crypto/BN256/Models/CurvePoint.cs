@@ -1,12 +1,13 @@
-﻿using AuremCore.BN256.Common;
+﻿using AuremCore.Crypto.BN256.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.BN256.Models
+namespace AuremCore.Crypto.BN256.Models
 {
     [StructLayout(LayoutKind.Sequential)]
     internal struct CurvePoint
@@ -34,6 +35,27 @@ namespace AuremCore.BN256.Models
         public override string ToString()
         {
             return $"{PrintUtil.Hexify(Util.FpToBytes(x), true)}, {PrintUtil.Hexify(Util.FpToBytes(y), true)}, {PrintUtil.Hexify(Util.FpToBytes(z), true)}, {PrintUtil.Hexify(Util.FpToBytes(t), true)}";
+        }
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (obj == null) return false;
+
+            if (obj is CurvePoint b)
+            {
+                return Util.GFpEqual(y, b.y) && Util.GFpEqual(x, b.x) && Util.GFpEqual(z, b.z) && Util.GFpEqual(t, b.t);
+            }
+
+            return false;
+        }
+
+        public CurvePoint Set(CurvePoint a)
+        {
+            Array.Copy(a.x, x, 4);
+            Array.Copy(a.y, y, 4);
+            Array.Copy(a.z, z, 4);
+            Array.Copy(a.t, t, 4);
+            return this;
         }
     }
 }

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.BN256.Models
+namespace AuremCore.Crypto.BN256.Models
 {
     [StructLayout(LayoutKind.Sequential)]
     internal struct GFp12
@@ -20,6 +21,24 @@ namespace AuremCore.BN256.Models
         {
             x = new GFp6();
             y = new GFp6();
+        }
+
+        public void Set(GFp12 b)
+        {
+            x.Set(b.x);
+            y.Set(b.y);
+        }
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (obj == null) return false;
+
+            if (obj is GFp12 b)
+            {
+                return x.Equals(b.x) && y.Equals(b.y);
+            }
+
+            return false;
         }
 
         public override string ToString()

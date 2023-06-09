@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.BN256.Common
+namespace AuremCore.Crypto.BN256.Common
 {
     internal static class PrintUtil
     {
