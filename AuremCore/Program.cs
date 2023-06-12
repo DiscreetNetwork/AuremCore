@@ -354,7 +354,7 @@ namespace AuremCore
             Native.Instance.GFp2Invert(ref c, ref b);
             Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c.x), true) + ", " + PrintUtil.Hexify(Util.FpToBytes(c.y), true));*/
 
-            GFp6 a6 = new GFp6();
+            /*GFp6 a6 = new GFp6();
             Native.Instance.NewGFp(a6.x.x, 59230818);
             Native.Instance.NewGFp(a6.x.y, 12930170972);
             Native.Instance.NewGFp(a6.y.x, 871290387612);
@@ -409,7 +409,7 @@ namespace AuremCore
             Scalar k = new Scalar();
             k.n.array[0] = 1234567890;
 
-            Native.Instance.GFp12Invert(ref c12, ref a12);
+            Native.Instance.GFp12Invert(ref c12, ref a12);*/
 
             //Console.WriteLine(c12.ToString());
 
