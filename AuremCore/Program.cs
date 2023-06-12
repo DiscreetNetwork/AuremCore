@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Text;
 using AuremCore.Crypto.BN256.Common;
 using AuremCore.Crypto.BN256.Models;
@@ -38,6 +39,74 @@ namespace AuremCore
             Native.Instance.ScalarBaseMultGT(ref testGood, ref kt);
             Console.WriteLine(testGood.p.ToString());
 
+        }
+
+        public static void TestSpeed()
+        {
+            //ulong chk = Native.Instance.CheckBMI2();
+            //Console.WriteLine("CHECK!!!!: " + chk.ToString());
+            Scalar scalar = new();
+            int ops = 10000;
+
+            G1 tg1 = new();
+            Scalar testscalar = new Scalar();
+            testscalar.n.array[0] = 3;
+            Native.Instance.ScalarBaseMultG1(ref tg1, ref testscalar);
+            //Console.WriteLine(tg1.p.ToString());
+            G1Enc enc = new G1Enc();
+            Native.Instance.MarshalG1(ref enc, ref tg1);
+            Console.WriteLine(PrintUtil.Hexify(enc.bytes));
+            // b = 3, a = -2
+            ulong[] c = new ulong[4];
+            //ulong[] a = new ulong[4] { 0x6172b1b17822599c, 0xb96e234482d6d678, 0xa9bfb2e186137087, 0x3ed4078d2a8e1fe6 };
+            //ulong[] b = new ulong[4] { 0x8630a1e229d50ffd, 0x583653ea5c7373e9, 0xabd060661867b356, 0x3176f68f8ace581f };
+            //ulong[] b2 = new ulong[4] { 0x922c0a8a3433866a, 0x962534e6c44241b4, 0xfe9f8c52491d28cb, 0x5e3e0b53bfd52fd9 };
+            ulong[] a = new ulong[4];
+            ulong[] b = new ulong[4];
+            ulong[] b2 = new ulong[4];
+            Native.Instance.NewGFp(a, -9312390178231111);
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(a), true));
+            Native.Instance.NewGFp(b, -9123810239812222);
+            Native.Instance.GFpMul(c, b, a);
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(a), true));
+            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
+            Native.Instance.NewGFp(b2, -301283109231);
+            Native.Instance.GFpAdd(c, a, b2);
+            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
+            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(b2), true));
+            //Native.Instance.RandomG1(ref g1, ref scalar);
+            //Console.WriteLine(PrintUtil.Hexify(BN.FromBN(scalar.n).ToByteArray()));
+            //Native.Instance.HashG1(ref g1, Encoding.ASCII.GetBytes("poooop"), (ulong)Encoding.ASCII.GetBytes("poooop").Length, Encoding.ASCII.GetBytes("poooop"), (ulong)Encoding.ASCII.GetBytes("poooop").Length);
+            //return;
+
+            G1[] g1s = new G1[ops];
+            G2[] g2s = new G2[ops];
+            GT[] gts = new GT[ops];
+            Scalar[] scalars = new Scalar[ops];
+            for (int i = 0; i < ops; i++)
+            {
+                g1s[i] = new G1();
+                var tmp = new G2();
+                //g2s[i] = new G2();
+                //gts[i] = new GT();
+                Native.Instance.RandomG2(ref tmp, ref scalars[i]);
+                //Native.Instance.RandomG2(ref g2s[i], ref scalar);
+            }
+
+            Stopwatch sw = Stopwatch.StartNew();
+
+            GT stop = new GT();
+            for (int i = 0; i < ops; i++)
+            {
+                //Native.Instance.RandomG1(ref g1, ref scalar);
+                //Native.Instance.RandomG2(ref g2, ref scalar);
+                Native.Instance.Pair(ref stop, ref g1s[i], ref g2s[i]);
+
+                //Native.Instance.Pair(ref stop, ref scalars[i]);
+            }
+            sw.Stop();
+            Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {sw.ElapsedMilliseconds/ops}ms");
         }
 
         public static void TestLineFuncAdd()
@@ -355,7 +424,9 @@ namespace AuremCore
             //Console.WriteLine("\n\n\n");
             //TestMiller();
 
-            TestMiller();
+            //TestMiller();
+
+            TestSpeed();
 
             //TestLineFuncAdd();
 

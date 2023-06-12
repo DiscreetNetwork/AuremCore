@@ -14,6 +14,9 @@ namespace AuremCore.Crypto.BN256.Native
         public static extern void TestIfWorks(ref int a, int b);
 
         [DllImport("bn256")]
+        public static extern ulong CheckBMI2();
+
+        [DllImport("bn256")]
         public static extern int ScalarBitlen(ref Scalar k);
 
         [DllImport("bn256")]

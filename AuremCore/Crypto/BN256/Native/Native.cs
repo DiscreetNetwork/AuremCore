@@ -1,4 +1,5 @@
 ﻿using AuremCore.Crypto.BN256.Models;
+using AuremCore.Crypto.BN256.Native;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,7 @@ namespace AuremCore.Crypto.BN256.Native
         }
 
         public delegate void TestIfWorksDelegate(ref int a, int b);
+        public delegate ulong CheckBMI2Delegate();
         public delegate int ScalarBitlenDelegate(ref Scalar k);
         public delegate int ScalarBitDelegate(ref Scalar k, int i);
         public delegate void GFpMulDelegate([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b);
@@ -160,6 +162,7 @@ namespace AuremCore.Crypto.BN256.Native
 
 
         public TestIfWorksDelegate TestIfWorks;
+        public CheckBMI2Delegate CheckBMI2;
         public ScalarBitlenDelegate ScalarBitlen;
         public ScalarBitDelegate ScalarBit;
         public GFpMulDelegate GFpMul;
@@ -293,6 +296,14 @@ namespace AuremCore.Crypto.BN256.Native
             {
                 Instance.TestIfWorks = (ref int a, int b) => { throw new EntryPointNotFoundException("failed to find endpoint \"TestIfWorks\" in library \"bn256\""); };
             }
+            if (NativeLibrary.TryGetExport(_handle, "CheckBMI2", out IntPtr _CheckBMI2Handle))
+            {
+                Instance.CheckBMI2 = Marshal.GetDelegateForFunctionPointer<CheckBMI2Delegate>(_CheckBMI2Handle);
+            }
+            else
+            {
+                Instance.CheckBMI2 = () => { throw new EntryPointNotFoundException("failed to find endpoint \"CheckBMI2\" in library \"bn256\""); };
+            }
             if (NativeLibrary.TryGetExport(_handle, "ScalarBitlen", out IntPtr _ScalarBitlenHandle))
             {
                 Instance.ScalarBitlen = Marshal.GetDelegateForFunctionPointer<ScalarBitlenDelegate>(_ScalarBitlenHandle);
@@ -315,7 +326,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpMul = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpMul\" in library \"bn256\""); };
+                Instance.GFpMul = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpMul\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "NewGFp", out IntPtr _NewGFpHandle))
             {
@@ -323,7 +334,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.NewGFp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, x) => { throw new EntryPointNotFoundException("failed to find endpoint \"NewGFp\" in library \"bn256\""); };
+                Instance.NewGFp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, long x) => { throw new EntryPointNotFoundException("failed to find endpoint \"NewGFp\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpNeg", out IntPtr _GFpNegHandle))
             {
@@ -331,7 +342,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpNeg = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpNeg\" in library \"bn256\""); };
+                Instance.GFpNeg = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpNeg\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpExp", out IntPtr _GFpExpHandle))
             {
@@ -339,7 +350,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpExp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] bits) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpExp\" in library \"bn256\""); };
+                Instance.GFpExp = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] bits) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpExp\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpInvert", out IntPtr _GFpInvertHandle))
             {
@@ -347,7 +358,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpInvert = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpInvert\" in library \"bn256\""); };
+                Instance.GFpInvert = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpInvert\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpSqrt", out IntPtr _GFpSqrtHandle))
             {
@@ -355,7 +366,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpSqrt = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSqrt\" in library \"bn256\""); };
+                Instance.GFpSqrt = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSqrt\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpAdd", out IntPtr _GFpAddHandle))
             {
@@ -363,7 +374,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpAdd = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpAdd\" in library \"bn256\""); };
+                Instance.GFpAdd = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpAdd\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFpSub", out IntPtr _GFpSubHandle))
             {
@@ -371,7 +382,7 @@ namespace AuremCore.Crypto.BN256.Native
             }
             else
             {
-                Instance.GFpSub = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSub\" in library \"bn256\""); };
+                Instance.GFpSub = ([In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] c, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] a, [In, Out][MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U8, SizeConst = 4)] ulong[] b) => { throw new EntryPointNotFoundException("failed to find endpoint \"GFpSub\" in library \"bn256\""); };
             }
             if (NativeLibrary.TryGetExport(_handle, "GFp2Add", out IntPtr _GFp2AddHandle))
             {
@@ -1014,6 +1025,11 @@ namespace AuremCore.Crypto.BN256.Native
                 Instance.HashG1 = (ref G1 res, [In, Out][MarshalAs(UnmanagedType.LPArray)] byte[] msg, ulong msg_len, [In, Out][MarshalAs(UnmanagedType.LPArray)] byte[] dst, ulong dst_len) => { throw new EntryPointNotFoundException("failed to find endpoint \"HashG1\" in library \"bn256\""); };
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                //make sure bmi2 flag is set
+                Native.Instance.CheckBMI2();
+            }
         }
     }
 }
