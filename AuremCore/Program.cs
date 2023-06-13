@@ -4,6 +4,7 @@ using System.Text;
 using AuremCore.Crypto.BN256.Common;
 using AuremCore.Crypto.BN256.Models;
 using AuremCore.Crypto.BN256.Native;
+using AuremCore.Crypto.Encrypt;
 
 namespace AuremCore
 {
@@ -86,27 +87,31 @@ namespace AuremCore
             for (int i = 0; i < ops; i++)
             {
                 g1s[i] = new G1();
-                var tmp = new G2();
+                g2s[i] = new G2();
+                gts[i] = new GT();
+                scalars[i] = new Scalar();
                 //g2s[i] = new G2();
                 //gts[i] = new GT();
-                Native.Instance.RandomG2(ref tmp, ref scalars[i]);
-                //Native.Instance.RandomG2(ref g2s[i], ref scalar);
+                Native.Instance.RandomG1(ref g1s[i], ref scalars[i]);
+                Native.Instance.RandomG2(ref g2s[i], ref scalars[i]);
             }
 
             Stopwatch sw = Stopwatch.StartNew();
 
             GT stop = new GT();
+            G2 stop2 = new();
+            G1 stop1 = new();
             for (int i = 0; i < ops; i++)
             {
                 //Native.Instance.RandomG1(ref g1, ref scalar);
                 //Native.Instance.RandomG2(ref g2, ref scalar);
-                Native.Instance.Pair(ref stop, ref g1s[i], ref g2s[i]);
-
+                //Native.Instance.Pair(ref stop, ref g1s[i], ref g2s[i]);
+                Native.Instance.ScalarBaseMultGT(ref stop, ref scalars[i]);
                 //Native.Instance.Pair(ref stop, ref scalars[i]);
             }
             sw.Stop();
             Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
-            Console.WriteLine($"Time per op: {sw.ElapsedMilliseconds/ops}ms");
+            Console.WriteLine($"Time per op: {(double)sw.ElapsedMilliseconds/(double)ops}ms");
         }
 
         public static void TestLineFuncAdd()
@@ -178,8 +183,27 @@ namespace AuremCore
             //Console.WriteLine(PrintUtil.Hexify(enc.bytes));
         }
 
+        public static void TestRSA()
+        {
+            (var enc, var dec) = RSA.GenerateKeys();
+            var encpub = enc.Encode();
+            Console.WriteLine(encpub);
+            var decpub = dec.Encode();
+            Console.WriteLine(decpub);
+            var enc2 = EncryptionKey.Decode(encpub);
+            var dec2 = DecryptionKey.Decode(decpub);
+            var plain = Encoding.ASCII.GetBytes("this is a test string intended for rsa testing");
+            var cipher = enc2.Encrypt(plain);
+            Console.WriteLine(PrintUtil.Hexify(cipher, true));
+            var recovered = dec2.Decrypt(cipher);
+            Console.WriteLine(Encoding.ASCII.GetString(recovered));
+            Console.WriteLine(" LINEBREAK ");
+            
+        }
+
         public static void Main(string[] args)
         {
+            TestRSA();
             // testing code
             /*G1 g1 = new G1();
             G1Enc g1Enc = new G1Enc();
@@ -426,7 +450,7 @@ namespace AuremCore
 
             //TestMiller();
 
-            TestSpeed();
+            //TestSpeed();
 
             //TestLineFuncAdd();
 

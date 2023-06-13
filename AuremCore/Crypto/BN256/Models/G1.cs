@@ -19,10 +19,10 @@ namespace AuremCore.Crypto.BN256.Models
             p = new CurvePoint();
         }
 
-        public static G1 Hash(byte[] msg)
+        public static G1 Hash(ReadOnlySpan<byte> msg)
         {
             G1 result = new G1();
-            Native.Native.Instance.HashG1(ref result, msg, (ulong)msg.Length, Constants.DST, (ulong)Constants.DST.Length);
+            Native.Native.Instance.HashG1(ref result, msg.ToArray(), (ulong)msg.Length, Constants.DST, (ulong)Constants.DST.Length);
             return result;
         }
 
@@ -71,9 +71,9 @@ namespace AuremCore.Crypto.BN256.Models
             return g1Enc.bytes;
         }
 
-        public G1 Unmarshal(byte[] dat)
+        public G1 Unmarshal(ReadOnlySpan<byte> dat)
         {
-            G1Enc g1Enc = new G1Enc { bytes = dat };
+            G1Enc g1Enc = new G1Enc { bytes = dat.ToArray() };
             Native.Native.Instance.UnmarshalG1(ref this, ref g1Enc);
             return this;
         }

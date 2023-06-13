@@ -27,7 +27,7 @@ namespace AuremCore.Crypto.BN256
             return this;
         }
 
-        public bool Verify(Signature s, byte[] msg)
+        public bool Verify(Signature s, ReadOnlySpan<byte> msg)
         {
             var p1 = new GT().Pair(s.Sig, Constants.G2Gen).Marshal();
             var p2 = new GT().Pair(G1.Hash(msg), Key).Marshal();

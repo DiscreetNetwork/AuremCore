@@ -64,9 +64,9 @@ namespace AuremCore.Crypto.BN256.Models
             return g2Enc.bytes;
         }
 
-        public G2 Unmarshal(byte[] data)
+        public G2 Unmarshal(ReadOnlySpan<byte> data)
         {
-            G2Enc g2Enc = new G2Enc { bytes = data };
+            G2Enc g2Enc = new G2Enc { bytes = data.ToArray() };
             Native.Native.Instance.UnmarshalG2(ref this, ref g2Enc);
             return this;
         }

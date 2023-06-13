@@ -17,7 +17,7 @@ namespace AuremCore.Crypto.BN256
 
         public byte[] Marshal() => Sig.Marshal();
 
-        public Signature Unmarshal(byte[] bytes)
+        public Signature Unmarshal(ReadOnlySpan<byte> bytes)
         {
             Sig.Unmarshal(bytes);
             return this;
