@@ -1,4 +1,6 @@
-﻿using System;
+﻿using AuremCore.Crypto.BN256;
+using AuremCore.Crypto.BN256.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -7,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Crypto.Threshold
 {
-    public static class Util
+    internal static class TUtil
     {
         internal static BigInteger Lagrange(long[] points, long x)
         {
@@ -23,14 +25,17 @@ namespace AuremCore.Crypto.Threshold
             }
 
             den = BigInteger.ModPow(den, BN256.Constants.Order - 2, BN256.Constants.Order);
+
             num *= den;
             num %= BN256.Constants.Order;
+            while (num < 0) num += BN256.Constants.Order;
 
             return num;
         }
 
         internal static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
         {
+            //Console.WriteLine($"{PrintUtil.Hexify(new SecretKey(coeffs[coeffs.Length-1]).VerificationKey().Marshal(), true)}");
             return coeffs.Aggregate(new BigInteger(0), (ans, y) => (ans * x + y) % BN256.Constants.Order);
         }
 

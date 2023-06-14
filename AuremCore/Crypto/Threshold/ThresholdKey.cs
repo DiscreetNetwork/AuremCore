@@ -42,10 +42,10 @@ namespace AuremCore.Crypto.Threshold
             }
 
             long[] points = shares.Select(x => (long)x.owner).ToArray();
-            Signature sum = shares.AsParallel().Select(sh =>
+            var sum = shares.AsParallel().Select(sh =>
             {
-                return Signature.Mul(sh.sig, new SecretKey(Util.Lagrange(points, sh.owner)));
-            }).Aggregate(new Signature(), (x, y) => Signature.Add(x, y));
+                return Signature.Mul(sh.sig, new SecretKey(TUtil.Lagrange(points, sh.owner)));
+            }).Aggregate(new Signature(), (sum, elem) => Signature.Add(sum, elem));
 
             return (sum, true);
         }
@@ -176,6 +176,20 @@ namespace AuremCore.Crypto.Threshold
             }
 
             return sk;
+        }
+
+        public bool CheckSecretKey(ushort pid, SymmetricKey decryptionKey)
+        {
+            try
+            {
+                this.sk = DecryptSecretKey(this.encSKs[pid], this.vks[pid], decryptionKey);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

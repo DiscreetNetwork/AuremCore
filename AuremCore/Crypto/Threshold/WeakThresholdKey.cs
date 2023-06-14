@@ -54,7 +54,7 @@ namespace AuremCore.Crypto.Threshold
         public static WeakThresholdKey Seeded(ushort nproc, ushort pid, int seed, Dictionary<ushort, bool> shareProviders)
         {
             Random rnd = new Random(seed);
-            var threshold = Util.MinimalTrusted(nproc);
+            var threshold = TUtil.MinimalTrusted(nproc);
 
             var coeffs = new BigInteger[threshold];
             for (int i = 0; i < threshold; i++)

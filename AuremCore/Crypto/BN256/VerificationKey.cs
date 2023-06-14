@@ -1,4 +1,5 @@
-﻿using AuremCore.Crypto.BN256.Models;
+﻿using AuremCore.Crypto.BN256.Extensions;
+using AuremCore.Crypto.BN256.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,7 @@ namespace AuremCore.Crypto.BN256
             var p1 = new GT().Pair(s.Sig, Constants.G2Gen).Marshal();
             var p2 = new GT().Pair(G1.Hash(msg), Key).Marshal();
 
-            return p1.SequenceEqual(p2);
+            return p1.BEquals(p2);
         }
 
         public static (VerificationKey, SecretKey) GenerateKeys()
@@ -51,7 +52,7 @@ namespace AuremCore.Crypto.BN256
         public static bool VerifyKeys(VerificationKey v, SecretKey s)
         {
             var v2 = s.VerificationKey();
-            return v.Key.Equals(v2.Key);
+            return v.Marshal().BEquals(v2.Marshal());
         }
     }
 }

@@ -31,6 +31,22 @@ namespace AuremCore.Crypto.BN256
             return c;
         }
 
+        public static BigInteger RandomScalar(int seed)
+        {
+            byte[] data = new byte[65];
+            //csp.GetBytes(data, 0, 64);
+            Random rng = new Random(seed);
+            rng.NextBytes(data);
+            data[64] = 0;
+
+            BigInteger b = new BigInteger(data);
+            //Console.WriteLine(b.ToString());
+            var c = b % Constants.Order;
+
+            Array.Clear(data);
+            return c;
+        }
+
         public SecretKey()
         {
             s = new BigInteger(0);
@@ -53,7 +69,11 @@ namespace AuremCore.Crypto.BN256
         public SecretKey(BigInteger c)
         {
             scalar = new();
+
+            while (c < 0) c += Constants.Order;
+            if (c > Constants.Order) c %= Constants.Order;
             s = c;
+
             BN.ToBN(c, scalar.n.array);
         }
 
@@ -64,7 +84,10 @@ namespace AuremCore.Crypto.BN256
 
         public static SecretKey operator -(SecretKey a, SecretKey b)
         {
-            return new SecretKey(BigInteger.Abs((a.s - b.s) % Constants.Order));
+            var d = (a.s - b.s);
+            while (d < 0) d += Constants.Order;
+            d %= Constants.Order;
+            return new SecretKey(d);
         }
 
         public static SecretKey operator *(SecretKey a, SecretKey b)
@@ -88,7 +111,8 @@ namespace AuremCore.Crypto.BN256
 
         public void Sub(BigInteger a)
         {
-            s = BigInteger.Abs((s - a) % Constants.Order);
+            s = ((s - a) % Constants.Order);
+            while (s < 0) s += Constants.Order;
             BN.ToBN(a, scalar.n.array);
         }
 

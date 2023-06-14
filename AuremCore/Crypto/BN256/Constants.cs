@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace AuremCore.Crypto.BN256
 {
     public static class Constants
-    {
+    {                                                           //  65000549695646603732796438742359905742570406053903786389881062969044166799969
         public static readonly BigInteger Order = BigInteger.Parse("65000549695646603732796438742359905742570406053903786389881062969044166799969");
 
         public static readonly int SignatureLength = 64;

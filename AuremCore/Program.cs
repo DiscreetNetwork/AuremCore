@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Numerics;
 using System.Text;
+using AuremCore.Crypto.BN256;
 using AuremCore.Crypto.BN256.Common;
 using AuremCore.Crypto.BN256.Models;
 using AuremCore.Crypto.BN256.Native;
 using AuremCore.Crypto.Encrypt;
+using AuremCore.Crypto.P2P;
+using AuremCore.Crypto.Threshold;
 
 namespace AuremCore
 {
@@ -17,13 +21,17 @@ namespace AuremCore
             k2.n.array[0] = 292929292;
             //G2Enc g2Enc = new G2Enc();
             //G2 h = new G2();
-            Native.Instance.ScalarBaseMultG2(ref g2, ref k2);
 
             G1 g1 = new G1();
             Scalar k1 = new Scalar();
-            k1.n.array[0] = 30291;
-
-            Native.Instance.ScalarBaseMultG1(ref g1, ref k1);
+            //k1.n.array[0] = 30291;
+            Console.WriteLine(((BigInteger.ModPow(new BigInteger(292929292), Constants.Order - 2, Constants.Order) * 292929292) % Constants.Order).ToString());
+            var k1s = new SecretKey(BigInteger.ModPow(new BigInteger(292929292), Constants.Order - 2, Constants.Order));
+            //
+            //var k1sb = k1s.scalar.n.array
+            Console.WriteLine(BigInteger.ModPow(new BigInteger(292929292), Constants.Order - 2, Constants.Order).ToString());
+            Native.Instance.ScalarBaseMultG2(ref g2, ref k1s.scalar);
+            Native.Instance.ScalarBaseMultG1(ref g1, ref k2);
 
             GT gt = new GT();
             Native.Instance.Miller(ref gt, ref g1, ref g2);
@@ -34,8 +42,8 @@ namespace AuremCore
             Console.WriteLine(gt.p.ToString());
 
             Scalar kt = new Scalar();
-            kt.n.array[0] = 0xef3c78e4;
-            kt.n.array[1] = 0x811;
+            kt.n.array[0] = 1;
+            kt.n.array[1] = 0;
             GT testGood = new GT();
             Native.Instance.ScalarBaseMultGT(ref testGood, ref kt);
             Console.WriteLine(testGood.p.ToString());
@@ -201,9 +209,172 @@ namespace AuremCore
             
         }
 
+        private class Node
+        {
+            internal SecretKey secretComms;
+            internal P2PPublicKey publicKey;
+
+            internal ushort pid;
+
+            internal ThresholdKey threshold;
+            internal Share share;
+            internal Signature sig;
+
+            // comms
+            internal SymmetricKey[] commKeys;
+            internal P2PPublicKey[] commPubs;
+
+            public void GetComms(IEnumerable<P2PPublicKey> keys)
+            {
+                commPubs = keys.ToArray();
+                commKeys = P2P.Keys(new P2PSecretKey(secretComms), commPubs, pid);
+            }
+        }
+
+        private class Dealer: Node
+        {
+
+        }
+
+        public static void TestTSS(ushort nproc)
+        {
+            // TSS = Threshold Signature Scheme
+            //ushort nproc = 50;
+            nproc = 3;
+            ushort threshold = TUtil.MinimalQuorum(nproc);
+            threshold = 2;
+            TSS tss = TSS.CreateSeeded(nproc, threshold, 0, out var tk_0);
+            Node[] nodes = new Node[nproc];
+            //var secretDealerKey = new SecretKey(SecretKey.RandomScalar());
+            //Dealer dealer = new Dealer { secretComms = secretDealerKey, publicKey = new P2PPublicKey(secretDealerKey), pid = 0 };
+            // instantiate nodes
+            for (int i = 0; i < nproc; i++)
+            {
+                var skey = new SecretKey(SecretKey.RandomScalar());
+                nodes[i] = new Node { secretComms = skey, publicKey = new P2PPublicKey(skey), pid = (ushort)(i) };
+            }
+            var nkeys = nodes.Select(x => x.publicKey);
+
+            // set up communications
+            //dealer.GetComms(nkeys);
+            for (int i = 0; i < nproc; i++)
+            {
+                nodes[i].GetComms(nkeys);
+            }
+
+            // get threshold keys
+            for (int i = 0; i < nproc; i++)
+            {
+                nodes[i].threshold = tss.Encrypt(nodes[0].commKeys);
+            }
+            for (int i = 0; i < nproc; i++)
+            {
+                nodes[i].threshold.owner = nodes[i].pid;
+                nodes[i].threshold.dealer = nodes[0].pid;
+                nodes[i].threshold.threshold = threshold;
+            }
+
+            // decode secret keys
+            for (int i = 0; i < nproc; i++)
+            {
+                var success = nodes[i].threshold.CheckSecretKey(nodes[i].pid, nodes[i].commKeys[0]);
+                if (!success) throw new Exception("invalid key");
+            }
+
+            var msg = Encoding.ASCII.GetBytes("this is a message intended to be signed by the threshold committee");
+            // create shares
+            List<Share> sharesToCommunicate = new List<Share>();
+            for (int i = 1; i < nproc; i++)
+            {
+                nodes[i].share = nodes[i].threshold.CreateShare(msg);
+                sharesToCommunicate.Add(nodes[i].share);
+            }
+
+            List<Signature> thresholdSigs = new();
+            for (int i = 1; i < nproc; i++)
+            {
+                nodes[i].sig = nodes[i].threshold.CombineShares(sharesToCommunicate.ToArray()).Item1 ?? new Signature();
+                thresholdSigs.Add(nodes[i].sig);
+                Console.WriteLine("calculated sig: " + PrintUtil.Hexify(nodes[i].sig.Marshal(), true));
+                Console.WriteLine("Should've been: " + PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
+                if (!nodes[i].threshold.VerifySignature(nodes[i].sig, msg)) return;//throw new Exception("invalid sig!");
+            }
+
+            //for (int i = 0; i < nproc - 1; i++)
+            //{
+            //    Console.WriteLine(PrintUtil.Hexify(thresholdSigs[i].Marshal(), true));
+            //}
+        }
+
+        public static void TestThreshold()
+        {
+            var n = 10;
+            var t = 3;
+            var dealer = 5;
+
+            var gtc = TSS.CreateSeeded((ushort)n, (ushort)t, 0, out var tk_0);
+            var tcs = new ThresholdKey[n];
+            var sKeys = new P2PSecretKey[n];
+            var pKeys = new P2PPublicKey[n];
+            var p2pKeys = new SymmetricKey[n][];
+
+            for (int i = 0; i < n; i++)
+            {
+                (pKeys[i], sKeys[i]) = P2P.GenerateKeys();
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                p2pKeys[i] = P2P.Keys(sKeys[i], pKeys, (ushort)i);
+            }
+
+            var tc = gtc.Encrypt(p2pKeys[dealer]);
+            var tcEncoded = tc.Encode();
+
+            for (ushort i = 0; i < n; i++)
+            {
+                (tcs[i], _) = ThresholdKey.Decode(tcEncoded, (ushort)dealer, i, p2pKeys[i][dealer]);
+                //Console.WriteLine($"globalVK: {PrintUtil.Hexify(tcs[i].globalVK.Marshal(), true)}");
+            }
+            var msg = Encoding.ASCII.GetBytes("this is a message intended to be signed by the threshold committee");
+            var shares = new Share[n];
+            for (ushort i = 0; i < n; i++)
+            {
+                shares[i] = tcs[i].CreateShare(msg);
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    if (!tcs[i].VerifyShare(shares[j], msg)) throw new Exception("should be verified correctly");
+                }
+            }
+
+            (var c, var ok) = tcs[0].CombineShares(shares);
+            Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
+            Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
+            if (!ok) throw new Exception("should be correctly combined by t-parties");
+            if (!tcs[0].VerifySignature(c, msg)) throw new Exception("signature should pass");
+        }
+
         public static void Main(string[] args)
         {
-            TestRSA();
+            //TestMiller();
+            //TestRSA();
+            /*var numtss = 1;
+            Stopwatch sw = Stopwatch.StartNew();
+
+            //for (int i = 0; i < numtss; i++) TestTSS(3);
+
+            sw.Stop();
+
+            Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per TSS: {(double)sw.ElapsedMilliseconds/(double)numtss}ms");*/
+
+            TestThreshold();
+            //TestTSS(3);
+
             // testing code
             /*G1 g1 = new G1();
             G1Enc g1Enc = new G1Enc();

@@ -43,8 +43,8 @@ namespace AuremCore.Crypto.BN256.Models
             {
                 array[i] = d[4 * i];
                 array[i] += (uint)d[4 * i + 1] << 8;
-                array[i] += (uint)d[4 * i + 1] << 16;
-                array[i] += (uint)d[4 * i + 1] << 24;
+                array[i] += (uint)d[4 * i + 2] << 16;
+                array[i] += (uint)d[4 * i + 3] << 24;
             }
 
             if (d.Length % 4 != 0)

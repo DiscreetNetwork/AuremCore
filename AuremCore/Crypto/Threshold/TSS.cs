@@ -28,7 +28,7 @@ namespace AuremCore.Crypto.Threshold
 
             Enumerable.Range(0, nproc).Select(x => (ushort)x).AsParallel().ForAll(x =>
             {
-                var secret2 = Util.Poly(coeffs, new BigInteger(x + 1));
+                var secret2 = TUtil.Poly(coeffs, new BigInteger(x + 1));
                 sks[x] = new SecretKey(secret2);
                 vks[x] = new VerificationKey(secret2);
             });
@@ -38,12 +38,23 @@ namespace AuremCore.Crypto.Threshold
 
         public static TSS CreateRandom(ushort nproc, ushort threshold)
         {
-            var coeffs = new BigInteger[nproc];
-            for (int i = 0; i < nproc; i++)
+            var coeffs = new BigInteger[threshold];
+            for (int i = 0; i < threshold; i++)
             {
                 coeffs[i] = SecretKey.RandomScalar();
             }
 
+            return Create(nproc, coeffs);
+        }
+
+        public static TSS CreateSeeded(ushort nproc, ushort threshold, int seed, out BigInteger tk_0)
+        {
+            var coeffs = new BigInteger[threshold];
+            for (int i = 0; i < threshold; i++)
+            {
+                coeffs[i] = SecretKey.RandomScalar(seed + i);
+            }
+            tk_0 = (threshold == 0) ? BigInteger.Zero : coeffs[threshold - 1];
             return Create(nproc, coeffs);
         }
 
