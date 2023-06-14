@@ -36,13 +36,15 @@ namespace AuremCore.Crypto.Threshold
             return new TSS { threshold = threshold, globalVK = globalVK, sks = sks, vks = vks };
         }
 
-        public static TSS CreateRandom(ushort nproc, ushort threshold)
+        public static TSS CreateRandom(ushort nproc, ushort threshold, out BigInteger tk_0)
         {
             var coeffs = new BigInteger[threshold];
             for (int i = 0; i < threshold; i++)
             {
                 coeffs[i] = SecretKey.RandomScalar();
             }
+
+            tk_0 = (threshold == 0) ? BigInteger.Zero : coeffs[threshold - 1];
 
             return Create(nproc, coeffs);
         }

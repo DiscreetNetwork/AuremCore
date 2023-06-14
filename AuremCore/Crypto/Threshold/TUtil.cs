@@ -35,7 +35,6 @@ namespace AuremCore.Crypto.Threshold
 
         internal static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
         {
-            //Console.WriteLine($"{PrintUtil.Hexify(new SecretKey(coeffs[coeffs.Length-1]).VerificationKey().Marshal(), true)}");
             return coeffs.Aggregate(new BigInteger(0), (ans, y) => (ans * x + y) % BN256.Constants.Order);
         }
 

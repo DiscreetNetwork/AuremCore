@@ -25,9 +25,9 @@ namespace AuremCore.Crypto.BN256.Models
             for (int i = 0; i < a.array.Length; i++)
             {
                 data[4 * i] = (byte)(a.array[i] & 0xff);
-                data[4 * i + 1] = (byte)(a.array[i] >> 8 & 0xff);
-                data[4 * i + 2] = (byte)(a.array[i] >> 16 & 0xff);
-                data[4 * i + 3] = (byte)(a.array[i] >> 24 & 0xff);
+                data[4 * i + 1] = (byte)((a.array[i] >> 8) & 0xff);
+                data[4 * i + 2] = (byte)((a.array[i] >> 16) & 0xff);
+                data[4 * i + 3] = (byte)((a.array[i] >> 24 ) & 0xff);
             }
             data[64] = 0;
             return new BigInteger(data);
@@ -36,6 +36,8 @@ namespace AuremCore.Crypto.BN256.Models
         public static void ToBN(BigInteger c, uint[] array)
         {
             if (array.Length != 16) throw new Exception("invalid use");
+
+            for (int h = 0; h < 16; h++) array[h] = 0;
 
             var d = c.ToByteArray();
             int i;
@@ -49,13 +51,11 @@ namespace AuremCore.Crypto.BN256.Models
 
             if (d.Length % 4 != 0)
             {
-                for (int shift = 0; 4 * i + shift < d.Length; shift++)
+                for (int shift = 0; (4 * i + shift) < d.Length; shift++)
                 {
-                    array[i] = (uint)d[4 * i + shift] << 8 * shift;
+                    array[i] += (uint)d[4 * i + shift] << (8 * shift);
                 }
             }
-
-            Array.Clear(d);
         }
 
         public BN(BigInteger c) : this()

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Numerics;
 using System.Text;
@@ -113,8 +114,8 @@ namespace AuremCore
             {
                 //Native.Instance.RandomG1(ref g1, ref scalar);
                 //Native.Instance.RandomG2(ref g2, ref scalar);
-                //Native.Instance.Pair(ref stop, ref g1s[i], ref g2s[i]);
-                Native.Instance.ScalarBaseMultGT(ref stop, ref scalars[i]);
+                Native.Instance.Pair(ref stop, ref g1s[i], ref g2s[i]);
+                //Native.Instance.ScalarBaseMultGT(ref stop, ref scalars[i]);
                 //Native.Instance.Pair(ref stop, ref scalars[i]);
             }
             sw.Stop();
@@ -236,6 +237,25 @@ namespace AuremCore
 
         }
 
+        private static Random rng_Shuffle = new Random();
+
+        public static IEnumerable<T> Shuffle<T>(IEnumerable<T> values)
+        {
+            var list = new List<T>(values);
+            var n = list.Count;
+
+            while (n > 1)
+            {
+                n--;
+                int k = rng_Shuffle.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+
+            return values;
+        }
+
         public static void TestTSS(ushort nproc)
         {
             // TSS = Threshold Signature Scheme
@@ -306,17 +326,15 @@ namespace AuremCore
             //}
         }
 
-        public static void TestThreshold()
+        public static void TestThreshold(int n, int tot, bool checkAll = false)
         {
-            var n = 10;
-            var t = 3;
-            var dealer = 5;
+            var t = TUtil.MinimalQuorum((ushort)n);
 
-            var gtc = TSS.CreateSeeded((ushort)n, (ushort)t, 0, out var tk_0);
-            var tcs = new ThresholdKey[n];
             var sKeys = new P2PSecretKey[n];
             var pKeys = new P2PPublicKey[n];
             var p2pKeys = new SymmetricKey[n][];
+
+            Stopwatch sw = Stopwatch.StartNew();
 
             for (int i = 0; i < n; i++)
             {
@@ -328,51 +346,116 @@ namespace AuremCore
                 p2pKeys[i] = P2P.Keys(sKeys[i], pKeys, (ushort)i);
             }
 
-            var tc = gtc.Encrypt(p2pKeys[dealer]);
-            var tcEncoded = tc.Encode();
+            for (int tcnt = 0; tcnt < tot; tcnt++)
+            {
+                var tcs = new ThresholdKey[n];
+                var gtc = TSS.CreateSeeded((ushort)n, (ushort)t, 0, out var tk_0);
+                var dealer = n - 1;
 
-            for (ushort i = 0; i < n; i++)
-            {
-                (tcs[i], _) = ThresholdKey.Decode(tcEncoded, (ushort)dealer, i, p2pKeys[i][dealer]);
-                //Console.WriteLine($"globalVK: {PrintUtil.Hexify(tcs[i].globalVK.Marshal(), true)}");
-            }
-            var msg = Encoding.ASCII.GetBytes("this is a message intended to be signed by the threshold committee");
-            var shares = new Share[n];
-            for (ushort i = 0; i < n; i++)
-            {
-                shares[i] = tcs[i].CreateShare(msg);
-            }
+                var tc = gtc.Encrypt(p2pKeys[dealer]);
+                var tcEncoded = tc.Encode();
 
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = 0; j < n; j++)
+                for (ushort i = 0; i < n; i++)
                 {
-                    if (!tcs[i].VerifyShare(shares[j], msg)) throw new Exception("should be verified correctly");
+                    (tcs[i], _) = ThresholdKey.Decode(tcEncoded, (ushort)dealer, i, p2pKeys[i][dealer]);
+                    //Console.WriteLine($"globalVK: {PrintUtil.Hexify(tcs[i].globalVK.Marshal(), true)}");
+                }
+
+                var msg = Encoding.ASCII.GetBytes("this is a message intended to be signed by the threshold committee");
+                var shares = new Share[n];
+                for (ushort i = 0; i < n; i++)
+                {
+                    shares[i] = tcs[i].CreateShare(msg);
+                }
+
+                if (checkAll)
+                {
+                    for (int i = 0; i < n; i++)
+                    {
+                        for (int j = 0; j < n; j++)
+                        {
+                            if (!tcs[i].VerifyShare(shares[j], msg)) throw new Exception("should be verified correctly");
+                        }
+                    }
+                }
+                else
+                {
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (!tcs[0].VerifyShare(shares[j], msg)) throw new Exception("should be verified correctly");
+                    }
+                }
+                
+
+                //for (int i = 0; i < n; i++)
+                //{
+                //    (var c, var ok) = tcs[0].CombineShares(shares);
+                //    //Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
+                //    //Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
+                //    if (!ok) throw new Exception("should be correctly combined by t-parties");
+                //    if (!tcs[0].VerifySignature(c, msg)) throw new Exception("signature should pass");
+                //}
+
+                if (checkAll)
+                {
+                    for (int i = 0; i < n; i++)
+                    {
+                        var permShares = Shuffle(shares).ToArray();
+                        (var c, var ok) = tcs[i].CombineShares(shares);
+                        //Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
+                        //Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
+                        if (!ok) throw new Exception("should be correctly combined by t-parties");
+                        if (!tcs[0].VerifySignature(c, msg)) throw new Exception("signature should pass");
+                    }
+                }
+                else
+                {
+                    //var permShares = Shuffle(shares).ToArray();
+                    (var c, var ok) = tcs[0].CombineShares(shares);
+
+                    //Console.WriteLine(c.Sig.p.ToString());
+                    //Console.WriteLine(new SecretKey(tk_0).Sign(msg).Sig.p.ToString());
+
+                    //Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
+                    //Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
+
+                    if (!ok) throw new Exception("should be correctly combined by t-parties");
+                    if (!tcs[0].VerifySignature(c, msg)) throw new Exception("signature should pass");
                 }
             }
 
-            (var c, var ok) = tcs[0].CombineShares(shares);
-            Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
-            Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
-            if (!ok) throw new Exception("should be correctly combined by t-parties");
-            if (!tcs[0].VerifySignature(c, msg)) throw new Exception("signature should pass");
+            sw.Stop();
+
+            Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per TSS: {(double)sw.ElapsedMilliseconds / (double)tot}ms");
         }
 
         public static void Main(string[] args)
         {
             //TestMiller();
             //TestRSA();
-            /*var numtss = 1;
-            Stopwatch sw = Stopwatch.StartNew();
+            
+            var numtss = 10;
+            var nproc = 250;
+            //Stopwatch sw = Stopwatch.StartNew();
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    Console.WriteLine(TUtil.Lagrange(Enumerable.Range(0, 10).Select(x => (long)x).ToArray(), (long)i));
+            //
+            //}
+            TestThreshold(nproc, numtss);
+            //for (int i = 0; i < numtss; i++) TestThreshold(nproc);
 
-            //for (int i = 0; i < numtss; i++) TestTSS(3);
+            BN a = new BN();
+            BigInteger c = new BigInteger();
 
-            sw.Stop();
+            //c = new BigInteger(252);
+            //BN.ToBN(c, a.array);
+            //var d = BN.FromBN(a);
+            //Console.WriteLine(a.array[0]);
+            //Console.WriteLine($"d: {d}");
+            //TestSpeed();
 
-            Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
-            Console.WriteLine($"Time per TSS: {(double)sw.ElapsedMilliseconds/(double)numtss}ms");*/
-
-            TestThreshold();
             //TestTSS(3);
 
             // testing code
