@@ -63,7 +63,7 @@ namespace AuremCore.Testing
             Symbol y = Symbol.Make("y");
             Symbol sym1 = Symbol.Make("sym1");
             Symbol sym2 = Symbol.Make("sym2");
-            //Symbol sym3 = Symbol.Make("sym3");
+            Symbol sym3 = Symbol.Make("sym3");
             Symbol _out = Symbol.Make("out");
             Symbol five = Symbol.Make("five");
             five.value = new BigInteger(5);
@@ -74,7 +74,7 @@ namespace AuremCore.Testing
                 new Operation(sym1, x, x, Op.MUL),
                 new Operation(y, sym1, x, Op.MUL),
                 new Operation(sym2, y, x, Op.ADD),
-                //new Operation(sym3, x, x, Op.ADD),
+                new Operation(sym3, x, x, Op.ADD),
                 new Operation(_out, sym2, five, Op.ADD)
             };
 
@@ -86,7 +86,7 @@ namespace AuremCore.Testing
             List<Symbol> outputs = new List<Symbol>
             {
                 _out,
-                //sym3,
+                sym3,
             };
 
             List<Symbol> hiddens = new List<Symbol> {sym1, y, sym2 };

@@ -459,12 +459,12 @@ namespace AuremCore
             var negativeEleven = negativeThreeAndTwoThirds * 3 % Constants.Order;
             //Console.WriteLine(negativeEleven.ToString());
 
-            Console.WriteLine(r1cs.ToString());
-            Console.WriteLine($"Witness: [{R1CSLine.BIAtoS(witness.ToArray())}]");
+            //Console.WriteLine(r1cs.ToString());
+            //Console.WriteLine($"Witness: [{R1CSLine.BIAtoS(witness.ToArray())}]");
 
             QAP qap = new QAP(r1cs);
             qap.VerifyCorrectness(r1cs);
-            qap.VerifyCorrectnessWithPrint(r1cs);
+            //qap.VerifyCorrectnessWithPrint(r1cs);
 
             var x = new G2().ScalarBaseMult(1);
             var y = new G2();
@@ -484,16 +484,25 @@ namespace AuremCore
 
             (var h, var rem) = qap.CalculatePoly(witness);
             if (!QAP.NoRemainder(rem)) throw new Exception("Remainder of valid witness to circuit should be zero");
-            Console.WriteLine($"H: [{R1CSLine.BIAtoS(h)}]");
+            //Console.WriteLine($"H: [{R1CSLine.BIAtoS(h)}]");
 
             Groth16CRS crs = new Groth16CRS(sp);
             var proof = crs.Prove(witness);
-            Console.WriteLine(proof.ToString());
+            //Console.WriteLine(proof.ToString());
             var verify = crs.Verify(proof);
 
             if (verify)
             {
                 Console.WriteLine("good times");
+            }
+
+            var witness2 = sp.Execute(new List<BigInteger> { 900 });
+            var proof2 = crs.Prove(witness2);
+            var verify2 = crs.Verify(proof2);
+
+            if (verify2)
+            {
+                Console.WriteLine("good times again");
             }
 
             //c = new BigInteger(252);

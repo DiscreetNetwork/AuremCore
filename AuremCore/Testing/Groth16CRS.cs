@@ -51,7 +51,6 @@ namespace AuremCore.Testing
                 powersOfTau[i] = tmp;
                 tmp *= tau;
                 tmp %= Constants.Order;
-                Console.WriteLine(powersOfTau[i].ToString());
             }
 
             // construct proving key
@@ -235,7 +234,6 @@ namespace AuremCore.Testing
 
             Groth16Proof proof = new Groth16Proof();
             proof.PublicInputs = Enumerable.Range(0, l).Select(x => witness[x]).ToArray();
-            Console.WriteLine(R1CSLine.BIAtoS(proof.PublicInputs));
 
             // generate random r and s
             BigInteger r = /*new BigInteger(1);*/SecretKey.RandomScalar();
@@ -307,9 +305,8 @@ namespace AuremCore.Testing
             Rhs = Rhs.Add(Rhs, new GT().Pair(Lp, verify.g2ByGamma));
             Rhs = Rhs.Add(Rhs, new GT().Pair(proof.C, verify.g2ByDelta));
 
-            Console.WriteLine(PrintUtil.Hexify(AB.Marshal(), true));
-            Console.WriteLine(PrintUtil.Hexify(Rhs.Marshal(), true));
-
+            //Console.WriteLine(PrintUtil.Hexify(AB.Marshal(), true));
+            //Console.WriteLine(PrintUtil.Hexify(Rhs.Marshal(), true));
 
             return AB.Marshal().BEquals(Rhs.Marshal());
         }
