@@ -10,6 +10,7 @@ using AuremCore.Crypto.BN256.Native;
 using AuremCore.Crypto.Encrypt;
 using AuremCore.Crypto.P2P;
 using AuremCore.Crypto.Threshold;
+using AuremCore.Testing;
 
 namespace AuremCore
 {
@@ -401,7 +402,7 @@ namespace AuremCore
                     for (int i = 0; i < n; i++)
                     {
                         var permShares = Shuffle(shares).ToArray();
-                        (var c, var ok) = tcs[i].CombineShares(shares);
+                        (var c, var ok) = tcs[i].CombineShares(permShares);
                         //Console.WriteLine(PrintUtil.Hexify(c.Marshal(), true));
                         //Console.WriteLine(PrintUtil.Hexify(new SecretKey(tk_0).Sign(msg).Marshal(), true));
                         if (!ok) throw new Exception("should be correctly combined by t-parties");
@@ -410,8 +411,8 @@ namespace AuremCore
                 }
                 else
                 {
-                    //var permShares = Shuffle(shares).ToArray();
-                    (var c, var ok) = tcs[0].CombineShares(shares);
+                    var permShares = Shuffle(shares).ToArray();
+                    (var c, var ok) = tcs[0].CombineShares(permShares);
 
                     //Console.WriteLine(c.Sig.p.ToString());
                     //Console.WriteLine(new SecretKey(tk_0).Sign(msg).Sig.p.ToString());
@@ -435,19 +436,59 @@ namespace AuremCore
             //TestMiller();
             //TestRSA();
             
-            var numtss = 10;
-            var nproc = 250;
+            var numtss = 100;
+            var nproc = 100;
             //Stopwatch sw = Stopwatch.StartNew();
             //for (int i = 0; i < 10; i++)
             //{
             //    Console.WriteLine(TUtil.Lagrange(Enumerable.Range(0, 10).Select(x => (long)x).ToArray(), (long)i));
             //
             //}
-            TestThreshold(nproc, numtss);
+            //TestThreshold(nproc, numtss);
             //for (int i = 0; i < numtss; i++) TestThreshold(nproc);
 
             BN a = new BN();
             BigInteger c = new BigInteger();
+
+            SimpleProgram sp = SimpleProgram.Create();
+            var witness = sp.Execute(new List<BigInteger> { 3 });
+
+            R1CS r1cs = new R1CS(sp).Simplify();
+
+            var negativeThreeAndTwoThirds = BigInteger.Parse("43333699797097735821864292494906603828380270702602524259920708646029444533309");
+            var negativeEleven = negativeThreeAndTwoThirds * 3 % Constants.Order;
+            //Console.WriteLine(negativeEleven.ToString());
+
+            Console.WriteLine(r1cs.ToString());
+            Console.WriteLine($"Witness: [{R1CSLine.BIAtoS(witness.ToArray())}]");
+
+            QAP qap = new QAP(r1cs);
+            qap.VerifyCorrectness(r1cs);
+            qap.VerifyCorrectnessWithPrint(r1cs);
+            //Console.WriteLine(R1CSLine.BIAtoS(qap.EvaluateAs(1)));
+            //Console.WriteLine(R1CSLine.BIAtoS(qap.A[1]));
+
+            //var fiveSixths = BigInteger.Parse("10833424949274433955466073123726650957095067675650631064980177161507361133329");
+            //var ninePlusOneSixth = BigInteger.Parse("54167124746372169777330365618633254785475338378253155324900885807536805666650");
+            //var oneSixth = BigInteger.ModPow(6, Constants.Order - 2, Constants.Order);
+            //Console.WriteLine(oneSixth.ToString());
+            //Console.WriteLine((ninePlusOneSixth - 9).ToString());
+            //var one = (fiveSixths + oneSixth) % Constants.Order;
+            //Console.WriteLine(one.ToString());
+
+            (var h, var rem) = qap.CalculatePoly(witness);
+            if (!QAP.NoRemainder(rem)) throw new Exception("Remainder of valid witness to circuit should be zero");
+            Console.WriteLine($"H: [{R1CSLine.BIAtoS(h)}]");
+
+            Groth16CRS crs = new Groth16CRS(sp);
+            var proof = crs.Prove(witness);
+            Console.WriteLine(proof.ToString());
+            var verify = crs.Verify(proof);
+
+            if (verify)
+            {
+                Console.WriteLine("good times");
+            }
 
             //c = new BigInteger(252);
             //BN.ToBN(c, a.array);

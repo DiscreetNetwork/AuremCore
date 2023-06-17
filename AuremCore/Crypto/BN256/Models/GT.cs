@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -45,10 +46,20 @@ namespace AuremCore.Crypto.BN256.Models
             return this;
         }
 
+        public GT ScalarBaseMult(BigInteger k)
+        {
+            return ScalarBaseMult(new SecretKey(k));
+        }
+
         public GT ScalarMult(GT a, SecretKey k)
         {
             Native.Native.Instance.ScalarMultGT(ref this, ref a, ref k.scalar);
             return this;
+        }
+
+        public GT ScalarMult(GT a, BigInteger k)
+        {
+            return ScalarMult(a, new SecretKey(k));
         }
 
         public GT Add(GT a, GT b)

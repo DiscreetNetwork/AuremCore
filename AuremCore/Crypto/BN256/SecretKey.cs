@@ -70,8 +70,8 @@ namespace AuremCore.Crypto.BN256
         {
             scalar = new();
 
+            if (c >= Constants.Order) c %= Constants.Order;
             while (c < 0) c += Constants.Order;
-            if (c > Constants.Order) c %= Constants.Order;
             s = c;
 
             BN.ToBN(c, scalar.n.array);
