@@ -31,6 +31,12 @@ namespace AuremCore.Testing
             l = prog.Outputs.Count + 1; // add by 1 since 1 is an input
             n = r1cs.lines.Count;
 
+            //BigInteger alpha = new BigInteger(1); //SecretKey.RandomScalar();
+            //BigInteger beta = new BigInteger(1); //SecretKey.RandomScalar();
+            //BigInteger gamma = new BigInteger(1); //SecretKey.RandomScalar();
+            //BigInteger delta = new BigInteger(1); //SecretKey.RandomScalar();
+            //BigInteger tau = new BigInteger(5); //SecretKey.RandomScalar();
+
             BigInteger alpha = SecretKey.RandomScalar();
             BigInteger beta = SecretKey.RandomScalar();
             BigInteger gamma = SecretKey.RandomScalar();
@@ -45,6 +51,7 @@ namespace AuremCore.Testing
                 powersOfTau[i] = tmp;
                 tmp *= tau;
                 tmp %= Constants.Order;
+                Console.WriteLine(powersOfTau[i].ToString());
             }
 
             // construct proving key
@@ -60,11 +67,29 @@ namespace AuremCore.Testing
                 prove.g1ByPowersOfTau[i] = new G1().ScalarBaseMult(powersOfTau[i]);
             }
 
+            //G1 testing_001 = EvalA(13, 1);
+            //BigInteger testing_001_scalar = BigInteger.Zero;
+            //BigInteger testing_001_tmp = BigInteger.Zero;
+            //for (int i = 0; i < Program.A[1].Length; i++)
+            //{
+            //    testing_001_tmp = powersOfTau[i] * Program.A[1][i] % Constants.Order;
+            //    testing_001_scalar += testing_001_tmp;
+            //    testing_001_scalar %= Constants.Order;
+            //}
+            //testing_001_scalar *= 13;
+            //testing_001_scalar %= Constants.Order;
+            //G1 testing_001_cmp = new G1().ScalarBaseMult(testing_001_scalar);
+            //if (testing_001.Marshal().BEquals(testing_001_cmp.Marshal()))
+            //{
+            //    Console.WriteLine("equal");
+            //}
+
             // construct l polynomial stuff
             prove.g1ByLiTauOverDelta = new G1[m - l];
             BigInteger invDelta = BigInteger.ModPow(delta, Constants.Order - 2, Constants.Order);
             invDelta %= Constants.Order;
             if (invDelta < 0) invDelta += Constants.Order;
+
             for (int i = 0; i < prove.g1ByLiTauOverDelta.Length; i++)
             {
                 BigInteger lioft = EvalL(tau, alpha, beta, i + l);
@@ -148,9 +173,8 @@ namespace AuremCore.Testing
             G1 tmp = new G1();
             for (int i = 0; i < Program.A[poly].Length; i++)
             {
-                tmp.Set(prove.g1ByPowersOfTau[i]);
-                tmp = tmp.ScalarMult(tmp, Program.A[poly][i]);
-                res = res.Add(res, tmp);
+                tmp = new G1().ScalarMult(prove.g1ByPowersOfTau[i], Program.A[poly][i]);
+                res = new G1().Add(res, tmp);
             }
 
             return new G1().ScalarMult(res, w);
@@ -165,9 +189,8 @@ namespace AuremCore.Testing
             G2 tmp = new G2();
             for (int i = 0; i < Program.B[poly].Length; i++)
             {
-                tmp.Set(prove.g2ByPowersOfTau[i]);
-                tmp = tmp.ScalarMult(tmp, Program.B[poly][i]);
-                res = res.Add(res, tmp);
+                tmp = new G2().ScalarMult(prove.g2ByPowersOfTau[i], Program.B[poly][i]);
+                res = new G2().Add(res, tmp);
             }
 
             return new G2().ScalarMult(res, w);
@@ -182,9 +205,8 @@ namespace AuremCore.Testing
             G1 tmp = new G1();
             for (int i = 0; i < Program.B[poly].Length; i++)
             {
-                tmp.Set(prove.g1ByPowersOfTau[i]);
-                tmp = tmp.ScalarMult(tmp, Program.B[poly][i]);
-                res = res.Add(res, tmp);
+                tmp = new G1().ScalarMult(prove.g1ByPowersOfTau[i], Program.B[poly][i]);
+                res = new G1().Add(res, tmp);
             }
 
             return new G1().ScalarMult(res, w);
@@ -199,9 +221,8 @@ namespace AuremCore.Testing
             G1 tmp = new G1();
             for (int i = 0; i < Program.C[poly].Length; i++)
             {
-                tmp.Set(prove.g1ByPowersOfTau[i]);
-                tmp = tmp.ScalarMult(tmp, Program.C[poly][i]);
-                res = res.Add(res, tmp);
+                tmp = new G1().ScalarMult(prove.g1ByPowersOfTau[i], Program.C[poly][i]);
+                res = new G1().Add(res, tmp);
             }
 
             return new G1().ScalarMult(res, w);
@@ -217,8 +238,8 @@ namespace AuremCore.Testing
             Console.WriteLine(R1CSLine.BIAtoS(proof.PublicInputs));
 
             // generate random r and s
-            BigInteger r = SecretKey.RandomScalar();
-            BigInteger s = SecretKey.RandomScalar();
+            BigInteger r = /*new BigInteger(1);*/SecretKey.RandomScalar();
+            BigInteger s = /*new BigInteger(1);*/SecretKey.RandomScalar();
 
             // calculate A
             proof.A = new G1().Set(prove.g1ByAlpha);
@@ -249,11 +270,10 @@ namespace AuremCore.Testing
             if (!QAP.NoRemainder(rem)) throw new Exception("shame on you");
 
             var H1 = new G1();
-            var htmp = new G1();
+            G1 htmp;
             for (int i = 0; i < H.Length; i++)
             {
-                htmp = htmp.Set(prove.g1ByZTauTimesPTauMinus1[i]);
-                htmp = htmp.ScalarMult(htmp, H[i]);
+                htmp = new G1().ScalarMult(prove.g1ByZTauTimesPTauMinus1[i], H[i]);
                 H1 = H1.Add(H1, htmp);
             }
 
@@ -267,7 +287,7 @@ namespace AuremCore.Testing
             proof.C = proof.C.Add(proof.C, rdelt);
             for (int i = l; i < m; i++)
             {
-                proof.C = proof.C.Add(proof.C, prove.g1ByLiTauOverDelta[i-l]);
+                proof.C = proof.C.Add(proof.C, new G1().ScalarMult(prove.g1ByLiTauOverDelta[i-l], witness[i]));
             }
 
             return proof;

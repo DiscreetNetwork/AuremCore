@@ -465,6 +465,12 @@ namespace AuremCore
             QAP qap = new QAP(r1cs);
             qap.VerifyCorrectness(r1cs);
             qap.VerifyCorrectnessWithPrint(r1cs);
+
+            var x = new G2().ScalarBaseMult(1);
+            var y = new G2();
+            y.Set(x);
+            //if (x.Equals(y)) throw new Exception("look elsewhere");
+
             //Console.WriteLine(R1CSLine.BIAtoS(qap.EvaluateAs(1)));
             //Console.WriteLine(R1CSLine.BIAtoS(qap.A[1]));
 
