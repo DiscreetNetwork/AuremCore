@@ -21,6 +21,30 @@ namespace AuremCore.Testing
                 rv.Append(lines[i].ToString());
             }
 
+            return rv.ToString(); 
+        }
+
+        public string ToString2()
+        {
+            StringBuilder rv = new StringBuilder();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                rv.Append($"operation {i + 1}\n");
+                rv.Append(lines[i].ToString2());
+            }
+
+            return rv.ToString();
+        }
+
+        public string ToStringBits()
+        {
+            StringBuilder rv = new StringBuilder();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                rv.Append($"operation {i + 1}\n");
+                rv.Append(lines[i].ToStringBits());
+            }
+
             return rv.ToString();
         }
 

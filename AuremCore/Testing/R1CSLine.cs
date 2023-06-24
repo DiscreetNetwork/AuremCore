@@ -33,9 +33,135 @@ namespace AuremCore.Testing
             return rv.ToString();
         }
 
+        public static string BIAtoS2(BigInteger[] a)
+        {
+            StringBuilder rv = new StringBuilder();
+            bool pZ = false;
+            bool ellipses = false;
+            for (int i = 0; i < a.Length; i++)
+            {
+                bool negOne = a[i] == BigInteger.Parse("21888242871839275222246405745257275088548364400416034343698204186575808495616");
+                bool pow2 = a[i].IsPowerOfTwo && a[i] > 2;
+
+                var astr = negOne ? "-1" : (pow2 ? $"2**{a[i].GetBitLength()-1}" : a[i].ToString());
+
+                if (!pZ && a[i].IsZero)
+                {
+                    pZ = true;
+                    if (i == 0) rv.Append('0');
+                }
+                else if (pZ && !ellipses && a[i].IsZero)
+                {
+                    ellipses = true;
+                    rv.Append("... ");
+                }
+                else if (pZ && ellipses && a[i].IsZero)
+                {
+                    continue;
+                }
+                else if (i == 0)
+                {
+                    rv.Append(astr);
+                    rv.Append(' ');
+                }
+                else if (i == 1)
+                {
+                    rv.Append($"y({astr}) ");
+                }
+                else if (i == 2)
+                {
+                    rv.Append($"a({astr})");
+                }
+                else if (i == 3)
+                {
+                    rv.Append($"b({astr}) ");
+                }
+                else
+                {
+                    rv.Append($"sym{i-4}({astr}) ");
+                }
+            }
+
+            return rv.ToString();
+        }
+
+        public static string BIAtoSBits(BigInteger[] a)
+        {
+            StringBuilder rv = new StringBuilder();
+            bool pZ = false;
+            bool ellipses = false;
+            for (int i = 0; i < a.Length; i++)
+            {
+                bool negOne = a[i] == BigInteger.Parse("21888242871839275222246405745257275088548364400416034343698204186575808495616");
+                bool pow2 = a[i].IsPowerOfTwo && a[i] > 2;
+
+                var astr = negOne ? "-1" : (pow2 ? $"2**{a[i].GetBitLength() - 1}" : a[i].ToString());
+
+                if (!pZ && a[i].IsZero)
+                {
+                    pZ = true;
+                    if (i == 0) rv.Append('0');
+                }
+                else if (pZ && !ellipses && a[i].IsZero)
+                {
+                    ellipses = true;
+                    rv.Append("... ");
+                }
+                else if (pZ && ellipses && a[i].IsZero)
+                {
+                    continue;
+                }
+                else if (i == 0)
+                {
+                    rv.Append(astr);
+                    rv.Append(' ');
+                }
+                else if (i == 1)
+                {
+                    rv.Append($"y({astr}) ");
+                }
+                else if (i == 2)
+                {
+                    rv.Append($"a({astr})");
+                }
+                else if (i - 3 >= 0 && i - 3 < 32)
+                {
+                    rv.Append($"a_{35 - i}({astr})");
+                }
+                else if (i == 35)
+                {
+                    rv.Append($"b({astr}) ");
+                }
+                else if (i - 36 >= 0 && i - 36 < 32)
+                {
+                    rv.Append($"b_{68 - i}({astr})");
+                }
+                else if (i - 68 >= 0 && i - 68 < 32)
+                {
+                    rv.Append($"y_{100 - i}({astr})");
+                }
+                else
+                {
+                    rv.Append($"sym{i - 100}({astr}) ");
+                }
+            }
+
+            return rv.ToString();
+        }
+
         public override string ToString()
         {
             return $"A: [{BIAtoS(A)}]\nB: [{BIAtoS(B)}]\nC: [{BIAtoS(C)}]\n";
+        }
+
+        public string ToString2()
+        {
+            return $"A: [{BIAtoS2(A)}]\nB: [{BIAtoS2(B)}]\nC: [{BIAtoS2(C)}]\n";
+        }
+
+        public string ToStringBits()
+        {
+            return $"A: [{BIAtoSBits(A)}]\nB: [{BIAtoSBits(B)}]\nC: [{BIAtoSBits(C)}]\n";
         }
 
         public R1CSLine(Symbol[] syms, Operation op) : this()

@@ -11,6 +11,8 @@ using AuremCore.Crypto.Encrypt;
 using AuremCore.Crypto.P2P;
 using AuremCore.Crypto.Threshold;
 using AuremCore.Testing;
+using AuremCore.Testing.Comp;
+using AuremCore.Testing.RSAStuff;
 
 namespace AuremCore
 {
@@ -482,11 +484,41 @@ namespace AuremCore
             //var one = (fiveSixths + oneSixth) % Constants.Order;
             //Console.WriteLine(one.ToString());
 
-            (var h, var rem) = qap.CalculatePoly(witness);
+            /*(var h, var rem) = qap.CalculatePoly(witness);
             if (!QAP.NoRemainder(rem)) throw new Exception("Remainder of valid witness to circuit should be zero");
             //Console.WriteLine($"H: [{R1CSLine.BIAtoS(h)}]");
 
             Groth16CRS crs = new Groth16CRS(sp);
+
+            var numTest = 1000;
+            Groth16Proof[] testProofs = new Groth16Proof[numTest];
+            var rngg = new Random();
+            var sw = Stopwatch.StartNew();
+            for (int i = 0; i < numTest; i++)
+            {
+                var testWitness = sp.Execute(new List<BigInteger> { rngg.Next(1048576) });
+                testProofs[i] = crs.Prove(testWitness); 
+            }
+
+            sw.Stop();
+            var elapsedMillisecondsProve = sw.ElapsedMilliseconds;
+
+            sw = Stopwatch.StartNew();
+
+            for (int i = 0; i < numTest; i++)
+            {
+                var verifyTest = crs.Verify(testProofs[i]);
+                if (!verifyTest)
+                {
+                    Console.WriteLine("didn't verify");
+                }
+            }
+            sw.Stop();
+
+            Console.WriteLine("PROFILING:");
+            Console.WriteLine($"MakeProof:\ntotal time: {elapsedMillisecondsProve}ms\nTime per op: {(double)elapsedMillisecondsProve/(double)numTest}ms");
+            Console.WriteLine($"VerifyPrf:\ntotal time: {sw.ElapsedMilliseconds}ms\nTime per op: {(double)sw.ElapsedMilliseconds/(double)numTest}ms");
+
             var proof = crs.Prove(witness);
             //Console.WriteLine(proof.ToString());
             var verify = crs.Verify(proof);
@@ -503,7 +535,22 @@ namespace AuremCore
             if (verify2)
             {
                 Console.WriteLine("good times again");
+            }*/
+
+            //var xxx = GenPrime.GetPrime(256);
+            //Console.WriteLine(xxx.ToString());
+            //var xx = new R1CSReader();
+
+            var sc = new SourceReader("C:\\Users\\brand\\source\\repos\\AuremCore\\AuremCore\\Testing\\Comp\\test.circom");
+            var ctok = new CToken(0, 0, Token.Undefined);
+            while (ctok.Tok != Token.EOF)
+            {
+                ctok = sc.Next();
+                Console.WriteLine($"[{ctok.Line}:{ctok.Col}] {ctok.Tok} {ctok.Val}");
             }
+
+            var parser = new Parser("C:\\Users\\brand\\source\\repos\\AuremCore\\AuremCore\\Testing\\Comp\\test.circom");
+            Console.WriteLine(parser.Parse().ToString());
 
             //c = new BigInteger(252);
             //BN.ToBN(c, a.array);
