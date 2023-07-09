@@ -13,19 +13,19 @@ namespace AuremCore.Testing
     internal class SimpleProgram
     {
         public List<Operation> Program;
-        public List<Symbol> Inputs;
-        public List<Symbol> Outputs;
-        public List<Symbol> Hiddens;
+        public List<SimpleProgramSymbol> Inputs;
+        public List<SimpleProgramSymbol> Outputs;
+        public List<SimpleProgramSymbol> Hiddens;
 
         public SimpleProgram() { }
 
-        public Symbol[] GetWitness()
+        public SimpleProgramSymbol[] GetWitness()
         {
             int wn = Inputs.Count + Outputs.Count + Hiddens.Count + 1;
 
             // make one
-            Symbol[] syms = new Symbol[wn];
-            syms[0] = Symbol.Make("one");
+            SimpleProgramSymbol[] syms = new SimpleProgramSymbol[wn];
+            syms[0] = SimpleProgramSymbol.Make("one");
             syms[0].constant = true;
             syms[0].value = BigInteger.One;
 
@@ -38,7 +38,7 @@ namespace AuremCore.Testing
             Array.Copy(Hiddens.ToArray(), 0, syms, isym, Hiddens.Count);
 
             // remove constants from w
-            List<Symbol> symbolsList = new List<Symbol>();
+            List<SimpleProgramSymbol> symbolsList = new List<SimpleProgramSymbol>();
             symbolsList.Add(syms[0]);
             for (int i = 1; i < wn; i++)
             {
@@ -59,13 +59,13 @@ namespace AuremCore.Testing
 
         public static SimpleProgram Create()
         {
-            Symbol x = Symbol.MakeInput("x");
-            Symbol y = Symbol.Make("y");
-            Symbol sym1 = Symbol.Make("sym1");
-            Symbol sym2 = Symbol.Make("sym2");
-            Symbol sym3 = Symbol.Make("sym3");
-            Symbol _out = Symbol.Make("out");
-            Symbol five = Symbol.Make("five");
+            SimpleProgramSymbol x = SimpleProgramSymbol.MakeInput("x");
+            SimpleProgramSymbol y = SimpleProgramSymbol.Make("y");
+            SimpleProgramSymbol sym1 = SimpleProgramSymbol.Make("sym1");
+            SimpleProgramSymbol sym2 = SimpleProgramSymbol.Make("sym2");
+            SimpleProgramSymbol sym3 = SimpleProgramSymbol.Make("sym3");
+            SimpleProgramSymbol _out = SimpleProgramSymbol.Make("out");
+            SimpleProgramSymbol five = SimpleProgramSymbol.Make("five");
             five.value = new BigInteger(5);
             five.constant = true;
 
@@ -78,18 +78,18 @@ namespace AuremCore.Testing
                 new Operation(_out, sym2, five, Op.ADD)
             };
 
-            List<Symbol> inputs = new List<Symbol>
+            List<SimpleProgramSymbol> inputs = new List<SimpleProgramSymbol>
             {
                 x
             };
 
-            List<Symbol> outputs = new List<Symbol>
+            List<SimpleProgramSymbol> outputs = new List<SimpleProgramSymbol>
             {
                 _out,
                 sym3,
             };
 
-            List<Symbol> hiddens = new List<Symbol> {sym1, y, sym2 };
+            List<SimpleProgramSymbol> hiddens = new List<SimpleProgramSymbol> {sym1, y, sym2 };
 
             return new SimpleProgram { Hiddens = hiddens, Inputs = inputs, Outputs = outputs, Program = ops };
         }

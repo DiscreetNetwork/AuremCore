@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Testing
 {
-    internal class Symbol
+    internal class SimpleProgramSymbol
     {
         public string Sym;
         public bool input = false;
@@ -17,11 +17,11 @@ namespace AuremCore.Testing
 
         public BigInteger value = BigInteger.Zero;
 
-        public Symbol() { }
+        public SimpleProgramSymbol() { }
 
-        public static Symbol MakeInput(string sym)
+        public static SimpleProgramSymbol MakeInput(string sym)
         {
-            Symbol sim = new Symbol();
+            SimpleProgramSymbol sim = new SimpleProgramSymbol();
             sim.Sym = sym;
             sim.output = false;
             sim.input = true;
@@ -30,9 +30,9 @@ namespace AuremCore.Testing
             return sim;
         }
 
-        public static Symbol MakeOutput(string sym)
+        public static SimpleProgramSymbol MakeOutput(string sym)
         {
-            Symbol sim = new Symbol();
+            SimpleProgramSymbol sim = new SimpleProgramSymbol();
             sim.Sym = sym;
             sim.output = true;
             sim.input = false;
@@ -41,9 +41,9 @@ namespace AuremCore.Testing
             return sim;
         }
 
-        public static Symbol Make(string sym)
+        public static SimpleProgramSymbol Make(string sym)
         {
-            Symbol sim = new Symbol();
+            SimpleProgramSymbol sim = new SimpleProgramSymbol();
             sim.Sym = sym;
             sim.output = false;
             sim.input = false;
@@ -52,9 +52,9 @@ namespace AuremCore.Testing
             return sim;
         }
 
-        public static Symbol MakeConstant(BigInteger c)
+        public static SimpleProgramSymbol MakeConstant(BigInteger c)
         {
-            Symbol sim = new Symbol();
+            SimpleProgramSymbol sim = new SimpleProgramSymbol();
             sim.Sym = "#constant";
             sim.output = false;
             sim.input = false;

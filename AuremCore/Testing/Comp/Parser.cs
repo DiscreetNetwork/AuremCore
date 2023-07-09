@@ -9,7 +9,7 @@ namespace AuremCore.Testing.Comp
 {
     internal class Parser : SourceReader
     {
-        public AST Ast;
+        public SourceTree Ast;
         public Parser(string pth) : base(pth) { }
 
         protected bool Got(Token tok)
@@ -84,9 +84,9 @@ namespace AuremCore.Testing.Comp
             return null;
         }
 
-        public AST Parse()
+        public SourceTree Parse()
         {
-            Ast = new AST();
+            Ast = new SourceTree();
 
             Ast.Direct = ParsePragma();
             Next();
@@ -206,9 +206,9 @@ namespace AuremCore.Testing.Comp
             return main;
         }
 
-        protected Template ParseTemplate()
+        protected SourceTemplate ParseTemplate()
         {
-            Template template = new Template();
+            SourceTemplate template = new SourceTemplate();
 
             Want(Token.Template);
             template.Name = ParseName();
@@ -223,9 +223,9 @@ namespace AuremCore.Testing.Comp
             return template;
         }
 
-        protected Function ParseFunction()
+        protected SourceFunction ParseFunction()
         {
-            Function function = new Function();
+            SourceFunction function = new SourceFunction();
 
             Want(Token.Function);
             function.Name = ParseName();
@@ -269,7 +269,7 @@ namespace AuremCore.Testing.Comp
             return v;
         }
 
-        protected Expression ParseArrayAccess()
+        protected SourceExpression ParseArrayAccess()
         {
             Want(Token.Lbrack);
             var e = ParseExpr();
@@ -322,49 +322,49 @@ namespace AuremCore.Testing.Comp
             return v;
         }
 
-        protected Expression ParseComplexSymbol()
+        protected SourceExpression ParseComplexSymbol()
         {
             var v = ParseSimpleSymbol();
             Want(Token.Assign);
-            Expression rhs = ParseExpr();
+            SourceExpression rhs = ParseExpr();
 
-            return new Expression { Rhs = rhs, Lhs = new Expression { Variable = v, Op = Op.Variable }, Op = Op.Assign };
+            return new SourceExpression { Rhs = rhs, Lhs = new SourceExpression { Variable = v, Op = Op.Variable }, Op = Op.Assign };
         }
 
-        protected Expression ParseSignalConstraintSymbol()
+        protected SourceExpression ParseSignalConstraintSymbol()
         {
             var v = ParseSimpleSymbol();
             Want(Token.LeftConstrain);
-            Expression rhs = ParseExpr();
+            SourceExpression rhs = ParseExpr();
 
-            return new Expression { Rhs = rhs, Lhs = new Expression { Variable = v, Op = Op.Variable }, Op = Op.ConstrainAssign };
+            return new SourceExpression { Rhs = rhs, Lhs = new SourceExpression { Variable = v, Op = Op.Variable }, Op = Op.ConstrainAssign };
         }
 
-        protected Expression ParseSignalSimpleSymbol(Expression expr = null)
+        protected SourceExpression ParseSignalSimpleSymbol(SourceExpression expr = null)
         {
-            Expression v;
-            if (expr == null) v = new Expression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
+            SourceExpression v;
+            if (expr == null) v = new SourceExpression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
             else v = expr;
             Want(Token.LeftAssign);
-            Expression rhs = ParseExpr();
+            SourceExpression rhs = ParseExpr();
 
-            return new Expression { Rhs = rhs, Lhs = v, Op = Op.SignalAssign };
+            return new SourceExpression { Rhs = rhs, Lhs = v, Op = Op.SignalAssign };
         }
 
-        protected Expression ParseSymbol()
+        protected SourceExpression ParseSymbol()
         {
-            var v = new Expression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
+            var v = new SourceExpression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
             if (Got(Token.Assign))
             {
-                v = new Expression { Lhs = v, Rhs = ParseExpr(), Op = Op.Assign };
+                v = new SourceExpression { Lhs = v, Rhs = ParseExpr(), Op = Op.Assign };
             }
 
             return v;
         }
 
-        protected Expression ParseSignalSymbol(out bool simple)
+        protected SourceExpression ParseSignalSymbol(out bool simple)
         {
-            var v = new Expression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
+            var v = new SourceExpression { Variable = ParseSimpleSymbol(), Op = Op.Variable };
             if (token.Tok == Token.LeftAssign)
             {
                 simple = true;
@@ -372,7 +372,7 @@ namespace AuremCore.Testing.Comp
             }
             if (Got(Token.LeftConstrain))
             {
-                v = new Expression { Lhs = v, Rhs = ParseExpr(), Op = Op.ConstrainAssign };
+                v = new SourceExpression { Lhs = v, Rhs = ParseExpr(), Op = Op.ConstrainAssign };
             }
 
             simple = false;
@@ -384,7 +384,7 @@ namespace AuremCore.Testing.Comp
             return token.Tok == Token.Var || token.Tok == Token.Component || token.Tok == Token.Signal;
         }
 
-        protected Stmt ParseDeclarationOrSubstitution(bool allowSimpleStmt = true, bool allowConstraint = false)
+        protected SourceStmt ParseDeclarationOrSubstitution(bool allowSimpleStmt = true, bool allowConstraint = false)
         {
             if (IsDeclaration())
             {
@@ -394,19 +394,19 @@ namespace AuremCore.Testing.Comp
             return ParseSubstitution(allowSimpleStmt, allowConstraint);
         }
 
-        protected Stmt ParseDeclaration()
+        protected SourceStmt ParseDeclaration()
         {
-            Stmt stmt = new Stmt();
+            SourceStmt stmt = new SourceStmt();
             switch (token.Tok)
             {
                 case Token.Var:
                     Next();
                     if (Got(Token.Lparen))
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         while (!Got(Token.Rparen))
                         {
-                            lhs.Add(new Expression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
+                            lhs.Add(new SourceExpression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
                             if (token.Tok != Token.Rparen && !Got(Token.Comma))
                             {
                                 Error($"unexpected {token.Tok} in list; expected comma or end of list");
@@ -424,7 +424,7 @@ namespace AuremCore.Testing.Comp
                     }
                     else
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         while (token.Tok != Token.Semi)
                         {
                             lhs.Add(ParseSymbol());
@@ -442,10 +442,10 @@ namespace AuremCore.Testing.Comp
                     var styp = ParseSignalHeader();
                     if (Got(Token.Lparen))
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         while (!Got(Token.Rparen))
                         {
-                            lhs.Add(new Expression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
+                            lhs.Add(new SourceExpression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
                             lhs[^1].Variable.VarType = styp;
                             if (token.Tok != Token.Rparen && !Got(Token.Comma))
                             {
@@ -464,7 +464,7 @@ namespace AuremCore.Testing.Comp
                     }
                     else
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         bool simple = false;
                         while (token.Tok != Token.Semi)
                         {
@@ -504,10 +504,10 @@ namespace AuremCore.Testing.Comp
                     Next();
                     if (Got(Token.Lparen))
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         while (!Got(Token.Rparen))
                         {
-                            lhs.Add(new Expression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
+                            lhs.Add(new SourceExpression { Op = Op.Variable, Variable = ParseSimpleSymbol() });
                             lhs[^1].Variable.VarType = VarType.Component;
                             if (token.Tok != Token.Rparen && !Got(Token.Comma))
                             {
@@ -526,7 +526,7 @@ namespace AuremCore.Testing.Comp
                     }
                     else
                     {
-                        List<Expression> lhs = new List<Expression>();
+                        List<SourceExpression> lhs = new List<SourceExpression>();
                         while (token.Tok != Token.Semi)
                         {
                             lhs.Add(ParseSymbol());
@@ -556,14 +556,14 @@ namespace AuremCore.Testing.Comp
             return stmt;
         }
 
-        protected Stmt ParseSubstitution(bool allowSimpleStmt = true, bool allowConstraint = false)
+        protected SourceStmt ParseSubstitution(bool allowSimpleStmt = true, bool allowConstraint = false)
         {
             return ParseSubstitutionOrSimple(allowSimpleStmt, allowConstraint);
         }
 
-        protected Stmt ParseSubstitutionOrSimple(bool allowSimpleStmt = true, bool allowConstraint = false)
+        protected SourceStmt ParseSubstitutionOrSimple(bool allowSimpleStmt = true, bool allowConstraint = false)
         {
-            var stmt = new Stmt();
+            var stmt = new SourceStmt();
             stmt.Lhs = ParseExpr();
             stmt.Type = StmtType.Substitution;
             switch (token.Tok)
@@ -623,7 +623,7 @@ namespace AuremCore.Testing.Comp
             return stmt;
         }
 
-        protected Stmt ParseAssignOpSubstitution(Stmt stmt)
+        protected SourceStmt ParseAssignOpSubstitution(SourceStmt stmt)
         {
             if (stmt.Lhs.Op != Op.Variable)
             {
@@ -676,24 +676,24 @@ namespace AuremCore.Testing.Comp
             switch (op)
             {
                 case Op.Inc:
-                    stmt.Rhs = new Expression { Lhs = stmt.Lhs, Rhs = new Expression { Op = Op.Literal, Literal = new Literal { Value = 1 } }, Op = Op.Add };
+                    stmt.Rhs = new SourceExpression { Lhs = stmt.Lhs, Rhs = new SourceExpression { Op = Op.Literal, Literal = new Literal { Value = 1 } }, Op = Op.Add };
                     break;
                 case Op.Dec:
-                    stmt.Rhs = new Expression { Lhs = stmt.Lhs, Rhs = new Expression { Op = Op.Literal, Literal = new Literal { Value = 1 } }, Op = Op.Add };
+                    stmt.Rhs = new SourceExpression { Lhs = stmt.Lhs, Rhs = new SourceExpression { Op = Op.Literal, Literal = new Literal { Value = 1 } }, Op = Op.Add };
                     break;
                 case Op.Undefined:
                     break; // we already complained about this earlier
                 default:
-                    stmt.Rhs = new Expression { Lhs = stmt.Lhs, Rhs = ParseExpr(), Op = op };
+                    stmt.Rhs = new SourceExpression { Lhs = stmt.Lhs, Rhs = ParseExpr(), Op = op };
                     break;
             }
 
             return stmt;
         }
 
-        protected Stmt ParseBlockStmt()
+        protected SourceStmt ParseBlockStmt()
         {
-            List<Stmt> stmts = new List<Stmt>();
+            List<SourceStmt> stmts = new List<SourceStmt>();
             Want(Token.Lbrace);
             while (token.Tok != Token.Rbrace)
             {
@@ -701,17 +701,17 @@ namespace AuremCore.Testing.Comp
             }
             Want(Token.Rbrace);
 
-            return new Stmt { Type = StmtType.Block, Block = stmts };
+            return new SourceStmt { Type = StmtType.Block, Block = stmts };
         }
 
-        protected Stmt ParseStmt()
+        protected SourceStmt ParseStmt()
         {
             return ParseStmtLvl0();
         }
 
-        protected Stmt ParseStmtLvl0()
+        protected SourceStmt ParseStmtLvl0()
         {
-            Stmt stmt = new Stmt();
+            SourceStmt stmt = new SourceStmt();
             switch (token.Tok)
             {
                 case Token.If:
@@ -733,14 +733,14 @@ namespace AuremCore.Testing.Comp
             return stmt;
         }
 
-        protected Stmt ParseStmtLvl1()
+        protected SourceStmt ParseStmtLvl1()
         {
             return ParseStmtLvl2();
         }
 
-        protected Stmt ParseStmtLvl2()
+        protected SourceStmt ParseStmtLvl2()
         {
-            Stmt stmt = new Stmt();
+            SourceStmt stmt = new SourceStmt();
             switch (token.Tok)
             {
                 case Token.For:
@@ -781,12 +781,12 @@ namespace AuremCore.Testing.Comp
                     Next();
                     stmt.Type = StmtType.Log;
                     Want(Token.Lparen);
-                    stmt.LhsTup = new List<Expression> { };
+                    stmt.LhsTup = new List<SourceExpression> { };
                     while (!Got(Token.Rparen))
                     {
                         if (token.Tok == Token.String)
                         {
-                            stmt.LhsTup.Add(new Expression { Op = Op.Literal, Literal = new Literal { String = token.Val } });
+                            stmt.LhsTup.Add(new SourceExpression { Op = Op.Literal, Literal = new Literal { String = token.Val } });
                         }
                         else
                         {
@@ -806,7 +806,7 @@ namespace AuremCore.Testing.Comp
             return stmt;
         }
 
-        protected Stmt ParseStmtLvl3()
+        protected SourceStmt ParseStmtLvl3()
         {
             if (IsDeclaration())
             {
@@ -818,17 +818,17 @@ namespace AuremCore.Testing.Comp
             return ParseStmt();
         }
 
-        protected Expression ParseExpr()
+        protected SourceExpression ParseExpr()
         {
             return ParseExpr13();
         }
 
-        protected Expression ParseExpr13()
+        protected SourceExpression ParseExpr13()
         {
-            Expression expr = ParseExpr12();
+            SourceExpression expr = ParseExpr12();
             if (Got(Token.Qmark))
             {
-                expr = new Expression { Op = Op.Ternary, Cond = expr };
+                expr = new SourceExpression { Op = Op.Ternary, Cond = expr };
                 expr.Lhs = ParseExpr12();
                 expr.Rhs = ParseExpr12();
             }
@@ -836,177 +836,177 @@ namespace AuremCore.Testing.Comp
             return expr;
         }
 
-        protected Expression ParseExpr12()
+        protected SourceExpression ParseExpr12()
         {
-            Expression expr = ParseExpr11();
+            SourceExpression expr = ParseExpr11();
             if (Got(Token.BoolOr))
             {
-                expr = new Expression { Op = Op.Or, Lhs = expr, Rhs = ParseExpr12() };
+                expr = new SourceExpression { Op = Op.Or, Lhs = expr, Rhs = ParseExpr12() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr11()
+        protected SourceExpression ParseExpr11()
         {
-            Expression expr = ParseExpr10();
+            SourceExpression expr = ParseExpr10();
             if (Got(Token.BoolAnd))
             {
-                expr = new Expression { Op = Op.And, Lhs = expr, Rhs = ParseExpr11() };
+                expr = new SourceExpression { Op = Op.And, Lhs = expr, Rhs = ParseExpr11() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr10()
+        protected SourceExpression ParseExpr10()
         {
-            Expression expr = ParseExpr9();
+            SourceExpression expr = ParseExpr9();
             if (Got(Token.Geq))
             {
-                expr = new Expression { Op = Op.GreaterEq, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.GreaterEq, Lhs = expr, Rhs = ParseExpr10() };
             }
             else if (Got(Token.Gtr))
             {
-                expr = new Expression { Op = Op.Greater, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.Greater, Lhs = expr, Rhs = ParseExpr10() };
             }
             else if (Got(Token.Leq))
             {
-                expr = new Expression { Op = Op.LesserEq, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.LesserEq, Lhs = expr, Rhs = ParseExpr10() };
             }
             else if (Got(Token.Lss))
             {
-                expr = new Expression { Op = Op.Lesser, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.Lesser, Lhs = expr, Rhs = ParseExpr10() };
             }
             else if (Got(Token.Eq))
             {
-                expr = new Expression { Op = Op.Eq, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.Eq, Lhs = expr, Rhs = ParseExpr10() };
             }
             else if (Got(Token.Neq))
             {
-                expr = new Expression { Op = Op.Neq, Lhs = expr, Rhs = ParseExpr10() };
+                expr = new SourceExpression { Op = Op.Neq, Lhs = expr, Rhs = ParseExpr10() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr9()
+        protected SourceExpression ParseExpr9()
         {
-            Expression expr = ParseExpr8();
+            SourceExpression expr = ParseExpr8();
             if (Got(Token.BitOr))
             {
-                expr = new Expression { Op = Op.BitOr, Lhs = expr, Rhs = ParseExpr9() };
+                expr = new SourceExpression { Op = Op.BitOr, Lhs = expr, Rhs = ParseExpr9() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr8()
+        protected SourceExpression ParseExpr8()
         {
-            Expression expr = ParseExpr7();
+            SourceExpression expr = ParseExpr7();
             if (Got(Token.BitXor))
             {
-                expr = new Expression { Op = Op.BitXor, Lhs = expr, Rhs = ParseExpr8() };
+                expr = new SourceExpression { Op = Op.BitXor, Lhs = expr, Rhs = ParseExpr8() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr7()
+        protected SourceExpression ParseExpr7()
         {
-            Expression expr = ParseExpr6();
+            SourceExpression expr = ParseExpr6();
             if (Got(Token.BitAnd))
             {
-                expr = new Expression { Op = Op.BitAnd, Lhs = expr, Rhs = ParseExpr7() };
+                expr = new SourceExpression { Op = Op.BitAnd, Lhs = expr, Rhs = ParseExpr7() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr6()
+        protected SourceExpression ParseExpr6()
         {
-            Expression expr = ParseExpr5();
+            SourceExpression expr = ParseExpr5();
             if (Got(Token.BitShl))
             {
-                expr = new Expression { Op = Op.ShiftL, Lhs = expr, Rhs = ParseExpr6() };
+                expr = new SourceExpression { Op = Op.ShiftL, Lhs = expr, Rhs = ParseExpr6() };
             }
             else if (Got(Token.BitShr))
             {
-                expr = new Expression { Op = Op.ShiftR, Lhs = expr, Rhs = ParseExpr6() };
+                expr = new SourceExpression { Op = Op.ShiftR, Lhs = expr, Rhs = ParseExpr6() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr5()
+        protected SourceExpression ParseExpr5()
         {
-            Expression expr = ParseExpr4();
+            SourceExpression expr = ParseExpr4();
             if (Got(Token.Add))
             {
-                expr = new Expression { Op = Op.Add, Lhs = expr, Rhs = ParseExpr5() };
+                expr = new SourceExpression { Op = Op.Add, Lhs = expr, Rhs = ParseExpr5() };
             }
             else if (Got(Token.Sub))
             {
-                expr = new Expression { Op = Op.Sub, Lhs = expr, Rhs = ParseExpr5() };
+                expr = new SourceExpression { Op = Op.Sub, Lhs = expr, Rhs = ParseExpr5() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr4()
+        protected SourceExpression ParseExpr4()
         {
-            Expression expr = ParseExpr3();
+            SourceExpression expr = ParseExpr3();
             if (Got(Token.Mul))
             {
-                expr = new Expression { Op = Op.Mul, Lhs = expr, Rhs = ParseExpr4() };
+                expr = new SourceExpression { Op = Op.Mul, Lhs = expr, Rhs = ParseExpr4() };
             }
             else if (Got(Token.Div))
             {
-                expr = new Expression { Op = Op.Div, Lhs = expr, Rhs = ParseExpr4() };
+                expr = new SourceExpression { Op = Op.Div, Lhs = expr, Rhs = ParseExpr4() };
             }
             else if (Got(Token.IDiv))
             {
-                expr = new Expression { Op = Op.IntDiv, Lhs = expr, Rhs = ParseExpr4() };
+                expr = new SourceExpression { Op = Op.IntDiv, Lhs = expr, Rhs = ParseExpr4() };
             }
             else if (Got(Token.Mod))
             {
-                expr = new Expression { Op = Op.Mod, Lhs = expr, Rhs = ParseExpr4() };
+                expr = new SourceExpression { Op = Op.Mod, Lhs = expr, Rhs = ParseExpr4() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr3()
+        protected SourceExpression ParseExpr3()
         {
-            Expression expr = ParseExpr2();
+            SourceExpression expr = ParseExpr2();
             if (Got(Token.Pow))
             {
-                expr = new Expression { Op = Op.Pow, Lhs = expr, Rhs = ParseExpr3() };
+                expr = new SourceExpression { Op = Op.Pow, Lhs = expr, Rhs = ParseExpr3() };
             }
 
             return expr;
         }
 
-        protected Expression ParseExpr2()
+        protected SourceExpression ParseExpr2()
         {
             switch (token.Tok)
             {
                 case Token.Not:
                     Next();
-                    return new Expression { Op = Op.Not, Lhs = ParseExpr1() };
+                    return new SourceExpression { Op = Op.Not, Lhs = ParseExpr1() };
                 case Token.Sub:
                     Next();
-                    return new Expression { Op = Op.Neg, Lhs = ParseExpr1() };
+                    return new SourceExpression { Op = Op.Neg, Lhs = ParseExpr1() };
                 case Token.BitNot:
                     Next();
-                    return new Expression { Op = Op.BitNot, Lhs = ParseExpr1() };
+                    return new SourceExpression { Op = Op.BitNot, Lhs = ParseExpr1() };
                 default:
                     return ParseExpr1();
             }
         }
 
-        protected Expression ParseExpr1()
+        protected SourceExpression ParseExpr1()
         {
-            Expression expr = new Expression();
+            SourceExpression expr = new SourceExpression();
             switch (token.Tok)
             {
                 case Token.Identifier:
@@ -1072,7 +1072,7 @@ namespace AuremCore.Testing.Comp
                     {
                         var v = new Variable { Name = name };
                         v.Access = ParseAccessList();
-                        expr = new Expression { Variable = v, Op = Op.Variable };
+                        expr = new SourceExpression { Variable = v, Op = Op.Variable };
                     }
                     break;
                 case Token.Lbrack:

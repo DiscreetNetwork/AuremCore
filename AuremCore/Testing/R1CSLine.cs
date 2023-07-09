@@ -164,7 +164,7 @@ namespace AuremCore.Testing
             return $"A: [{BIAtoSBits(A)}]\nB: [{BIAtoSBits(B)}]\nC: [{BIAtoSBits(C)}]\n";
         }
 
-        public R1CSLine(Symbol[] syms, Operation op) : this()
+        public R1CSLine(SimpleProgramSymbol[] syms, Operation op) : this()
         {
             A = new BigInteger[syms.Length];
             B = new BigInteger[syms.Length];

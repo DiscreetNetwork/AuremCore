@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AuremCore.Testing.Comp
+namespace AuremCore.Testing.Comp.AST
 {
+    internal class Expr
+    {
+    }
 }

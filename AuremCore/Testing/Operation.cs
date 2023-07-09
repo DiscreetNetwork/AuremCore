@@ -8,15 +8,15 @@ namespace AuremCore.Testing
 {
     internal class Operation
     {
-        public Symbol lhs;
-        public Symbol rhs1;
-        public Symbol rhs2;
+        public SimpleProgramSymbol lhs;
+        public SimpleProgramSymbol rhs1;
+        public SimpleProgramSymbol rhs2;
 
         public Op op;
 
         public Operation() { }
 
-        public Operation(Symbol lhs, Symbol rhs1, Symbol rhs2, Op op)
+        public Operation(SimpleProgramSymbol lhs, SimpleProgramSymbol rhs1, SimpleProgramSymbol rhs2, Op op)
         {
             if (rhs2 == null && op != Op.ASSIGN)
             {
