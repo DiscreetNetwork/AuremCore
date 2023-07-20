@@ -1,4 +1,4 @@
-﻿using AuremCore.Crypto.BN256;
+﻿using BN256Core;
 using AuremCore.Crypto.P2P;
 using System;
 using System.Buffers.Binary;

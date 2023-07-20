@@ -1,6 +1,6 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Extensions;
-using AuremCore.Crypto.BN256.Models;
+﻿using BN256Core;
+using BN256Core.Extensions;
+using BN256Core.Models;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;

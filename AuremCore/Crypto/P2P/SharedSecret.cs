@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256.Extensions;
-using AuremCore.Crypto.BN256.Models;
+﻿using BN256Core.Extensions;
+using BN256Core.Models;
 using AuremCore.Crypto.Encrypt;
 using System;
 using System.Collections.Generic;
