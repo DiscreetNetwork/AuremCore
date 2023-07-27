@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Core
 {
-    public interface IDataSource
+    public interface IBlockSink
     {
-        public Task<byte[]> GetDataAsync();
+        public Task Write(Block block);
     }
 }

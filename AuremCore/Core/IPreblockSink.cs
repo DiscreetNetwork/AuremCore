@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Core
 {
-    public interface IDataSource
+    public interface IPreblockSink
     {
-        public Task<byte[]> GetDataAsync();
+        public Task Write(Preblock preblock);
     }
 }

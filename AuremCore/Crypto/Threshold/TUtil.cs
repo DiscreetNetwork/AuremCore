@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Crypto.Threshold
 {
-    internal static class TUtil
+    public static class TUtil
     {
-        internal static BigInteger Lagrange(long[] points, long x)
+        public static BigInteger Lagrange(long[] points, long x)
         {
             var num = new BigInteger(1);
             var den = new BigInteger(1);
@@ -33,7 +33,7 @@ namespace AuremCore.Crypto.Threshold
             return num;
         }
 
-        internal static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
+        public static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
         {
             return coeffs.Aggregate(new BigInteger(0), (ans, y) => (ans * x + y) % Constants.Order);
         }

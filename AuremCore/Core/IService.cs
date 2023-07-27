@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Core
 {
-    public interface IDataSource
+    // Service that can be started and stopped
+    public interface IService
     {
-        public Task<byte[]> GetDataAsync();
+        public Exception Start();
+        public void Stop();
     }
 }

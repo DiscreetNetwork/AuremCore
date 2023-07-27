@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Core
 {
-    public interface IDataSource
+    public interface IPreblockSource
     {
-        public Task<byte[]> GetDataAsync();
+        public Task<Preblock> Get();
     }
 }
