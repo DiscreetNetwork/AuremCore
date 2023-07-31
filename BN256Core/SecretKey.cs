@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -140,6 +141,16 @@ namespace BN256Core
         public VerificationKey VerificationKey()
         {
             return new VerificationKey(new G2().ScalarBaseMult(this));
+        }
+
+        public string Encode() => Convert.ToBase64String(Marshal());
+
+        public static SecretKey DecodeSecretKey(string enc)
+        {
+            if (enc == null) throw new ArgumentNullException(nameof(enc));
+
+            var data = Convert.FromBase64String(enc);
+            return new SecretKey().Unmarshal(data);
         }
 
         public Signature Sign(byte[] msg)

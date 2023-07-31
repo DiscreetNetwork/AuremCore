@@ -11,6 +11,8 @@ namespace AuremCore.Core
         public List<byte[]> Data;
         public byte[] RandomBytes;
 
+        public Preblock() { }
+
         public Preblock(List<byte[]> data, byte[] randomBytes)
         {
             Data = data;

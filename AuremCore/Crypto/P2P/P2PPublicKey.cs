@@ -69,9 +69,9 @@ namespace AuremCore.Crypto.P2P
             return Convert.ToBase64String(Marshal());
         }
 
-        public P2PPublicKey Decode(string enc)
+        public static P2PPublicKey Decode(string enc)
         {
-            return Unmarshal(Convert.FromBase64String(enc));
+            return new P2PPublicKey().Unmarshal(Convert.FromBase64String(enc));
         }
     }
 }

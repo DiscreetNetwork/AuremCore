@@ -18,6 +18,8 @@ namespace AuremCore.Crypto.P2P
             this.k = k;
         }
 
+        public P2PSecretKey() { }
+
         public byte[] Marshal()
         {
             return k.Marshal();
@@ -34,9 +36,9 @@ namespace AuremCore.Crypto.P2P
             return Convert.ToBase64String(Marshal());
         }
 
-        public P2PSecretKey Decode(string enc)
+        public static P2PSecretKey Decode(string enc)
         {
-            return Unmarshal(Convert.FromBase64String(enc));
+            return new P2PSecretKey().Unmarshal(Convert.FromBase64String(enc));
         }
     }
 }

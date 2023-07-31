@@ -54,5 +54,15 @@ namespace BN256Core
             var v2 = s.VerificationKey();
             return v.Marshal().BEquals(v2.Marshal());
         }
+
+        public string Encode() => Convert.ToBase64String(Marshal());
+
+        public static VerificationKey DecodeVerificationKey(string enc)
+        {
+            if (enc == null) throw new ArgumentNullException(nameof(enc));
+
+            var data = Convert.FromBase64String(enc);
+            return new VerificationKey().Unmarshal(data);
+        }
     }
 }

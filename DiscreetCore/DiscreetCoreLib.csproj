@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AuremCore\AuremCore.csproj" />
-    <ProjectReference Include="..\BN256Core\BN256Core.csproj" />
-    <ProjectReference Include="..\DiscreetCore\DiscreetCoreLib.csproj" />
+    <None Update="DiscreetCore.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
