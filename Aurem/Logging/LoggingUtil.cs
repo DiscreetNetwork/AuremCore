@@ -13,6 +13,12 @@ namespace Aurem.Logging
     /// </summary>
     public static class LoggingUtil
     {
+        /// <summary>
+        /// Logs information about errors from AddPreunits to the provided logger. The size argument is needed to know how many preunits were added in the case everything went okay and errors is null.
+        /// </summary>
+        /// <param name="errors"></param>
+        /// <param name="size"></param>
+        /// <param name="log"></param>
         public static void AddingErrors(IList<Exception> errors, int size, Logger log)
         {
             if (errors == null || errors.Count == 0)
@@ -54,6 +60,71 @@ namespace Aurem.Logging
             {
                 log.Info().Val(Constants.Size, ok).Msg(Constants.ReadyToAdd);
             }
+        }
+
+        /// <summary>
+        /// The base context used for consensus loggers.
+        /// </summary>
+        public static LoggerContext BaseContext { get; } = new();
+
+        /// <summary>
+        /// The timestamp of when the program began.
+        /// </summary>
+        public static DateTime Genesis { get; }
+
+        static LoggingUtil()
+        {
+            Genesis = DateTime.Now;
+            BaseContext.WithProperty(x => x.TimestampFieldName, Constants.Time);
+            BaseContext.WithProperty(x => x.LevelFieldName, Constants.Level);
+            BaseContext.WithProperty(x => x.MessageFieldName, Constants.Message);
+
+            BaseContext.WithProperty(x => x.TimestampFunc, () => new DateTime(DateTime.Now.Subtract(Genesis).Ticks));
+            BaseContext.WithProperty(x => x.LevelFieldMarshalFunc, x => ((int)x).ToString());
+        }
+
+        /// <summary>
+        /// Creates a new FastLogger logger based on the given config values.
+        /// </summary>
+        /// <param name="conf"></param>
+        /// <returns></returns>
+        public static Logger NewLogger(Config.Config conf)
+        {
+            string filename;
+
+            if (conf.LogHuman)
+            {
+                filename = conf.LogFile + ".log";
+            }
+            else
+            {
+                filename = conf.LogFile + ".json";
+            }
+
+            Stream output;
+            try
+            {
+                output = File.Create(filename);
+            }
+            catch
+            {
+                return Logger.New(Console.OpenStandardError()).Level(LogLvl.Disabled);
+            }
+
+            if (conf.LogHuman)
+            {
+                output = new Decoder(output);
+            }
+
+            if (conf.LogBuffer > 0)
+            {
+                // do nothing for now, as our FastLogger does not support buffering
+            }
+
+            var log = Logger.New(output, BaseContext).With().Timestamp().Logger().Level((LogLvl)conf.LogLevel);
+            log.Log().Str(Constants.Genesis, Genesis.ToLongTimeString());
+
+            return log;
         }
     }
 }
