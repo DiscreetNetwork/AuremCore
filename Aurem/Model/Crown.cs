@@ -55,7 +55,7 @@ namespace Aurem.Model
         /// It assumes that the given collection of parents represents the number of processes (nproc), and the nth unit is created by the nth process (i.e., ordered).
         /// </summary>
         /// <param name="parents">The parent units to be represented by this crown.</param>
-        public Crown(List<IUnit> parents)
+        public Crown(IList<IUnit> parents)
         {
             var nproc = parents.Count;
             Heights = new int[nproc];
