@@ -48,7 +48,7 @@ namespace Aurem.Model
         /// <param name="exc"></param>
         /// <param name="preunit"></param>
         /// <param name="proc"></param>
-        public void ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc);
+        public Exception ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc);
 
         /// <summary>
         /// Checks whether the alerter knows that the given pid is a forker.

@@ -26,6 +26,14 @@ namespace Aurem.Model
         public List<IUnit> DecodeParents(IPreunit preunit);
 
         /// <summary>
+        /// Constructs a new unit from the preunit and the slice of parents.
+        /// </summary>
+        /// <param name="preunit"></param>
+        /// <param name="parents"></param>
+        /// <returns></returns>
+        public IUnit BuildUnit(IPreunit preunit, IList<IUnit> parents);
+
+        /// <summary>
         /// Runs, on the given unit, a series of UnitCheckers added to the DAG with AddCheck.
         /// </summary>
         /// <param name="unit"></param>
