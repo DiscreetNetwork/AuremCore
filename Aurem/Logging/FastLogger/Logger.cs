@@ -22,7 +22,7 @@ namespace Aurem.Logging.FastLogger
         {
             Logger logger = new()
             {
-                Base = s
+                Base = s,
             };
 
             ctx ??= new LoggerContext(logger);
@@ -34,7 +34,7 @@ namespace Aurem.Logging.FastLogger
 
         public void Start()
         {
-            _ = Task.Run(() => Start());
+            _ = Task.Run(async () => await Start(default));
         }
 
         public async Task Start(CancellationToken token)
@@ -58,7 +58,10 @@ namespace Aurem.Logging.FastLogger
             }
         }
 
-        public LoggerContext With() => Context;
+        public LoggerContext With()
+        {
+            return new LoggerContext(Context, this);
+        }
 
         internal void DispatchEvent(LogEvent e) => EventQueue.Enqueue(e);
 
@@ -129,6 +132,8 @@ namespace Aurem.Logging.FastLogger
             {
                 e.Str(Context.LevelFieldName, LevelFieldMarshal(lvl));
             }
+
+            foreach ((var k, var v) in Context.DefaultItems) e.Val(k, v);
 
             if (Context.StackTrace)
             {

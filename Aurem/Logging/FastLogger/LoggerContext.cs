@@ -35,6 +35,7 @@ namespace Aurem.Logging.FastLogger
             }
         }
 
+        internal Dictionary<string, object> DefaultItems { get; private set; } = new();
         public bool TimeStamp { get; private set; } = false;
         public bool StackTrace { get; private set; } = false;
         public LogLvl Level { get; private set; } = LogLvl.NoLevel;
@@ -64,6 +65,12 @@ namespace Aurem.Logging.FastLogger
         {
             return /* $"[{x.GetType().Name}] {x.Message}" */ x.Message;
         };
+
+        public LoggerContext Val<T>(string key, T value)
+        {
+            DefaultItems.Add(key, value);
+            return this;
+        }
 
         public Func<DateTime> TimestampFunc { get; private set; } = () => DateTime.Now;
 
@@ -107,6 +114,8 @@ namespace Aurem.Logging.FastLogger
             TimeFormat = other.TimeFormat;
 
             DurationNumberFunc = other.DurationNumberFunc;
+            DefaultItems = new();
+            foreach ((var k, var v) in other.DefaultItems) DefaultItems.Add(k, v);
             MyLogger = logger;
         }
 

@@ -52,6 +52,14 @@ namespace Aurem.Model
         public bool LessThan(Hash b) => Data.Compare(b.Data) < 0;
 
         /// <summary>
+        /// Compares the two hashes in lexographic order.
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static int Compare(Hash a, Hash b) => a.Data.Compare(b.Data);
+
+        /// <summary>
         /// Performs an exlusive or operation between the bits of the given hashes.
         /// </summary>
         /// <param name="a"></param>
