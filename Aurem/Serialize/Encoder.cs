@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aurem.Encoding
+namespace Aurem.Serialize
 {
     /// <summary>
     /// Implements <see cref="Stream"/>. Thread-safe binary writer which encodes units in the following format:

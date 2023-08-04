@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aurem.Encoding
+namespace Aurem.Serialize
 {
     public static class EncodeUtil
     {
