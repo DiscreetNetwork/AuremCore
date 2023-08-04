@@ -30,8 +30,6 @@ namespace Aurem.Model
         /// Iterates through all units in the container, in chunks coressponding to different creator ids, until the given function returns false.
         /// </summary>
         /// <param name="iteration"></param>
-        public void Iterate(SlottedUnitsIteration iteration);
+        public void Iterate(Func<List<IUnit>, bool> iteration);
     }
-
-    public delegate bool SlottedUnitsIteration(List<IUnit> units);
 }

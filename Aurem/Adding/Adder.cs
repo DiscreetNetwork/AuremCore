@@ -47,7 +47,7 @@ namespace Aurem.Adding
             Conf = conf;
             Syncer = syncer;
             Ready = new Queue<WaitingPreunit>[dag.NProc()];
-            Waiting = new();
+            Waiting = new(new Hash.HashEqualityComparer());
             WaitingByID = new();
             Missing = new();
             Finished = false;

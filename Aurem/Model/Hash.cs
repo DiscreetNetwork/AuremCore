@@ -13,7 +13,7 @@ namespace Aurem.Model
     /// <summary>
     /// Represents a hash of 256 bits in length.
     /// </summary>
-    public struct Hash
+    public struct Hash : IComparable<Hash>
     {
         /// <summary>
         /// The underlying bytes of the hash.
@@ -58,6 +58,8 @@ namespace Aurem.Model
         /// <param name="b"></param>
         /// <returns></returns>
         public static int Compare(Hash a, Hash b) => a.Data.Compare(b.Data);
+
+        public int CompareTo(Hash other) => Compare(this, other);
 
         /// <summary>
         /// Performs an exlusive or operation between the bits of the given hashes.
@@ -116,6 +118,8 @@ namespace Aurem.Model
 
         public override bool Equals([NotNullWhen(true)] object? obj)
         {
+            if (obj == null && Data == null) return true;
+
             if (obj is Hash hash)
             {
                 return Data.Compare(hash.Data) == 0;
@@ -140,5 +144,16 @@ namespace Aurem.Model
         /// Empty represents a null hash; i.e. a null value for the hash.
         /// </summary>
         public static Hash Empty = new Hash { Data = null };
+
+        public class HashComparer: IComparer<Hash>
+        {
+            public int Compare(Hash x, Hash y) => Hash.Compare(x, y);
+        }
+
+        public class HashEqualityComparer: IEqualityComparer<Hash>
+        {
+            public int GetHashCode(Hash obj) => obj.GetHashCode();
+            public bool Equals(Hash x, Hash y) => x.Equals(y);
+        }
     }
 }

@@ -38,7 +38,7 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="unit"></param>
         /// <returns></returns>
-        public Exception Check(IUnit unit);
+        public Exception? Check(IUnit unit);
 
         /// <summary>
         /// Puts a unit into the DAG.
@@ -60,11 +60,11 @@ namespace Aurem.Model
         public ISlottedUnits MaximalUnitsPerProcess();
 
         /// <summary>
-        /// Returns all units present in the DAG with heights heigher than the given array of heights (of length nproc).
+        /// Returns all units present in the DAG with heights heigher than the given collection of heights (of size nproc).
         /// </summary>
         /// <param name="heights"></param>
         /// <returns>A <see cref="List{T}"/> of <see cref="IUnit"/>.</returns>
-        public List<IUnit> UnitsAbove(int[] heights);
+        public List<IUnit> UnitsAbove(IList<int> heights);
 
         /// <summary>
         /// Returns a unit with the given hash, if present in the DAG.
@@ -78,14 +78,14 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="hash"></param>
         /// <returns>An array of <see cref="IUnit"/>.</returns>
-        public IUnit[] GetUnits(Hash[] hashes);
+        public IUnit[] GetUnits(IList<Hash> hashes);
 
         /// <summary>
-        /// Attempts to return the singular unit associated with the given ID. In the case of forks, the returned array will contain more than one element.
+        /// Attempts to return the singular unit associated with the given ID. In the case of forks, the returned list will contain more than one element.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public IUnit[] GetByID(ulong id);
+        public List<IUnit> GetByID(ulong id);
 
         /// <summary>
         /// Checks if the given number of processes is enough to form a quorum.

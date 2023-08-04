@@ -32,7 +32,7 @@ namespace Aurem.Linear
         {
             Dag = dag;
             RandomSource = rs;
-            Deciders = new();
+            Deciders = new(new Hash.HashEqualityComparer());
             LastTUs = new List<IUnit>(conf.ZeroVoteRoundForCommonVote);
             ZeroVoteRoundForCommonVote = conf.ZeroVoteRoundForCommonVote;
             FirstDecidingRound = conf.FirstDecidingRound;
