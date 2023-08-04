@@ -138,7 +138,7 @@ namespace Aurem.Units
             return _unit.Level();
         }
 
-        public IEnumerable<IUnit> Parents()
+        public IList<IUnit> Parents()
         {
             return _unit.Parents();
         }

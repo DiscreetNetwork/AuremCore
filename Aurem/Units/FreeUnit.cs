@@ -44,7 +44,7 @@ namespace Aurem.Units
             ComputeFloor();
         }
 
-        public IEnumerable<IUnit> Parents() => _parents;
+        public IList<IUnit> Parents() => _parents;
 
         public int Level() => _level;
 

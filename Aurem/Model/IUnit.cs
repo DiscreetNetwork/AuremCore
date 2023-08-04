@@ -16,7 +16,7 @@ namespace Aurem.Model
         /// Returns the parents of this unit.
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<IUnit> Parents();
+        public IList<IUnit> Parents();
 
         /// <summary>
         /// Returns the level of this unit in the dag, as defined in the protocol paper.

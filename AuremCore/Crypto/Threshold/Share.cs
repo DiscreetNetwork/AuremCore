@@ -24,12 +24,12 @@ namespace AuremCore.Crypto.Threshold
             return res;
         }
 
-        public void Unmarshal(byte[] data)
+        public void Unmarshal(ReadOnlySpan<byte> data)
         {
             if (data == null || data.Length < 2 + Constants.SignatureLength) throw new Exception("data is too short");
 
             owner = BinaryPrimitives.ReadUInt16LittleEndian(data);
-            sig = new Signature().Unmarshal(data.AsSpan(2));
+            sig = new Signature().Unmarshal(data[2..]);
         }
 
         public static Share SumShares(Share[] shs)

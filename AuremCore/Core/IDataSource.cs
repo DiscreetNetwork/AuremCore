@@ -8,6 +8,6 @@ namespace AuremCore.Core
 {
     public interface IDataSource
     {
-        public Task<byte[]> GetDataAsync();
+        public Task<byte[]> Get();
     }
 }
