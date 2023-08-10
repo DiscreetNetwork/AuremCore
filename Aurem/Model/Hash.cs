@@ -61,6 +61,27 @@ namespace Aurem.Model
 
         public int CompareTo(Hash other) => Compare(this, other);
 
+        public static bool operator ==(Hash a, Hash b) => Compare(a, b) == 0;
+
+        public static bool operator !=(Hash a, Hash b) => Compare(a, b) != 0;
+
+        public static bool operator >(Hash a, Hash b) => Compare(a, b) > 0;
+
+        public static bool operator <(Hash a, Hash b) => Compare(a, b) < 0;
+
+        public static bool operator >=(Hash a, Hash b) => Compare(a, b) >= 0;
+
+        public static bool operator <=(Hash a, Hash b) => Compare(a, b) <= 0;
+
+
+        public static implicit operator Span<byte>(Hash a) => a.Data;
+
+
+        public static implicit operator byte[](Hash a) => a.Data;
+
+        public static implicit operator ReadOnlySpan<byte>(Hash a) => a.Data;
+
+
         /// <summary>
         /// Performs an exlusive or operation between the bits of the given hashes.
         /// </summary>

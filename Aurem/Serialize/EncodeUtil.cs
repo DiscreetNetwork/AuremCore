@@ -67,6 +67,13 @@ namespace Aurem.Serialize
         public static void WriteUnit(IUnit u, Stream s) => new Encoder(s).EncodeUnit(u);
 
         /// <summary>
+        /// Writes an encoded preunit to the stream.
+        /// </summary>
+        /// <param name="u"></param>
+        /// <param name="s"></param>
+        public static void WritePreunit(IPreunit u, Stream s) => new Encoder(s).EncodeUnit(u);
+
+        /// <summary>
         /// Reads and decodes a preunit from the stream.
         /// </summary>
         /// <param name="s"></param>
