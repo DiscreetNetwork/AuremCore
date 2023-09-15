@@ -8,7 +8,7 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aurem.Logging.FastLogger
+namespace AuremCore.FastLogger
 {
     public class LoggerContext
     {

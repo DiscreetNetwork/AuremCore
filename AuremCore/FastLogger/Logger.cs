@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aurem.Logging.FastLogger
+namespace AuremCore.FastLogger
 {
     /// <summary>
     /// Logger provides a means of logging data. Allows JSON log output as well as stdout printing.

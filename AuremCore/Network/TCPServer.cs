@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using AuremCore.FastLogger;
 
 namespace AuremCore.Network
 {
@@ -13,10 +14,11 @@ namespace AuremCore.Network
         private TcpListener listener;
         private string[] remoteAddresses;
         private CancellationTokenSource cancellationTokenSource;
+        private Logger Log;
 
         public TCPServer() { }
 
-        public TCPServer(string local, string[] remotes)
+        public TCPServer(string local, string[] remotes, Logger log)
         {
             IPEndPoint localp = IPEndPoint.Parse(local);
             listener = new TcpListener(localp);
@@ -32,7 +34,7 @@ namespace AuremCore.Network
             return new TCPConn(_client);
         }
 
-        public override async Task<Conn> Dial(ushort pid)
+        public override async Task<Conn?> Dial(ushort pid)
         {
             // parse the connection
             if (pid >= remoteAddresses.Length) throw new ArgumentOutOfRangeException();
@@ -57,8 +59,15 @@ namespace AuremCore.Network
 
         public override void Stop()
         {
-            listener.Stop();
-            cancellationTokenSource.Cancel();
+            try
+            {
+                listener.Stop();
+                cancellationTokenSource.Cancel();
+            }
+            catch (Exception ex)
+            {
+                Log.Err(ex).Msg("An error occurred while calling Close on the TcpListener");
+            }
         }
     }
 }

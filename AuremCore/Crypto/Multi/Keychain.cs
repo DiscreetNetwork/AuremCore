@@ -14,6 +14,8 @@ namespace AuremCore.Crypto.Multi
         private SecretKey secret;
         private ushort pid;
 
+        public static readonly int SignatureLength = Constants.SignatureLength;
+
         public Keychain(VerificationKey[] pubs, SecretKey secret)
         {
             var ours = secret.VerificationKey().Marshal();

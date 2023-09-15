@@ -17,7 +17,9 @@ namespace AuremCore.Network
 
         public override IPEndPoint RemoteEndPoint => _remote;
         public override bool IsConnected => _connected;
-        
+
+        public override Stream NetStream => client?.GetStream();
+
         private static readonly int bufferSize = 32000;
 
         TcpClient client;
@@ -27,7 +29,7 @@ namespace AuremCore.Network
         public TCPConn(TcpClient client)
         {
             this.client = client;
-            _remote = (IPEndPoint)client.Client.RemoteEndPoint;
+            _remote = (IPEndPoint)client?.Client?.RemoteEndPoint;
             _connected = client.Connected;
             _cancellationTokenSource = new();
         }
@@ -52,7 +54,7 @@ namespace AuremCore.Network
             return s.Length;
         }
 
-        public override async Task Disconnect()
+        public override async Task Close()
         {
             await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
             client.Close();

@@ -9,16 +9,23 @@ namespace AuremCore.Network
 {
     public abstract class Server
     {
-        public virtual async Task<Conn> Dial(ushort pid)
-        {
-            throw new NotImplementedException();
-        }
+        public abstract Task<Conn?> Dial(ushort pid);
 
-        public virtual async Task<Conn> Listen()
-        {
-            throw new NotImplementedException();
-        }
+        public abstract Task<Conn> Listen();
 
         public abstract void Stop();
+
+        public async Task<(Conn?, Exception?)> TryDial(ushort pid)
+        {
+            try
+            {
+                var conn = await Dial(pid);
+                return (conn, null);
+            }
+            catch (Exception ex)
+            {
+                return (null, ex);
+            }
+        }
     }
 }
