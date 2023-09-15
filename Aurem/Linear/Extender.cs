@@ -1,7 +1,7 @@
 ﻿using Aurem.Config;
 using Aurem.Logging;
-using Aurem.Logging.FastLogger;
 using Aurem.Model;
+using AuremCore.FastLogger;
 using System;
 using System.Collections.Generic;
 using System.Linq;

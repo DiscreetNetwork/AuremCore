@@ -43,6 +43,10 @@ namespace Aurem.Forking
             PCommit = EncodeUtil.ReadPreunit(ms);
         }
 
+        public ForkingProof() { }
+
+        public bool IsNull() => Pu == null && Pv == null && PCommit == null && Encoded == null;
+
         public byte[] Marshal() => Encoded;
 
         public ForkingProof Unmarshal(byte[] data)
@@ -59,6 +63,8 @@ namespace Aurem.Forking
         }
 
         public ushort ForkerID() => Pu.Creator();
+
+        public uint EpochID() => Pu.EpochID();
 
         /// <summary>
         /// Returns the encoded proof in two parts: first the proof itself, then the commitment.

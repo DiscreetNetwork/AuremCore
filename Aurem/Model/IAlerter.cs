@@ -19,13 +19,13 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="a"></param>
         /// <param name="b"></param>
-        public void NewFork(IPreunit a, IPreunit b);
+        public Task NewFork(IPreunit a, IPreunit b);
 
         /// <summary>
         /// Handles an incoming connection.
         /// </summary>
         /// <param name="conn"></param>
-        public void HandleIncoming(Conn conn);
+        public Task HandleIncoming(Conn conn);
 
         /// <summary>
         /// Disambiguates between which of the provided (forked) units is the right one to be the parent of the given preunit.
@@ -33,14 +33,14 @@ namespace Aurem.Model
         /// <param name="units"></param>
         /// <param name="preunit"></param>
         /// <returns></returns>
-        public IUnit Disambiguate(IUnit[] units, IPreunit preunit);
+        public (IUnit, Exception?) Disambiguate(IUnit[] units, IPreunit preunit);
 
         /// <summary>
         /// Requests a commitment that is missing in the given preunit from the committee member with the given process ID.
         /// </summary>
         /// <param name="preunit"></param>
         /// <param name="proc"></param>
-        public void RequestCommitment(IPreunit preunit, ushort proc);
+        public Task<Exception?> RequestCommitment(IPreunit preunit, ushort proc);
 
         /// <summary>
         /// Attempts to resolve the missing commitment.
@@ -48,7 +48,7 @@ namespace Aurem.Model
         /// <param name="exc"></param>
         /// <param name="preunit"></param>
         /// <param name="proc"></param>
-        public Exception ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc);
+        public Task<Exception?> ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc);
 
         /// <summary>
         /// Checks whether the alerter knows that the given pid is a forker.
@@ -68,7 +68,7 @@ namespace Aurem.Model
         /// Locks the state for a given process ID.
         /// </summary>
         /// <param name="proc"></param>
-        public void Lock(ushort proc);
+        public Task Lock(ushort proc);
 
         /// <summary>
         /// Unlocks the state for a given process ID.
@@ -84,6 +84,6 @@ namespace Aurem.Model
         /// <summary>
         /// Stops the Alerter.
         /// </summary>
-        public void Stop();
+        public Task Stop();
     }
 }

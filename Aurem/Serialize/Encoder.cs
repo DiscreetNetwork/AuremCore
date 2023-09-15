@@ -74,8 +74,13 @@ namespace Aurem.Serialize
         /// <param name="crown"></param>
         public void EncodeCrown(Crown crown)
         {
+            Write(SerializeCrown(crown));
+        }
+
+        public static byte[] SerializeCrown(Crown crown)
+        {
             var nParents = (ushort)crown.Heights.Length;
-            var data = new byte[34 + nParents*4];
+            var data = new byte[34 + nParents * 4];
             BinaryPrimitives.WriteUInt16LittleEndian(data, nParents);
             var s = 2;
             foreach (var h in crown.Heights)
@@ -87,7 +92,12 @@ namespace Aurem.Serialize
             }
 
             Array.Copy(crown.ControlHash.Data, 0, data, s, crown.ControlHash.Length);
-            Write(data);
+            return data;
+        }
+
+        public async Task EncodeCrownAsync(Crown crown)
+        {
+            await s.WriteAsync(SerializeCrown(crown));
         }
 
         /// <summary>
@@ -96,12 +106,21 @@ namespace Aurem.Serialize
         /// <param name="dagInfo"></param>
         public void EncodeDagInfo(DagInfo dagInfo)
         {
+            Write(SerializeDagInfo(dagInfo));
+        }
+
+        public async Task EncodeDagInfoAsync(DagInfo dagInfo)
+        {
+            await s.WriteAsync(SerializeDagInfo(dagInfo));
+        }
+
+        public static byte[] SerializeDagInfo(DagInfo dagInfo)
+        {
             if (dagInfo is null)
             {
                 var emptyData = new byte[4];
                 BinaryPrimitives.WriteUInt32LittleEndian(emptyData, uint.MaxValue);
-                Write(emptyData);
-                return;
+                return emptyData;
             }
 
             var nproc = (ushort)dagInfo.Heights.Length;
@@ -118,35 +137,47 @@ namespace Aurem.Serialize
                 s += 4;
             }
 
-            Write(data);
+            return data;
         }
 
         public void EncodeUnit(IPreunit unit)
+        {
+            s.Write(SerializeUnit(unit));
+        }
+
+        public async Task EncodeUnitAsync(IPreunit unit)
+        {
+            await s.WriteAsync(SerializeUnit(unit));
+        }
+
+        public static byte[] SerializeUnit(IPreunit unit)
         {
             if (unit is null)
             {
                 var empty = new byte[8];
                 BinaryPrimitives.WriteUInt64LittleEndian(empty, ulong.MaxValue);
-                Write(empty);
-                return;
+                return empty;
             }
 
+            using var _ms = new MemoryStream();
             var data = new byte[72];
             BinaryPrimitives.WriteUInt64LittleEndian(data, unit.UnitID());
             Array.Copy(unit.Signature(), 0, data, 8, 64);
-            Write(data);
+            _ms.Write(data);
 
-            EncodeCrown(unit.View());
+            _ms.Write(SerializeCrown(unit.View()));
 
             var unitDataLen = (uint)(unit.Data()?.Length ?? 0);
             BinaryPrimitives.WriteUInt32LittleEndian(data, unitDataLen);
-            Write(data.AsSpan(0, 4));
-            if (unitDataLen > 0) Write(unit.Data());
+            _ms.Write(data.AsSpan(0, 4));
+            if (unitDataLen > 0) _ms.Write(unit.Data());
 
             var rsDataLen = (uint)(unit.RandomSourceData()?.Length ?? 0);
             BinaryPrimitives.WriteUInt32LittleEndian(data, rsDataLen);
-            Write(data.AsSpan(0, 4));
-            if (rsDataLen > 0) Write(unit.RandomSourceData());
+            _ms.Write(data.AsSpan(0, 4));
+            if (rsDataLen > 0) _ms.Write(unit.RandomSourceData());
+
+            return _ms.ToArray();
         }
 
         public void EncodeChunk(IEnumerable<IUnit> _units)
@@ -162,6 +193,24 @@ namespace Aurem.Serialize
             foreach (var u in EncodeUtil.SortChunk(units))
             {
                 EncodeUnit(u);
+            }
+        }
+
+        public async Task EncodeChunkAsync(IEnumerable<IUnit> _units)
+        {
+            var units = _units.ToArray();
+            if (units.Length >= Checks.MaxUnitsInChunk)
+            {
+                throw new Exception("chunk contains too many units");
+            }
+
+            var bytes = new byte[4];
+            BinaryPrimitives.WriteUInt32LittleEndian(bytes, (uint)units.Length);
+            await s.WriteAsync(bytes);
+
+            foreach (var u in EncodeUtil.SortChunk(units))
+            {
+                await EncodeUnitAsync(u);
             }
         }
 

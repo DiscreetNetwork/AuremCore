@@ -95,6 +95,31 @@ namespace Aurem.Serialize
             return new Crown(heights, controlHash);
         }
 
+        public async Task<Crown> DecodeCrownAsync()
+        {
+            var shortBuf = new byte[2];
+            var intBuf = new byte[4];
+
+            await s.ReadAsync(shortBuf.AsMemory(0, 2));
+            var nproc = BinaryPrimitives.ReadUInt16LittleEndian(shortBuf);
+
+            var heightData = new byte[nproc * 4];
+            var nhd = await s.ReadAsync(heightData);
+            if (nhd != nproc * 4) throw new Exception("not enough data");
+
+            var heights = new int[nproc];
+            for (int i = 0; i < heights.Length; i++)
+            {
+                var h = BinaryPrimitives.ReadUInt32LittleEndian(heightData.AsSpan(4*i));
+                heights[h] = h == uint.MaxValue ? -1 : (int)h;
+            }
+
+            var controlHash = new Hash(new byte[32]);
+            await s.ReadAsync(controlHash.Data.AsMemory(0, 32));
+
+            return new Crown(heights, controlHash);
+        }
+
         public DagInfo DecodeDagInfo()
         {
             var shortBuf = new byte[2];
@@ -110,6 +135,31 @@ namespace Aurem.Serialize
             for (int i = 0; i < heights.Length; i++)
             {
                 Read(intBuf, 0, 4);
+                var h = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
+                heights[h] = h == uint.MaxValue ? -1 : (int)h;
+            }
+
+            return new DagInfo { Epoch = epoch, Heights = heights };
+        }
+
+        public async Task<DagInfo> DecodeDagInfoAsync()
+        {
+            var shortBuf = new byte[2];
+            var intBuf = new byte[4];
+
+            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            var epoch = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
+
+            await s.ReadAsync(intBuf.AsMemory(0, 2));
+            var nproc = BinaryPrimitives.ReadUInt16LittleEndian(shortBuf);
+
+            var heightData = new byte[nproc * 4];
+            var nhd = await s.ReadAsync(heightData);
+            if (nhd != nproc * 4) throw new Exception("not enough data");
+
+            var heights = new int[nproc];
+            for (int i = 0; i < heights.Length; i++)
+            {
                 var h = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
                 heights[h] = h == uint.MaxValue ? -1 : (int)h;
             }
@@ -145,6 +195,34 @@ namespace Aurem.Serialize
             return new Preunit(id, crown, unitData, rsData, sig);
         }
 
+        public async Task<IPreunit> DecodePreunitAsync()
+        {
+            var longBuf = new byte[8];
+            var intBuf = new byte[4];
+
+            await s.ReadAsync(longBuf.AsMemory(0, 8));
+            var id = BinaryPrimitives.ReadUInt64LittleEndian(longBuf);
+
+            var sig = new byte[64];
+            await s.ReadAsync(sig.AsMemory(0, 64));
+
+            var crown = DecodeCrown();
+
+            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            var unitDataLen = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
+            if (unitDataLen > Checks.MaxDataBytesPerUnit) throw new Exception("maximum allowed data size in a preunit exceeded");
+            var unitData = new byte[unitDataLen];
+            await s.ReadAsync(unitData.AsMemory(0, (int)unitDataLen));
+
+            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            var rsDataLen = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
+            if (rsDataLen > Checks.MaxRandomSourceDataBytesPerUnit) throw new Exception("maximum allowed random source data size in a preunit exceeded");
+            var rsData = new byte[rsDataLen];
+            await s.ReadAsync(rsData.AsMemory(0, (int)rsDataLen));
+
+            return new Preunit(id, crown, unitData, rsData, sig);
+        }
+
         public IPreunit[] DecodeChunk()
         {
             var k = DecodeUint32();
@@ -155,6 +233,23 @@ namespace Aurem.Serialize
             for (int i = 0; i < k; i++)
             {
                 result[i] = DecodePreunit();
+            }
+
+            return result;
+        }
+
+        public async Task<IPreunit[]> DecodeChunkAsync()
+        {
+            var buf = new byte[4];
+            await s.ReadAsync(buf.AsMemory(0, 4));
+            var k = BinaryPrimitives.ReadUInt32LittleEndian(buf);
+
+            if (k > Checks.MaxUnitsInChunk) throw new Exception("chunk contains too many units");
+
+            var result = new IPreunit[k];
+            for (int i = 0; i < k; i++)
+            {
+                result[i] = await DecodePreunitAsync();
             }
 
             return result;

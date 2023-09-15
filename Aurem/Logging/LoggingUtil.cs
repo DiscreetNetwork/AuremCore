@@ -1,4 +1,4 @@
-﻿using Aurem.Logging.FastLogger;
+﻿using AuremCore.FastLogger;
 using Aurem.Model.Exceptions;
 using System;
 using System.Collections.Generic;

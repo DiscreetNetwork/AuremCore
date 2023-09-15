@@ -10,6 +10,7 @@ using BN256Core.Native;
 using AuremCore.Crypto.Encrypt;
 using AuremCore.Crypto.P2P;
 using AuremCore.Crypto.Threshold;
+using AuremCore.Core;
 
 namespace AuremCore
 {
@@ -247,23 +248,31 @@ namespace AuremCore
             Console.WriteLine($"Time per TSS: {(double)sw.ElapsedMilliseconds / (double)tot}ms");
         }
 
-        public static void Main(string[] args)
+        public static async Task DoSomeSleeping(int x, WaitGroup wg)
+        {
+            wg.Add(1);
+            await Task.Delay(x * 1000);
+            await Console.Out.WriteLineAsync($"Task {x} completed.");
+            wg.Done();
+        }
+
+        public static async Task Main(string[] args)
         {
             //TestRSA();
 
-            var numtss = 100;
-            var nproc = 100;
+            //var numtss = 100;
+            //var nproc = 100;
             //Stopwatch sw = Stopwatch.StartNew();
             //for (int i = 0; i < 10; i++)
             //{
             //    Console.WriteLine(TUtil.Lagrange(Enumerable.Range(0, 10).Select(x => (long)x).ToArray(), (long)i));
             
             //}
-            TestThreshold(nproc, numtss);
+            //TestThreshold(nproc, numtss);
             //for (int i = 0; i < numtss; i++) TestThreshold(nproc);
 
-            BN a = new BN();
-            BigInteger c = new BigInteger();
+            //BN a = new BN();
+            //BigInteger c = new BigInteger();
 
            
             //c = new BigInteger(252);
@@ -274,6 +283,25 @@ namespace AuremCore
             //TestSpeed();
 
             //TestTSS(3);
+
+            WaitGroup wg = new WaitGroup();
+
+            var tasks = Enumerable.Range(1, 10).Select(x => DoSomeSleeping(x, wg));
+
+            foreach (var task in tasks) _ = Task.Run(async () => await task);
+
+            wg.Add(1);
+            try
+            {
+                await Task.Delay(100);
+            }
+            finally
+            {
+                wg.Done();
+            }
+
+            await wg.WaitAsync();
+            Console.WriteLine("complete");
         }
     }
 }

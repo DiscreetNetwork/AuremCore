@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Aurem.Logging.FastLogger
+namespace AuremCore.FastLogger
 {
     public class LogEvent
     {

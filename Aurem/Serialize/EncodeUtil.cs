@@ -44,6 +44,12 @@ namespace Aurem.Serialize
             foreach (var info in infos.Take(2)) enc.EncodeDagInfo(info);
         }
 
+        public static async Task WriteDagInfosAsync(DagInfo[] infos, Stream s)
+        {
+            using var enc = new Encoder(s);
+            foreach (var info in infos.Take(2)) await enc.EncodeDagInfoAsync(info);
+        }
+
         /// <summary>
         /// Reads an array of DagInfos from the given stream. Expects the total number in the stream to be two.
         /// </summary>
@@ -59,12 +65,24 @@ namespace Aurem.Serialize
             return infos;
         }
 
+        public static async Task<DagInfo[]> ReadDagInfosAsync(Stream s)
+        {
+            var infos = new DagInfo[2];
+            using var dec = new Decoder(s);
+            infos[0] = await dec.DecodeDagInfoAsync();
+            infos[1] = await dec.DecodeDagInfoAsync();
+
+            return infos;
+        }
+
         /// <summary>
         /// Writes an encoded unit to the stream.
         /// </summary>
         /// <param name="u"></param>
         /// <param name="s"></param>
         public static void WriteUnit(IUnit u, Stream s) => new Encoder(s).EncodeUnit(u);
+
+        public static Task WriteUnitAsync(IUnit u, Stream s) => new Encoder(s).EncodeUnitAsync(u);
 
         /// <summary>
         /// Writes an encoded preunit to the stream.
@@ -73,12 +91,17 @@ namespace Aurem.Serialize
         /// <param name="s"></param>
         public static void WritePreunit(IPreunit u, Stream s) => new Encoder(s).EncodeUnit(u);
 
+        public static Task WritePreunitAsync(IPreunit u, Stream s) => new Encoder(s).EncodeUnitAsync(u);
+
         /// <summary>
         /// Reads and decodes a preunit from the stream.
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
         public static IPreunit ReadPreunit(Stream s) => new Decoder(s).DecodePreunit();
+
+        public static Task<IPreunit> ReadPreunitAsync(Stream s) => new Decoder(s).DecodePreunitAsync();
+
 
         /// <summary>
         /// Writes a chunk of encoded units to the stream.
@@ -87,12 +110,17 @@ namespace Aurem.Serialize
         /// <param name="s"></param>
         public static void WriteChunk(IList<IUnit> units, Stream s) => new Encoder(s).EncodeChunk(units);
 
+        public static Task WriteChunkAsync(IList<IUnit> units, Stream s) => new Encoder(s).EncodeChunkAsync(units);
+
         /// <summary>
         /// Reads and decodes a chunk of preunit antichains from the reader.
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
         public static IPreunit[] ReadChunk(Stream s) => new Decoder(s).DecodeChunk();
+
+        public static Task<IPreunit[]> ReadChunkAsync(Stream s) => new Decoder(s).DecodeChunkAsync();
+
 
         public static int ComputeLayer(IUnit u, Dictionary<IUnit, int> layers)
         {

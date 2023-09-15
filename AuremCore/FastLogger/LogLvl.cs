@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aurem.Logging.FastLogger
+namespace AuremCore.FastLogger
 {
     public enum LogLvl
     {

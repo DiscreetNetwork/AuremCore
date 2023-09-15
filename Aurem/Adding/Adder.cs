@@ -1,8 +1,8 @@
 ﻿using Aurem.Common;
 using Aurem.Logging;
-using Aurem.Logging.FastLogger;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
+using AuremCore.FastLogger;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -191,16 +191,10 @@ namespace Aurem.Adding
                         {
                             IUnit parent;
                             Exception? caught = null;
-                            try
-                            {
-                                parent = Alerter.Disambiguate(us, wp.Pu);
-                            }
-                            catch (Exception _e2)
-                            {
-                                caught = _e2;
-                            }
+                            (parent, caught) = Alerter.Disambiguate(us, wp.Pu);
 
-                            caught = Alerter.ResolveMissingCommitment(caught, wp.Pu, wp.Source);
+
+                            caught = await Alerter.ResolveMissingCommitment(caught, wp.Pu, wp.Source);
                             if (caught != null) break;
                         }
                     }
@@ -222,11 +216,11 @@ namespace Aurem.Adding
                 var freeUnit = Dag.BuildUnit(wp.Pu, parents);
 
                 // 3. check
-                Alerter.Lock(freeUnit.Creator());
+                await Alerter.Lock(freeUnit.Creator());
                 try
                 {
                     var err = Dag.Check(freeUnit);
-                    err = Alerter.ResolveMissingCommitment(err, freeUnit, wp.Source);
+                    err = await Alerter.ResolveMissingCommitment(err, freeUnit, wp.Source);
                     if (err != null)
                     {
                         log.Error().Str("where", "Check").Msg(err.Message);

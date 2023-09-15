@@ -1,9 +1,9 @@
 ﻿using Aurem.Common;
 using Aurem.Logging;
-using Aurem.Logging.FastLogger;
 using Aurem.Model;
 using Aurem.Units;
 using AuremCore.Core;
+using AuremCore.FastLogger;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

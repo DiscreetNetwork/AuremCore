@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using AuremCore.FastLogger;
 
 namespace Aurem.Logging
 {
@@ -79,7 +80,7 @@ namespace Aurem.Logging
 
             if (data.ContainsKey(Constants.LogLevel))
             {
-                ret += $"{(FastLogger.LogLvl)data[Constants.LogLevel].GetInt32()}|";
+                ret += $"{(LogLvl)data[Constants.LogLevel].GetInt32()}|";
             }
 
             if (data.ContainsKey(Constants.Service))
