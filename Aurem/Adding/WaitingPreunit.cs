@@ -12,7 +12,7 @@ namespace Aurem.Adding
     /// </summary>
     public class WaitingPreunit
     {
-        public IPreunit Pu;
+        public IPreunit Pu = null!;
         public ulong Id;
 
         /// <summary>
@@ -33,20 +33,11 @@ namespace Aurem.Adding
         /// <summary>
         /// List of other preunits that has this preunit as parent.
         /// </summary>
-        public List<WaitingPreunit> Children;
+        public List<WaitingPreunit> Children = null!;
 
         /// <summary>
         /// Flag for signaling problems with adding this unit.
         /// </summary>
         public bool Failed;
-
-        /// <summary>
-        /// Sets the children attribute of a newly created WaitingPreunit, depending on if it was missing.
-        /// </summary>
-        /// <param name="wp"></param>
-        public void CheckIfMissing(WaitingPreunit wp)
-        {
-
-        }
     }
 }

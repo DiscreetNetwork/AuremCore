@@ -24,7 +24,7 @@ namespace AuremCore.Crypto.Threshold
 
         public ushort Threshold => threshold;
 
-        public virtual Share CreateShare(byte[] msg)
+        public virtual Share? CreateShare(byte[] msg)
         {
             return new Share { owner = this.owner, sig = sk.Sign(msg) };
         }

@@ -1,8 +1,8 @@
 ﻿using Aurem.Config;
 using Aurem.Logging;
-using Aurem.Logging.FastLogger;
 using Aurem.Model;
 using AuremCore.Core;
+using AuremCore.FastLogger;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -51,6 +51,7 @@ namespace Aurem.Linear
         {
             Interlocked.Exchange(ref Trigger, 0);
             // TODO: implement means of waiting for work to finish.
+            // CRITICAL: YOU CAN FIX THIS NOW, BRANDON.
             Log.Info().Msg(Constants.ServiceStopped);
         }
 

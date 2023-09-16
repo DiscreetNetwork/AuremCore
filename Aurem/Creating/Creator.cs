@@ -23,8 +23,8 @@ namespace Aurem.Creating
     {
         public Config.Config Conf;
         public IDataSource Source;
-        public Action<IUnit> Send;
-        public Func<int, IList<IUnit>, uint, byte[]> RSData;
+        public Func<IUnit, Task> Send;
+        public Func<int, IList<IUnit>, uint, Task<byte[]>> RSData;
         public uint Epoch;
         public bool EpochDone;
         public IUnit[] Candidates;
@@ -50,7 +50,7 @@ namespace Aurem.Creating
         /// <param name="rsData"></param>
         /// <param name="epochProofFactory"></param>
         /// <param name="log"></param>
-        public Creator(Config.Config conf, IDataSource dataSource, Action<IUnit> send, Func<int, IList<IUnit>, uint, byte[]> rsData, Func<uint, IEpochProofBuilder> epochProofFactory, uint epoch, Logger log)
+        public Creator(Config.Config conf, IDataSource dataSource, Func<IUnit, Task> send, Func<int, IList<IUnit>, uint, Task<byte[]>> rsData, Func<uint, IEpochProofBuilder> epochProofFactory, uint epoch, Logger log)
         {
             Conf = conf;
             Source = dataSource;
@@ -64,6 +64,7 @@ namespace Aurem.Creating
             Frozen = new();
             Epoch = epoch;
             Log = log;
+            Mx = new(1, 1);
         }
 
         /// <summary>
@@ -77,7 +78,7 @@ namespace Aurem.Creating
         /// <param name="rsData"></param>
         /// <param name="epochProofFactory"></param>
         /// <param name="log"></param>
-        public Creator(Config.Config conf, IDataSource dataSource, Action<IUnit> send, Func<int, IList<IUnit>, uint, byte[]> rsData, Func<uint, IEpochProofBuilder> epochProofFactory, Logger log) : this(conf, dataSource, send, rsData, epochProofFactory, 0, log) { }
+        public Creator(Config.Config conf, IDataSource dataSource, Func<IUnit, Task> send, Func<int, IList<IUnit>, uint, Task<byte[]>> rsData, Func<uint, IEpochProofBuilder> epochProofFactory, Logger log) : this(conf, dataSource, send, rsData, epochProofFactory, 0, log) { }
     
         /// <summary>
         /// Ensures that the set of parents follows the "parent consistency rule." Modifies the provided unit list in place.
@@ -107,14 +108,14 @@ namespace Aurem.Creating
         /// </summary>
         /// <param name="epoch"></param>
         /// <param name="data"></param>
-        public void NewEpoch(uint epoch, byte[] data)
+        public async Task NewEpoch(uint epoch, byte[] data)
         {
             Epoch = epoch;
             EpochDone = false;
             ResetEpoch();
             EpochProof = EpochProofFactory(epoch);
             Log.Log().Val(Constants.Epoch, epoch).Msg(Constants.NewEpoch);
-            CreateUnit(new IUnit[Conf.NProc], 0, data);
+            await CreateUnit(new IUnit[Conf.NProc], 0, data);
         }
 
         /// <summary>
@@ -123,13 +124,13 @@ namespace Aurem.Creating
         /// <param name="parents"></param>
         /// <param name="level"></param>
         /// <param name="data"></param>
-        public void CreateUnit(IUnit[] parents, int level, byte[] data)
+        public async Task CreateUnit(IUnit[] parents, int level, byte[] data)
         {
-            var rsData = RSData(level, parents, Epoch);
+            var rsData = await RSData(level, parents, Epoch);
             var u = new FreeUnit(Conf.Pid, Epoch, parents, level, data, rsData, Conf.PrivateKey);
             Log.Info().Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, level).Msg(Constants.UnitCreated);
-            Send(u);
-            Update(u);
+            await Send(u);
+            await Update(u);
         }
 
         /// <summary>
@@ -194,7 +195,7 @@ namespace Aurem.Creating
         {
             for (int i = 0; i < Candidates.Length; i++)
             {
-                Candidates[i] = null;
+                Candidates[i] = null!;
             }
 
             MaxLevel = -1;
@@ -238,7 +239,7 @@ namespace Aurem.Creating
         /// Takes a unit that has been received from unit belt and updates the creator internal state with information contained in the unit.
         /// </summary>
         /// <param name="u"></param>
-        public void Update(IUnit u)
+        public async Task Update(IUnit u)
         {
             Log.Debug().Val(Constants.Creator, u.Creator()).Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, u.Level()).Val(Constants.Size, OnMaxLevel).Msg(Constants.CreatorProcessingUnit);
 
@@ -257,7 +258,7 @@ namespace Aurem.Creating
                 }
 
                 Log.Warn().Val(Constants.Level, Level).Val(Constants.Epoch, Epoch).Msg(Constants.SkippingEpoch);
-                NewEpoch(u.EpochID(), u.Data());
+                await NewEpoch(u.EpochID(), u.Data());
             }
 
             /* If this is a finishing unit, try to extract a threshold signature from it.
@@ -265,7 +266,7 @@ namespace Aurem.Creating
             var epochProof = EpochProof.TryBuilding(u);
             if (epochProof != null)
             {
-                NewEpoch(Epoch + 1, epochProof);
+                await NewEpoch(Epoch + 1, epochProof);
                 return;
             }
 
@@ -360,7 +361,7 @@ namespace Aurem.Creating
 
             try
             {
-                NewEpoch(Epoch, Array.Empty<byte>());
+                await NewEpoch(Epoch, Array.Empty<byte>());
 
                 while (!token.IsCancellationRequested)
                 {
@@ -376,7 +377,7 @@ namespace Aurem.Creating
                         var success = unitBelt.TryDequeue(out var u);
                         if (!success) break;
 
-                        Update(u);
+                        await Update(u);
                     }
 
                     while (Ready())
@@ -385,7 +386,7 @@ namespace Aurem.Creating
                         (var parents, var level) = BuildParents();
 
                         // 3. make unit
-                        CreateUnit(parents, level, await GetData(level, lastTiming));
+                        await CreateUnit(parents, level, await GetData(level, lastTiming));
                     }
 
                     Mx.Release();

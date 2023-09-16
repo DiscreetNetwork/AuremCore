@@ -41,7 +41,7 @@ namespace AuremCore.RMC
                 return (outgoing, null);
             }
 
-            return (null, new Exception("unknown instance"));
+            return (null!, new Exception("unknown instance"));
         }
 
         public (Incoming, Exception?) GetIn(ulong id)
@@ -49,10 +49,10 @@ namespace AuremCore.RMC
             var success = In.TryGetValue(id, out var incoming);
             if (success)
             {
-                return (incoming, null);
+                return (incoming!, null);
             }
 
-            return (null, new Exception("unknown incoming"));
+            return (null!, new Exception("unknown incoming"));
         }
 
         public (Instance, Exception?) GetOut(ulong id)
@@ -60,10 +60,10 @@ namespace AuremCore.RMC
             var success = Out.TryGetValue(id, out var outgoing);
             if (success)
             {
-                return (outgoing, null);
+                return (outgoing!, null);
             }
 
-            return (null, new Exception("unknown outgoing"));
+            return (null!, new Exception("unknown outgoing"));
         }
 
         public (Instance, Exception?) NewRawInstance(ulong id, byte[] data)

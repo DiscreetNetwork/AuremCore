@@ -15,6 +15,12 @@ namespace Aurem.Units
         private IUnit _unit;
         private int _forkingHeight;
 
+        public UnitInDag(IUnit unit, int forkingHeight)
+        {
+            _unit = unit;
+            _forkingHeight = forkingHeight;
+        }
+
         /// <summary>
         /// Transforms the given unit into a UnitInDag and computes the forking height. The retuned unit overrides <see cref="IUnit.AboveWithinProc(IUnit)"/> to use the forking height.
         /// </summary>
@@ -23,7 +29,7 @@ namespace Aurem.Units
         /// <returns></returns>
         public static IUnit Embed(IUnit u, IDag dag)
         {
-            var result = new UnitInDag { _unit = u, _forkingHeight = int.MaxValue };
+            var result = new UnitInDag(u, int.MaxValue);
             result.ComputeForkingHeight(dag);
 
             return result;

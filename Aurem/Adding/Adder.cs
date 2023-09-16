@@ -240,7 +240,7 @@ namespace Aurem.Adding
             }
             finally 
             {
-                Remove(wp);
+                await Remove(wp);
             }
         }
 

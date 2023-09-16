@@ -25,7 +25,7 @@ namespace Aurem.Dag
         public IUnit GetOne(Hash h)
         {
             var success = Contents.TryGetValue(h, out var u);
-            return success ? u : null;
+            return success ? u! : null!;
         }
 
         public IUnit[] GetMany(IList<Hash> hs)

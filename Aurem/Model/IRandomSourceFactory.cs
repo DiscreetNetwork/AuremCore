@@ -23,6 +23,6 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="epochId">The epoch corresponding to the dealing unit.</param>
         /// <returns>Random source data corresponding to the given epoch's dealing unit.</returns>
-        public byte[] DealingData(uint epochId);
+        public (byte[], Exception?) DealingData(uint epochId);
     }
 }

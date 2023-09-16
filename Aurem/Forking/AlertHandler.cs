@@ -140,7 +140,7 @@ namespace Aurem.Forking
             {
                 if (Commitments.GetByParties(MyPid, pid) == null)
                 {
-                    var maxes = Orderer.MaxUnits(epochID).Get(forker);
+                    var maxes = (await Orderer.MaxUnits(epochID)).Get(forker);
                     if (maxes == null || maxes.Count == 0)
                     {
                         proof.ReplaceCommit(null);
@@ -217,24 +217,24 @@ namespace Aurem.Forking
             }
         }
 
-        public (ICommitment, Exception?) ProduceCommitmentFor(IUnit unit)
+        public async Task<(ICommitment, Exception?)> ProduceCommitmentFor(IUnit unit)
         {
             var comm = Commitments.GetByParties(MyPid, unit.Creator());
             if (comm == null)
             {
-                return (null, new Exception("no fork can be found in relation to this unit"));
+                return (null!, new Exception("no fork can be found in relation to this unit"));
             }
 
             var pu = comm.GetUnit();
             if (pu == null)
             {
-                return (null, new Exception("commitment invalid; no commitment to a unit"));
+                return (null!, new Exception("commitment invalid; no commitment to a unit"));
             }
 
-            var commUnit = Orderer.UnitsByHash(pu.Hash())[0];
+            var commUnit = (await Orderer.UnitsByHash(pu.Hash()))[0];
             if (commUnit == null)
             {
-                return (null, new Exception("the unit committed to is not present"));
+                return (null!, new Exception("the unit committed to is not present"));
             }
 
             var pred = commUnit.Predecessor();
@@ -294,7 +294,7 @@ namespace Aurem.Forking
                 return;
             }
 
-            var unit = Orderer.UnitsByHash(requested)[0];
+            var unit = (await Orderer.UnitsByHash(requested))[0];
             if (unit == null)
             {
                 log.Error().Str("where", "AlertHandler.HandleCommitmentRequest.Get").Msg("no commitment for unit not in orderer");
@@ -331,7 +331,7 @@ namespace Aurem.Forking
                     return;
                 }
 
-                (comm, err) = ProduceCommitmentFor(unit);
+                (comm, err) = await ProduceCommitmentFor(unit);
                 if (err != null)
                 {
                     log.Error().Str("where", "AlertHandler.HandleCommitmentRequest.ProduceCommitmentFor").Msg(err.Message);
@@ -508,7 +508,7 @@ namespace Aurem.Forking
             {
                 if (Commitments.GetByParties(MyPid, pid) == null)
                 {
-                    var maxes = Orderer.MaxUnits(epochID).Get(forker);
+                    var maxes = (await Orderer.MaxUnits(epochID)).Get(forker);
                     if (maxes == null || maxes.Count == 0)
                     {
                         proof.ReplaceCommit(null);
@@ -555,9 +555,10 @@ namespace Aurem.Forking
             }
         }
 
+        // FIXME: force synchronous of HandleForkerUnit or something else?
         private void CheckCommitment(IUnit u, IDag _)
         {
-            if(HandleForkerUnit(u) && !HasCommitmentTo(u))
+            if (HandleForkerUnit(u).GetAwaiter().GetResult() && !HasCommitmentTo(u))
             {
                 throw new NoCommitmentException("missing commitment to fork");
             }
@@ -571,7 +572,7 @@ namespace Aurem.Forking
 
         public bool IsForker(ushort forker) => Commitments.IsForker(forker);
 
-        private bool HandleForkerUnit(IUnit u)
+        private async Task<bool> HandleForkerUnit(IUnit u)
         {
             var creator = u.Creator();
             if (IsForker(creator))
@@ -579,7 +580,7 @@ namespace Aurem.Forking
                 return true;
             }
 
-            var maxes = Orderer.MaxUnits(u.EpochID()).Get(creator);
+            var maxes = (await Orderer.MaxUnits(u.EpochID())).Get(creator);
             if (maxes == null || maxes.Count == 0)
             {
                 return false;
@@ -689,7 +690,7 @@ namespace Aurem.Forking
             }
         }
 
-        public (IUnit, Exception?) Disambiguate(IUnit[] possibleParents, IPreunit pu)
+        public async Task<(IUnit, Exception?)> Disambiguate(IUnit[] possibleParents, IPreunit pu)
         {
             if (possibleParents != null || possibleParents.Length == 0)
             {
@@ -721,7 +722,7 @@ namespace Aurem.Forking
                 return (null, new ComplianceException("unit built on noncommitted parent"));
             }
 
-            var u = Orderer.UnitsByHash(cu.Hash())?[0];
+            var u = (await Orderer.UnitsByHash(cu.Hash()))?[0];
             if (u == null)
             {
                 return (null, new NoCommitmentException("no committed unit needed for disambiguation"));
@@ -866,7 +867,7 @@ namespace Aurem.Forking
                     return;
                 }
 
-                var maxes = Orderer.MaxUnits(u.EpochID()).Get(u.Creator());
+                var maxes = (await Orderer.MaxUnits(u.EpochID())).Get(u.Creator());
 
                 // there can only be one unit in maxes, since its creator is not a forker
                 IUnit? max = null;

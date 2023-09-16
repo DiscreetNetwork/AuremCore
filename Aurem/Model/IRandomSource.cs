@@ -26,6 +26,6 @@ namespace Aurem.Model
         /// <param name="parents">The parents of the unit which should include this data.</param>
         /// <param name="level">The level of the unit which should include this data.</param>
         /// <returns>The data to include in the unit.</returns>
-        public byte[] DataToInclude(List<IUnit> parents, int level);
+        public (byte[], Exception?) DataToInclude(List<IUnit> parents, int level);
     }
 }
