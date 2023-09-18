@@ -23,6 +23,12 @@ namespace BN256Core
             return this;
         }
 
+        public Signature Unmarshal(byte[] bytes)
+        {
+            Sig.Unmarshal(bytes);
+            return this;
+        }
+
         public static Signature Add(Signature s1, Signature s2)
         {
             if (s1 == null) return s2;
