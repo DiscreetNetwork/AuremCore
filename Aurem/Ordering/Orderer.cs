@@ -100,7 +100,7 @@ namespace Aurem.Ordering
             var ticker = new PeriodicTimer(Conf.GossipInterval);
             _ = Task.Run(async () =>
             {
-                var rng = new Random();
+                var rng = new System.Random();
                 while (await ticker.WaitForNextTickAsync(Source.Token))
                 {
                     if (Source.Token.IsCancellationRequested)
