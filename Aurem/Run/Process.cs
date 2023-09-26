@@ -1,0 +1,177 @@
+﻿using Aurem.Forking;
+using Aurem.Logging;
+using Aurem.Model;
+using Aurem.Ordering;
+using Aurem.Random;
+using Aurem.Syncing;
+using AuremCore.Core;
+using AuremCore.Crypto.Threshold;
+using AuremCore.FastLogger;
+using AuremCore.Network;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+namespace Aurem.Run
+{
+    public static class Process
+    {
+        private static void LogWTK(Logger log, WeakThresholdKey wtkey)
+        {
+            var providers = new List<ushort>(wtkey.ShareProviders.Count);
+            foreach (var provider in wtkey.ShareProviders.Keys)
+            {
+                providers.Add(provider);
+            }
+
+            log.Log().Val(Logging.Constants.WTKThreshold, wtkey.Threshold).Vals(Logging.Constants.WTKShareProviders, providers).Msg(Logging.Constants.GotWTK);
+        }
+
+        private static (Func<Task>?, Func<Task>?, Exception?) Setup(Config.Config conf, Channel<WeakThresholdKey> wtkchan)
+        {
+            try
+            {
+                var log = LoggingUtil.NewLogger(conf);
+                var rsf = new Beacon(conf);
+
+                async Task extractHead(IList<IUnit> units)
+                {
+                    var head = units[^1];
+                    if (head.Level() == conf.OrderStartLevel)
+                    {
+                        await wtkchan.Writer.WriteAsync(rsf.GetWTK(head.Creator()));
+                        return;
+                    }
+
+                    throw new Exception("Setup phase: wrong level");
+                }
+
+                var ord = new Orderer(conf, null!, extractHead, log);
+                (var sync, var err) = Syncer.New(conf, ord, log, true);
+                if (err != null) throw err;
+
+                var start = () => ord.Start(rsf, sync, NopAlerter.Instance);
+                var stop = () => ord.Stop().ContinueWith(x => wtkchan.Writer.Complete(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            
+                return (start, stop, null);
+            }
+            catch (Exception e)
+            {
+                return (null, null, e);
+            }
+        }
+
+        private static (Func<Task>?, Func<Task>?, Exception?) Consensus(Config.Config conf, Channel<WeakThresholdKey> wtkchan, IDataSource ds, ChannelWriter<Preblock> sink)
+        {
+            try
+            {
+                var log = LoggingUtil.NewLogger(conf);
+
+                async Task makePreblock(IList<IUnit> units)
+                {
+                    await sink.WriteAsync(ModelUtils.ToPreblock(units));
+                    var timingUnit = units[^1];
+                    if (timingUnit.Level() == conf.LastLevel && timingUnit.EpochID() == conf.NumberOfEpochs - 1)
+                    {
+                        sink.Complete();
+                    }
+                }
+
+                var ord = new Orderer(conf, ds, makePreblock, log);
+                (var sync, var err) = Syncer.New(conf, ord, log, false);
+                if (err != null) throw err;
+
+                var netserv = new TCPServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses.ToArray(), log);
+                var alert = new AlertService(conf, ord, netserv, log);
+
+                var started = new TaskCompletionSource();
+                var start = () =>
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            if (wtkchan.Reader.Completion.IsCompleted) return;
+                            var wtkey = await wtkchan.Reader.ReadAsync();
+                            if (wtkey == null) return;
+
+                            LogWTK(log, wtkey);
+
+                            conf.WTKey = wtkey;
+                            await ord.Start(new CoinFactory(conf.Pid, wtkey), sync, alert);
+                        }
+                        finally
+                        {
+                            started.SetResult();
+                        }
+                    });
+
+                    return Task.CompletedTask;
+                };
+                var stop = async () =>
+                {
+                    await started.Task;
+                    netserv.Stop();
+                    await ord.Stop();
+                };
+
+                return (start, stop, null);
+            }
+            catch (Exception e)
+            {
+                return (null, null, e);
+            }
+        }
+
+        public static (Func<Task>?, Func<Task>?, Exception?) NoBeacon(Config.Config conf, IDataSource ds, ChannelWriter<Preblock> ps)
+        {
+            var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
+            wtkchan.Writer.TryWrite(WeakThresholdKey.Seeded(conf.NProc, conf.Pid, 2137, new Dictionary<ushort, bool>()));
+            (var start, var stop, var err) = Consensus(conf, wtkchan, ds, ps);
+            
+            return (start, stop, err);
+        }
+        /// <summary>
+        /// Main external API of the Aurem testing framework. Takes two configs, one for setup and one for consensus, as well as a data source and a preblock sink.
+        /// Initializes two orderers and a channel connecting them used for passing the result of the setup phase.
+        /// Returns two functions which can be used to start and stop the system, which are null when an exception occurs when setting up the two functions.
+        /// The provided channelwriter as the preblock sink is signaled to close when the last preblock is produced.
+        /// </summary>
+        /// <param name="setupConf"></param>
+        /// <param name="conf"></param>
+        /// <param name="ds"></param>
+        /// <param name="ps"></param>
+        /// <returns></returns>
+        public static (Func<Task>? Start, Func<Task>? Stop, Exception? Ex) Create(Config.Config setupConf, Config.Config conf, IDataSource ds, ChannelWriter<Preblock> ps)
+        {
+            var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
+            (var startSetup, var stopSetup, var setupErr) = Setup(setupConf, wtkchan);
+            if (setupErr != null)
+            {
+                return (null, null, new Exception($"an error occurred while initializing setup: {setupErr.Message}"));
+            }
+
+            (var startConsensus, var stopConsensus, var consensusErr) = Consensus(conf, wtkchan, ds, ps);
+            if (consensusErr != null)
+            {
+                return (null, null, new Exception($"an error occurred while initializing consensus: {consensusErr.Message}"));
+            }
+
+            var start = async () =>
+            {
+                await startSetup!();
+                await startConsensus!();
+            };
+            var stop = async () =>
+            {
+                await stopSetup!();
+                await stopConsensus!();
+            };
+
+            return (start, stop, null);
+        }
+    }
+}

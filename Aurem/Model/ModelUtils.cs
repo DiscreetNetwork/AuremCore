@@ -18,9 +18,9 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="round"></param>
         /// <returns></returns>
-        public static Preblock ToPreblock(IUnit[] round)
+        public static Preblock ToPreblock(IList<IUnit> round)
         {
-            var data = new List<byte[]>(round.Length);
+            var data = new List<byte[]>(round.Count);
             foreach (var u in round)
             {
                 if (u.Dealing())

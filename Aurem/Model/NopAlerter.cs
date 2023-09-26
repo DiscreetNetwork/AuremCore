@@ -13,25 +13,27 @@ namespace Aurem.Model
     /// </summary>
     public class NopAlerter : IAlerter
     {
+        public static readonly NopAlerter Instance = new NopAlerter();
+
         public void Start() { }
 
-        public void Stop() { }
+        public Task Stop() => Task.CompletedTask;
 
-        public void NewFork(IPreunit a, IPreunit b) { }
+        public Task NewFork(IPreunit a, IPreunit b) => Task.CompletedTask;
 
-        public void HandleIncoming(Conn conn) { }
+        public Task HandleIncoming(Conn conn) => Task.CompletedTask;
 
-        public IUnit Disambiguate(IUnit[] units, IPreunit preunit) { return null; }
+        public Task<(IUnit, Exception?)> Disambiguate(IUnit[] units, IPreunit preunit) => Task.FromResult<(IUnit, Exception?)>((null, null));
 
-        public void RequestCommitment(IPreunit preunit, ushort proc) { }
+        public Task<Exception?> RequestCommitment(IPreunit preunit, ushort proc) => Task.FromResult<Exception?>(null);
 
-        public void ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc) { }
+        public Task<Exception?> ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc) => Task.FromResult<Exception?>(null);
 
         public bool IsForker(ushort proc) { return false; }
 
         public IObserverManager AddForkObserver(Action<IPreunit, IPreunit> handler) { return new NopObserverManager(); }
 
-        public void Lock(ushort proc) { }
+        public Task Lock(ushort proc) => Task.CompletedTask;
 
         public void Unlock(ushort proc) { }
     }

@@ -166,7 +166,7 @@ namespace Aurem.Ordering
 
                         if (epoch >= current && timingUnit.Level() <= Conf.LastLevel)
                         {
-                            ToPreblock(round!);
+                            await ToPreblock(round!);
                             Log.Info().Val(Logging.Constants.Level, timingUnit.Level()).Val(Logging.Constants.Epoch, epoch).Msg(Logging.Constants.PreblockProduced);
                         }
 

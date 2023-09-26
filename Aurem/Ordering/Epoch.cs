@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Aurem.Ordering
@@ -22,7 +23,7 @@ namespace Aurem.Ordering
         public IRandomSource Rs;
         public Logger Log;
 
-        private ValueSignal<bool> More;
+        private Channel<bool> More;
 
         public Epoch(uint id, Config.Config conf, ISyncer syncer, IRandomSourceFactory rsf, IAlerter alert, ConcurrentQueue<IUnit> belt, ConcurrentQueue<List<IUnit>> output, Logger log)
         {
@@ -44,7 +45,7 @@ namespace Aurem.Ordering
             });
 
             Log.Log().Msg(Logging.Constants.NewEpoch);
-            More = new ValueSignal<bool>();
+            More = Channel.CreateBounded<bool>(1);
         }
 
         public async Task Close()
@@ -60,17 +61,15 @@ namespace Aurem.Ordering
 
         public async Task<bool> WantsMoreUnits()
         {
-            if (More.IsClosed && !More.HasValue) return false;
-
-            if (!More.IsClosed)
+            if (!More.Reader.Completion.IsCompleted)
             {
-                await More.WaitAsync();
+                await More.Reader.ReadAsync();
                 return true;
             }
 
             return false;
         }
 
-        public void NoMoreUnits() => More.Close();
+        public void NoMoreUnits() => More.Writer.Complete();
     }
 }

@@ -23,5 +23,5 @@ namespace Aurem.Model
     /// PreblockMaker is a function that is called on a collection of units forming a timing round that was produced by <see cref="IOrderer"/>.
     /// </summary>
     /// <param name="units"></param>
-    public delegate void PreblockMaker(IEnumerable<IUnit> units);
+    public delegate Task PreblockMaker(IList<IUnit> units);
 }

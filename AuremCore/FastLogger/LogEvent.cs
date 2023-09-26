@@ -57,6 +57,12 @@ namespace AuremCore.FastLogger
             return this;
         }
 
+        public LogEvent Vals<T>(string k, IEnumerable<T> v)
+        {
+            Values[k] = v;
+            return this;
+        }
+
         public LogEvent Stringer(string k, object v)
         {
             Values[k] = v?.ToString();
