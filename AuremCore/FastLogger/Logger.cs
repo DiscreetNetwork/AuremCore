@@ -51,7 +51,7 @@ namespace AuremCore.FastLogger
                     {
                         throw new Exception("error encountered when dequeueing from the event queue");
                     }
-                    await writer.WriteLineAsync(e.EncodeData().AsMemory(), token);
+                    await writer.WriteLineAsync(e!.EncodeData().AsMemory(), token);
                 }
 
                 await writer.FlushAsync();

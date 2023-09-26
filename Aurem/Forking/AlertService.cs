@@ -18,7 +18,7 @@ namespace Aurem.Forking
 
         public IObserverManager AddForkObserver(Action<IPreunit, IPreunit> handler) => Handler.AddForkObserver(handler);
 
-        public (IUnit, Exception?) Disambiguate(IUnit[] units, IPreunit preunit) => Handler.Disambiguate(units, preunit);
+        public Task<(IUnit, Exception?)> Disambiguate(IUnit[] units, IPreunit preunit) => Handler.Disambiguate(units, preunit);
 
         public Task HandleIncoming(Conn conn) => Handler.HandleIncoming(conn);
 

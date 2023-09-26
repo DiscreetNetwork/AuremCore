@@ -33,7 +33,7 @@ namespace Aurem.Model
         /// <param name="units"></param>
         /// <param name="preunit"></param>
         /// <returns></returns>
-        public (IUnit, Exception?) Disambiguate(IUnit[] units, IPreunit preunit);
+        public Task<(IUnit, Exception?)> Disambiguate(IUnit[] units, IPreunit preunit);
 
         /// <summary>
         /// Requests a commitment that is missing in the given preunit from the committee member with the given process ID.

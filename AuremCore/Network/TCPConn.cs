@@ -14,6 +14,7 @@ namespace AuremCore.Network
         private IPEndPoint _remote;
         private bool _connected;
         private CancellationTokenSource _cancellationTokenSource;
+        private TimeSpan timeout = TimeSpan.FromSeconds(15);
 
         public override IPEndPoint RemoteEndPoint => _remote;
         public override bool IsConnected => _connected;
@@ -34,6 +35,15 @@ namespace AuremCore.Network
             _cancellationTokenSource = new();
         }
 
+        public TCPConn(TcpClient client, TimeSpan timeout)
+        {
+            this.client = client;
+            this.timeout = timeout;
+            _remote = (IPEndPoint)client?.Client?.RemoteEndPoint;
+            _connected = client.Connected;
+            _cancellationTokenSource = new();
+        }
+
         public override async Task Connect()
         {
             if (!client.Connected)
@@ -45,13 +55,45 @@ namespace AuremCore.Network
 
         public override async Task<int> Read(byte[] s)
         {
-            return await client.GetStream().ReadAsync(s, _cancellationTokenSource.Token);
+            //return await client.GetStream().ReadAsync(s, _cancellationTokenSource.Token);
+            var res = client.GetStream().BeginRead(s, 0, s.Length, null, null);
+            var _timeout = DateTime.Now.Add(timeout).Ticks;
+            while (!res.IsCompleted && _timeout < DateTime.Now.Ticks && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                await Task.Delay(50, _cancellationTokenSource.Token);
+            }
+
+            var x = client.GetStream().EndRead(res);
+            if (res.IsCompleted)
+            {
+                return s.Length;
+            }
+            else
+            {
+                return x;
+            }
         }
 
         public override async Task<int> Write(byte[] s)
         {
-            await client.GetStream().WriteAsync(s, _cancellationTokenSource.Token);
-            return s.Length;
+            //await client.GetStream().WriteAsync(s, _cancellationTokenSource.Token);
+            //return s.Length;
+            var res = client.GetStream().BeginWrite(s, 0, s.Length, null, null);
+            var _timeout = DateTime.Now.Add(timeout).Ticks;
+            while (!res.IsCompleted && _timeout < DateTime.Now.Ticks && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                await Task.Delay(50, _cancellationTokenSource.Token);
+            }
+
+            client.GetStream().EndWrite(res);
+            if (res.IsCompleted)
+            {
+                return s.Length;
+            }
+            else
+            {
+                return 0;
+            }
         }
 
         public override async Task Close()

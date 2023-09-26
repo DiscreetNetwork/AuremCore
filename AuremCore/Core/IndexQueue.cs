@@ -15,6 +15,27 @@ namespace AuremCore.Core
         private const int defaultCapacity = 32;
         private T[] buf;
         private int _offset = 0;
+        private bool isFixedSize = false;
+
+        //public void PrintState()
+        //{
+        //    Console.Write("[");
+        //    for (int i = 0; i < buf.Length; i++)
+        //    {
+        //        Console.Write($"{buf[i]}");
+        //        if (i < buf.Length - 1)
+        //        {
+        //            Console.Write(" ");
+        //        }
+        //    }
+        //    Console.WriteLine("]");
+        //}
+
+
+        public IndexQueue(int maxCapacity, bool fixedSize) : this(maxCapacity)
+        {
+            isFixedSize = fixedSize;
+        }
 
         public IndexQueue(int capacity)
         {
@@ -43,7 +64,7 @@ namespace AuremCore.Core
 
         public int Count { get; private set; }
 
-        private bool IsFull => Count == Capacity;
+        public bool IsFull => Count == Capacity;
 
         private bool IsSplit => _offset + Count > Capacity;
 
@@ -56,6 +77,8 @@ namespace AuremCore.Core
 
             private set
             {
+                if (isFixedSize) throw new Exception("cannot change capacity");
+
                 if (value < Count) throw new ArgumentOutOfRangeException(nameof(value));
 
                 if (value == buf.Length) return;
@@ -95,11 +118,15 @@ namespace AuremCore.Core
         {
             if (IsFull)
             {
+                if (isFixedSize) return;
+
                 Capacity = (Capacity == 0) ? defaultCapacity : 2 * Capacity;
             }
 
             buf[(Count + _offset) % Capacity] = item;
             ++Count;
+
+            //PrintState();
         }
 
         public T Dequeue()
@@ -114,6 +141,9 @@ namespace AuremCore.Core
 
             var res = buf[(Count + _offset) % Capacity];
             --Count;
+
+            //PrintState();
+
             return res;
         }
 
@@ -129,13 +159,19 @@ namespace AuremCore.Core
             else if (index == Count - 1)
             {
                 --Count;
+
+                //PrintState();
+
                 return;
             }
 
-            for (int i = index + 1; i < Count; i++)
+            for (int i = index; i < Count; i++)
             {
                 buf[(i + _offset) % Capacity] = buf[(i + 1 + _offset) % Capacity];
             }
+
+            //PrintState();
+            Count--;
         }
 
         public IEnumerator<T> GetEnumerator()

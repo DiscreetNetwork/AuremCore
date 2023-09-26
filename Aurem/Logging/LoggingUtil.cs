@@ -19,7 +19,7 @@ namespace Aurem.Logging
         /// <param name="errors"></param>
         /// <param name="size"></param>
         /// <param name="log"></param>
-        public static void AddingErrors(IList<Exception> errors, int size, Logger log)
+        public static void AddingErrors(IList<Exception>? errors, int size, Logger log)
         {
             if (errors == null || errors.Count == 0)
             {

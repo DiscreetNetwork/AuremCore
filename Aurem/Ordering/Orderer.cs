@@ -61,7 +61,7 @@ namespace Aurem.Ordering
             var send = async (IUnit u) =>
             {
                 await Insert(u);
-                Syncer.Multicast(u);
+                await Syncer.Multicast(u);
             };
 
             var epochProofBuilder = EpochProofBuilder.Factory(Conf, Log);
@@ -114,7 +114,7 @@ namespace Aurem.Ordering
                         pidToCall++;
                     }
 
-                    Syncer.RequestGossip(pidToCall);
+                    await Syncer.RequestGossip(pidToCall);
                 }
             });
 
@@ -124,7 +124,7 @@ namespace Aurem.Ordering
         public async Task Stop()
         {
             await Alerter.Stop();
-            Syncer.Stop();
+            await Syncer.Stop();
 
             if (Previous != null) await Previous.Close();
             if (Current != null) await Current.Close();
@@ -421,7 +421,7 @@ namespace Aurem.Ordering
                 }
                 else
                 {
-                    Syncer.RequestGossip(source);
+                    await Syncer.RequestGossip(source);
                 }
             }
 

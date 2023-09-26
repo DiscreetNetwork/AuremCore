@@ -152,7 +152,7 @@ namespace Aurem.Adding
                 {
                     if (!failed[i])
                     {
-                        getErrors()[i] = AddToWaiting(pu, source);
+                        getErrors()[i] = await AddToWaiting(pu, source);
                     }
                 }
 
@@ -191,7 +191,7 @@ namespace Aurem.Adding
                         {
                             IUnit parent;
                             Exception? caught = null;
-                            (parent, caught) = Alerter.Disambiguate(us, wp.Pu);
+                            (parent, caught) = await Alerter.Disambiguate(us, wp.Pu);
 
 
                             caught = await Alerter.ResolveMissingCommitment(caught, wp.Pu, wp.Source);
@@ -208,7 +208,7 @@ namespace Aurem.Adding
                 {
                     wp.Failed = true;
                     Log.Warn().Hex(Constants.ControlHash, wp.Pu.View().ControlHash.Data).Val(Constants.PID, wp.Source).Val(Constants.Height, wp.Pu.View().Heights).Msg(Constants.InvalidControlHash);
-                    HandleInvalidControlHash(wp.Source, wp.Pu, parents);
+                    await HandleInvalidControlHash(wp.Source, wp.Pu, parents);
                     return;
                 }
 
@@ -244,17 +244,17 @@ namespace Aurem.Adding
             }
         }
 
-        public void HandleInvalidControlHash(ushort sourcePID, IPreunit witness, IList<IUnit> candidateParents)
+        public async Task HandleInvalidControlHash(ushort sourcePID, IPreunit witness, IList<IUnit> candidateParents)
         {
             var heights = witness.View().Heights;
-            var ids = new List<ulong>(heights.Length);
+            var ids = new ulong[heights.Length];
             for (int i = 0; i < heights.Length; i++)
             {
-                ids.Add(IPreunit.ID(heights[i], (ushort)i, witness.EpochID()));
+                ids[i] = IPreunit.ID(heights[i], (ushort)i, witness.EpochID());
             }
 
             // this should trigger download of all parents including some that may witness a fork, and start an alert as they are added.
-            Syncer.RequestFetch(sourcePID, ids);
+            await Syncer.RequestFetch(sourcePID, ids);
         }
 
         /// <summary>
@@ -311,7 +311,7 @@ namespace Aurem.Adding
         /// </summary>
         /// <param name="wp"></param>
         /// <param name="maxHeights"></param>
-        public void FetchMissing(WaitingPreunit wp, IList<int> maxHeights)
+        public async Task FetchMissing(WaitingPreunit wp, IList<int> maxHeights)
         {
             var epoch = wp.Pu.EpochID();
             var toRequest = new List<ulong>(8);
@@ -345,14 +345,14 @@ namespace Aurem.Adding
 
                 if (toRequest.Count > Conf.GossipAbove)
                 {
-                    Syncer.RequestGossip(wp.Source);
+                    await Syncer.RequestGossip(wp.Source);
                     return;
                 }
             }
 
             if (toRequest.Count > 0)
             {
-                Syncer.RequestFetch(wp.Source, toRequest);
+                await Syncer.RequestFetch(wp.Source, toRequest.ToArray());
             }
         }
 
@@ -465,7 +465,7 @@ namespace Aurem.Adding
         /// <param name="pu"></param>
         /// <param name="source"></param>
         /// <returns></returns>
-        public Exception? AddToWaiting(IPreunit pu, ushort source)
+        public async Task<Exception?> AddToWaiting(IPreunit pu, ushort source)
         {
             if (Waiting.ContainsKey(pu.Hash())) return new DuplicatePreunitException(Waiting[pu.Hash()].Pu);
             

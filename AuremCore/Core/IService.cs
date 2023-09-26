@@ -9,7 +9,10 @@ namespace AuremCore.Core
     // Service that can be started and stopped
     public interface IService
     {
-        public Exception Start();
-        public void Stop();
+        public Exception? Start();
+
+        public virtual void Stop() => StopAsync().GetAwaiter().GetResult();
+
+        public Task StopAsync();
     }
 }

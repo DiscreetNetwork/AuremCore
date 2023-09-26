@@ -15,20 +15,20 @@ namespace Aurem.Model
         /// Request gossip with the given committee member.
         /// </summary>
         /// <param name="proc">The pid corresponding to the committee member to request gossip with.</param>
-        public void RequestGossip(ushort proc);
+        public Task RequestGossip(ushort proc);
 
         /// <summary>
         /// Sends a request to the given committee member for units with the given IDs.
         /// </summary>
         /// <param name="proc">The pid corresponding to the committee member to fetch units from.</param>
         /// <param name="uids">The unit IDs corresponding to the units to fetch.</param>
-        public void RequestFetch(ushort proc, IEnumerable<ulong> uids);
+        public Task RequestFetch(ushort proc, ulong[] uids);
 
         /// <summary>
         /// Multicasts a unit.
         /// </summary>
         /// <param name="unit">The unit to multicast.</param>
-        public void Multicast(IUnit unit);
+        public Task Multicast(IUnit unit);
 
         /// <summary>
         /// Starts the syncer.
@@ -38,6 +38,6 @@ namespace Aurem.Model
         /// <summary>
         /// Stops the syncer.
         /// </summary>
-        public void Stop();
+        public Task Stop();
     }
 }

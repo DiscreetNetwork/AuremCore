@@ -13,4 +13,8 @@
     <ProjectReference Include="..\DiscreetCore\DiscreetCoreLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Syncing\" />
+  </ItemGroup>
+
 </Project>

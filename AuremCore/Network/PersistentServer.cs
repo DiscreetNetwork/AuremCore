@@ -91,7 +91,6 @@ namespace AuremCore.Network
                             await Task.Delay(100);
                             continue;
                         }
-                        
                     }
                 }
                 finally
