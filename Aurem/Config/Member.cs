@@ -68,6 +68,7 @@ namespace Aurem.Config
             w.Write(RMCSecretKey.Encode() + " ");
             w.Write(P2PSecretKey.Encode() + " ");
             w.Write(Pid.ToString() + "\n");
+            w.Flush();
         }
     }
 }

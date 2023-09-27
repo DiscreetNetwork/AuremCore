@@ -114,6 +114,33 @@ namespace AuremCore.Core.Extensions
             }
         }
 
+        public static async Task<(TResult, Exception?)> InvokeAndCaptureExceptionAsync<TResult>(this Func<Task<TResult>> func)
+        {
+            try
+            {
+                var res = await func.Invoke();
+                return (res, null);
+            }
+            catch (Exception e)
+            {
+                return (default!, e);
+            }
+        }
+
+        public static async Task<Exception?> InvokeAndCaptureExceptionAsync(this Func<Task> func)
+        {
+            try
+            {
+                await func.Invoke();
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
+            }
+        }
+
+
         public static TResult InvokeAndCaptureException<T1, TResult>(this Func<T1, TResult> func, T1 arg1, out Exception? ex)
         {
             try
@@ -126,6 +153,32 @@ namespace AuremCore.Core.Extensions
             {
                 ex = e;
                 return default!;
+            }
+        }
+
+        public static async Task<(TResult, Exception?)> InvokeAndCaptureExceptionAsync<T1, TResult>(this Func<T1, Task<TResult>> func, T1 arg1)
+        {
+            try
+            {
+                var res = await func.Invoke(arg1);
+                return (res, null);
+            }
+            catch (Exception e)
+            {
+                return (default!, e);
+            }
+        }
+
+        public static async Task<Exception?> InvokeAndCaptureExceptionAsync<T1>(this Func<T1, Task> func, T1 arg1)
+        {
+            try
+            {
+                await func.Invoke(arg1);
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
             }
         }
 
@@ -144,6 +197,32 @@ namespace AuremCore.Core.Extensions
             }
         }
 
+        public static async Task<(TResult, Exception?)> InvokeAndCaptureExceptionAsync<T1, T2, TResult>(this Func<T1, T2, Task<TResult>> func, T1 arg1, T2 arg2)
+        {
+            try
+            {
+                var res = await func.Invoke(arg1, arg2);
+                return (res, null);
+            }
+            catch (Exception e)
+            {
+                return (default!, e);
+            }
+        }
+
+        public static async Task<Exception?> InvokeAndCaptureExceptionAsync<T1, T2>(this Func<T1, T2, Task> func, T1 arg1, T2 arg2)
+        {
+            try
+            {
+                await func.Invoke(arg1, arg2);
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
+            }
+        }
+
         public static TResult InvokeAndCaptureException<T1, T2, T3, TResult>(this Func<T1, T2, T3, TResult> func, T1 arg1, T2 arg2, T3 arg3, out Exception? ex)
         {
             try
@@ -159,6 +238,32 @@ namespace AuremCore.Core.Extensions
             }
         }
 
+        public static async Task<(TResult, Exception?)> InvokeAndCaptureExceptionAsync<T1, T2, T3, TResult>(this Func<T1, T2, T3, Task<TResult>> func, T1 arg1, T2 arg2, T3 arg3)
+        {
+            try
+            {
+                var res = await func.Invoke(arg1, arg2, arg3);
+                return (res, null);
+            }
+            catch (Exception e)
+            {
+                return (default!, e);
+            }
+        }
+
+        public static async Task<Exception?> InvokeAndCaptureExceptionAsync<T1, T2, T3>(this Func<T1, T2, T3, Task> func, T1 arg1, T2 arg2, T3 arg3)
+        {
+            try
+            {
+                await func.Invoke(arg1, arg2, arg3);
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
+            }
+        }
+
         public static TResult InvokeAndCaptureException<T1, T2, T3, T4, TResult>(this Func<T1, T2, T3, T4, TResult> func, T1 arg1, T2 arg2, T3 arg3, T4 arg4, out Exception? ex)
         {
             try
@@ -171,6 +276,32 @@ namespace AuremCore.Core.Extensions
             {
                 ex = e;
                 return default!;
+            }
+        }
+
+        public static async Task<(TResult, Exception?)> InvokeAndCaptureExceptionAsync<T1, T2, T3, T4, TResult>(this Func<T1, T2, T3, T4, Task<TResult>> func, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        {
+            try
+            {
+                var res = await func.Invoke(arg1, arg2, arg3, arg4);
+                return (res, null);
+            }
+            catch (Exception e)
+            {
+                return (default!, e);
+            }
+        }
+
+        public static async Task<Exception?> InvokeAndCaptureExceptionAsync<T1, T2, T3, T4>(this Func<T1, T2, T3, T4, Task> func, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        {
+            try
+            {
+                await func.Invoke(arg1, arg2, arg3, arg4);
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
             }
         }
 

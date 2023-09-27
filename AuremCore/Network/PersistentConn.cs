@@ -57,7 +57,7 @@ namespace AuremCore.Network
             Closed = new TaskCompletionSource<bool>();
         }
 
-        public override Stream NetStream => null;
+        //public override Stream NetStream => null;
 
         public bool IsClosed()
         {

@@ -106,7 +106,7 @@ namespace Aurem.Syncing
 
         protected virtual async Task In()
         {
-            var conn = await DelegateExtensions.InvokeAndCaptureException(Netserv.Listen, out var err);
+            (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
             if (err != null)
             {
                 return;
@@ -114,7 +114,7 @@ namespace Aurem.Syncing
 
             try
             {
-                var preunit = await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.ReadPreunitAsync, conn.NetStream, out err);
+                (var preunit, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadPreunitAsync, conn);
                 if (err != null)
                 {
                     Log.Error().Str("where", "Multicast.In.Decode").Msg(err.Message);

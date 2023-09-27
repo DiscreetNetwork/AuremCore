@@ -22,7 +22,7 @@ namespace AuremCore.Network
 
         public abstract bool IsConnected { get; }
 
-        public abstract Stream NetStream { get; }
+        //public abstract Stream NetStream { get; }
 
         public abstract Task Interrupt();
 

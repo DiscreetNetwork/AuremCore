@@ -1,5 +1,6 @@
 ﻿using Aurem.Config;
 using Aurem.Model;
+using Aurem.Random;
 using AuremCore.Network;
 using System;
 using System.Buffers.Binary;
@@ -25,47 +26,19 @@ namespace Aurem.Serialize
     /// </list>
     /// All integers are represented as unsigned 32 or 16 bit values.
     /// </summary>
-    public class Encoder : Stream
+    public class Encoder
     {
-        public Encoder(Stream s) { this.s = s; }
+        public Encoder(Stream s) { this.s = s; conn = null; }
 
         public Stream Base => s;
 
-        private Stream s;
+        private Stream? s;
+        private Conn? conn;
 
-        public override bool CanRead => s.CanRead;
-
-        public override bool CanSeek => s.CanSeek;
-
-        public override bool CanWrite => s.CanWrite;
-
-        public override long Length => s.Length;
-
-        public override long Position { get => s.Position; set => s.Position = value; }
-
-        public override void Flush()
+        public Encoder(Conn conn)
         {
-            s.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return s.Read(buffer, offset, count);
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return s.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            s.SetLength(value);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            s.Write(buffer, offset, count);
+            this.conn = conn;
+            s = null;
         }
 
         /// <summary>
@@ -74,7 +47,12 @@ namespace Aurem.Serialize
         /// <param name="crown"></param>
         public void EncodeCrown(Crown crown)
         {
-            Write(SerializeCrown(crown));
+            if (conn != null)
+            {
+                conn.Write(SerializeCrown(crown)).Wait();
+                return;
+            }
+            s!.Write(SerializeCrown(crown));
         }
 
         public static byte[] SerializeCrown(Crown crown)
@@ -97,7 +75,12 @@ namespace Aurem.Serialize
 
         public async Task EncodeCrownAsync(Crown crown)
         {
-            await s.WriteAsync(SerializeCrown(crown));
+            if (conn != null)
+            {
+                await conn.Write(SerializeCrown(crown));
+                return;
+            }
+            await s!.WriteAsync(SerializeCrown(crown));
         }
 
         /// <summary>
@@ -106,12 +89,22 @@ namespace Aurem.Serialize
         /// <param name="dagInfo"></param>
         public void EncodeDagInfo(DagInfo dagInfo)
         {
-            Write(SerializeDagInfo(dagInfo));
+            if (conn != null)
+            {
+                conn.Write(SerializeDagInfo(dagInfo)).Wait();
+                return;
+            }
+            s!.Write(SerializeDagInfo(dagInfo));
         }
 
         public async Task EncodeDagInfoAsync(DagInfo dagInfo)
         {
-            await s.WriteAsync(SerializeDagInfo(dagInfo));
+            if (conn != null)
+            {
+                await conn.Write(SerializeDagInfo(dagInfo));
+                return;
+            }
+            await s!.WriteAsync(SerializeDagInfo(dagInfo));
         }
 
         public static byte[] SerializeDagInfo(DagInfo dagInfo)
@@ -142,12 +135,22 @@ namespace Aurem.Serialize
 
         public void EncodeUnit(IPreunit unit)
         {
-            s.Write(SerializeUnit(unit));
+            if (conn != null)
+            {
+                conn.Write(SerializeUnit(unit)).Wait();
+                return;
+            }
+            s!.Write(SerializeUnit(unit));
         }
 
         public async Task EncodeUnitAsync(IPreunit unit)
         {
-            await s.WriteAsync(SerializeUnit(unit));
+            if (conn != null)
+            {
+                await conn.Write(SerializeUnit(unit));
+                return;
+            }
+            await s!.WriteAsync(SerializeUnit(unit));
         }
 
         public static byte[] SerializeUnit(IPreunit unit)
@@ -206,7 +209,14 @@ namespace Aurem.Serialize
 
             var bytes = new byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(bytes, (uint)units.Length);
-            await s.WriteAsync(bytes);
+            if (conn != null)
+            {
+                await conn.Write(bytes);
+            }
+            else
+            {
+                await s!.WriteAsync(bytes);
+            }
 
             foreach (var u in EncodeUtil.SortChunk(units))
             {
@@ -218,7 +228,14 @@ namespace Aurem.Serialize
         {
             var bytes = new byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(bytes, i);
-            Write(bytes);
+            if (conn != null)
+            {
+                conn.Write(bytes).Wait();
+            }
+            else
+            {
+                s!.Write(bytes);
+            }
         }
     }
 }

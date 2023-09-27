@@ -71,7 +71,7 @@ namespace Aurem.Syncing
         public async Task In()
         {
 
-            var conn = await DelegateExtensions.InvokeAndCaptureException(Netserv.Listen, out var err);
+            (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
             if (err != null)
             {
                 return;
@@ -117,7 +117,7 @@ namespace Aurem.Syncing
 
                 try
                 {
-                    await EncodeUtil.WriteChunkAsync(units, conn.NetStream);
+                    await EncodeUtil.WriteChunkAsync(units, conn);
                 }
                 catch (Exception e)
                 {
@@ -178,7 +178,7 @@ namespace Aurem.Syncing
                 IPreunit[] units;
                 try
                 {
-                    units = await EncodeUtil.ReadChunkAsync(conn!.NetStream);
+                    units = await EncodeUtil.ReadChunkAsync(conn!);
                 }
                 catch (Exception e)
                 {

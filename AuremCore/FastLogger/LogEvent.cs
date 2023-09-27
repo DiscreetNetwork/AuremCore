@@ -51,6 +51,61 @@ namespace AuremCore.FastLogger
             return JsonSerializer.Serialize(Values);
         }
 
+        internal (string Message, string Timestamp, string Level, List<(string K, string V)> Fields) EncodeDataForPrinting()
+        {
+            if (Logger.Context.TimeStamp)
+            {
+                if (!Values.ContainsKey(Logger.Context.TimestampFieldName)) Timestamp();
+            }
+
+            var rv = new List<(string, string)>();
+            var msg = (string)Values[Logger.Context.MessageFieldName];
+            var timestamp = (string)Values[Logger.Context.TimestampFieldName];
+            var lvl = (string)Values[Logger.Context.LevelFieldName];
+            
+            if (lvl == Logger.Context.LevelDebugValue)
+            {
+                lvl = "DBG";
+            }
+            else if (lvl == Logger.Context.LevelTraceValue)
+            {
+                lvl = "LVL";
+            }
+            else if (lvl == Logger.Context.LevelInfoValue)
+            {
+                lvl = "INF";
+            }
+            else if (lvl == Logger.Context.LevelWarnValue)
+            {
+                lvl = "WRN";
+            }
+            else if (lvl == Logger.Context.LevelErrorValue)
+            {
+                lvl = "ERR";
+            }
+            else if (lvl == Logger.Context.LevelPanicValue)
+            {
+                lvl = "PNC";
+            }
+            else if (lvl == Logger.Context.LevelFatalValue)
+            {
+                lvl = "FTL";
+            }
+            else
+            {
+                lvl = "LVL";
+            }
+
+            foreach ((var k, var v) in Values)
+            {
+                if (k == Logger.Context.MessageFieldName || k == Logger.Context.TimestampFieldName) continue;
+
+                rv.Add((k, JsonSerializer.Serialize(v)));
+            }
+
+            return (msg, timestamp, lvl, rv);
+        }
+
         public LogEvent Str(string k, string v)
         {
             Values[k] = v;

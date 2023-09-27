@@ -19,7 +19,7 @@ namespace AuremCore.Network
         public override IPEndPoint RemoteEndPoint => _remote;
         public override bool IsConnected => _connected;
 
-        public override Stream NetStream => client?.GetStream();
+        //public override Stream NetStream => client?.GetStream();
 
         private static readonly int bufferSize = 32000;
 

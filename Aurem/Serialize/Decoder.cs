@@ -1,6 +1,7 @@
 ﻿using Aurem.Config;
 using Aurem.Model;
 using Aurem.Units;
+using AuremCore.Network;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 namespace Aurem.Serialize
 {
     /// <summary>
-    /// Implements <see cref="Stream"/>. Thread-safe binary reader which decodes units in the following format:
+    /// Thread-safe binary reader which decodes units in the following format:
     /// <list type="number">
     /// <item>Creator ID (2 bytes)</item>
     /// <item>Signature (64 bytes)</item>
@@ -25,48 +26,43 @@ namespace Aurem.Serialize
     /// </list>
     /// All integers are represented as unsigned 32 or 16 bit values.
     /// </summary>
-    public class Decoder : Stream
+    public class Decoder
     {
-        public Decoder(Stream s) { this.s = s; }
+        public Decoder(Stream s) { this.s = s; conn = null; }
 
-        public Stream Base => s;
+        private Stream? s;
+        private Conn? conn;
 
-
-        private Stream s;
-
-        public override bool CanRead => s.CanRead;
-
-        public override bool CanSeek => s.CanSeek;
-
-        public override bool CanWrite => s.CanWrite;
-
-        public override long Length => s.Length;
-
-        public override long Position { get => s.Position; set => s.Position = value; }
-
-        public override void Flush()
+        public Decoder(Conn conn)
         {
-            s.Flush();
+            this.conn = conn;
+            s = null;
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        private void Read(byte[] buf, int offset, int count)
         {
-            return s.Read(buffer, offset, count);
+            if (conn != null)
+            {
+                conn.Read(buf[offset..count]).Wait();
+            }
+            else
+            {
+                s!.Read(buf, offset, count);
+            }
         }
 
-        public override long Seek(long offset, SeekOrigin origin)
+        private Task<int> ReadAsync(byte[] buf, int offset, int count)
         {
-            return s.Seek(offset, origin);
+            if (conn != null) return conn.Read(buf[offset..count]);
+
+            return s!.ReadAsync(buf.AsMemory(offset, count)).AsTask();
         }
 
-        public override void SetLength(long value)
+        private Task<int> ReadAsync(byte[] buf)
         {
-            s.SetLength(value);
-        }
+            if (conn != null) return conn.Read(buf);
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            s.Write(buffer, offset, count);
+            return s!.ReadAsync(buf.AsMemory()).AsTask();
         }
 
         /// <summary>
@@ -100,11 +96,11 @@ namespace Aurem.Serialize
             var shortBuf = new byte[2];
             var intBuf = new byte[4];
 
-            await s.ReadAsync(shortBuf.AsMemory(0, 2));
+            await ReadAsync(shortBuf, 0, 2);
             var nproc = BinaryPrimitives.ReadUInt16LittleEndian(shortBuf);
 
             var heightData = new byte[nproc * 4];
-            var nhd = await s.ReadAsync(heightData);
+            var nhd = await ReadAsync(heightData);
             if (nhd != nproc * 4) throw new Exception("not enough data");
 
             var heights = new int[nproc];
@@ -115,7 +111,7 @@ namespace Aurem.Serialize
             }
 
             var controlHash = new Hash(new byte[32]);
-            await s.ReadAsync(controlHash.Data.AsMemory(0, 32));
+            await ReadAsync(controlHash.Data, 0, 32);
 
             return new Crown(heights, controlHash);
         }
@@ -147,14 +143,14 @@ namespace Aurem.Serialize
             var shortBuf = new byte[2];
             var intBuf = new byte[4];
 
-            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            await ReadAsync(intBuf, 0, 4);
             var epoch = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
 
-            await s.ReadAsync(intBuf.AsMemory(0, 2));
+            await ReadAsync(intBuf, 0, 2);
             var nproc = BinaryPrimitives.ReadUInt16LittleEndian(shortBuf);
 
             var heightData = new byte[nproc * 4];
-            var nhd = await s.ReadAsync(heightData);
+            var nhd = await ReadAsync(heightData);
             if (nhd != nproc * 4) throw new Exception("not enough data");
 
             var heights = new int[nproc];
@@ -200,25 +196,25 @@ namespace Aurem.Serialize
             var longBuf = new byte[8];
             var intBuf = new byte[4];
 
-            await s.ReadAsync(longBuf.AsMemory(0, 8));
+            await ReadAsync(longBuf, 0, 8);
             var id = BinaryPrimitives.ReadUInt64LittleEndian(longBuf);
 
             var sig = new byte[64];
-            await s.ReadAsync(sig.AsMemory(0, 64));
+            await ReadAsync(sig, 0, 64);
 
             var crown = DecodeCrown();
 
-            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            await ReadAsync(intBuf, 0, 4);
             var unitDataLen = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
             if (unitDataLen > Checks.MaxDataBytesPerUnit) throw new Exception("maximum allowed data size in a preunit exceeded");
             var unitData = new byte[unitDataLen];
-            await s.ReadAsync(unitData.AsMemory(0, (int)unitDataLen));
+            await ReadAsync(unitData, 0, (int)unitDataLen);
 
-            await s.ReadAsync(intBuf.AsMemory(0, 4));
+            await ReadAsync(intBuf, 0, 4);
             var rsDataLen = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);
             if (rsDataLen > Checks.MaxRandomSourceDataBytesPerUnit) throw new Exception("maximum allowed random source data size in a preunit exceeded");
             var rsData = new byte[rsDataLen];
-            await s.ReadAsync(rsData.AsMemory(0, (int)rsDataLen));
+            await ReadAsync(rsData, 0, (int)rsDataLen);
 
             return new Preunit(id, crown, unitData, rsData, sig);
         }
@@ -241,7 +237,7 @@ namespace Aurem.Serialize
         public async Task<IPreunit[]> DecodeChunkAsync()
         {
             var buf = new byte[4];
-            await s.ReadAsync(buf.AsMemory(0, 4));
+            await ReadAsync(buf, 0, 4);
             var k = BinaryPrimitives.ReadUInt32LittleEndian(buf);
 
             if (k > Checks.MaxUnitsInChunk) throw new Exception("chunk contains too many units");

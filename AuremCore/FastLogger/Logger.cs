@@ -18,7 +18,9 @@ namespace AuremCore.FastLogger
 
         private Stream Base { get; set; }
 
-        public static Logger New(Stream s, LoggerContext ctx = null)
+        private bool printStdOut = false;
+
+        public static Logger New(Stream s, LoggerContext ctx = null, bool printStdOut = false)
         {
             Logger logger = new()
             {
@@ -27,6 +29,7 @@ namespace AuremCore.FastLogger
 
             ctx ??= new LoggerContext(logger);
             logger.Context = ctx;
+            logger.printStdOut = printStdOut;
             ctx.EnsureLoggerSet(logger);
 
             return logger;
@@ -51,11 +54,66 @@ namespace AuremCore.FastLogger
                     {
                         throw new Exception("error encountered when dequeueing from the event queue");
                     }
+
                     await writer.WriteLineAsync(e!.EncodeData().AsMemory(), token);
+                    if (printStdOut)
+                    {
+                        PrintToStdOut(e!, token);
+                    }
                 }
 
                 await writer.FlushAsync();
             }
+        }
+
+        private void PrintToStdOut(LogEvent e, CancellationToken token)
+        {
+            (var msg, var time, var lvl, var vals) = e.EncodeDataForPrinting();
+            ConsoleColor lvlColor = ConsoleColor.DarkMagenta;
+            switch (lvl)
+            {
+                case "LVL":
+                    lvlColor = ConsoleColor.Magenta;
+                    break;
+                case "DBG":
+                    lvlColor = ConsoleColor.Cyan;
+                    break;
+                case "INF":
+                    lvlColor = ConsoleColor.Green;
+                    break;
+                case "WRN":
+                    lvlColor = ConsoleColor.Yellow;
+                    break;
+                case "ERR":
+                    lvlColor = ConsoleColor.Red;
+                    break;
+                case "FTL":
+                    lvlColor = ConsoleColor.DarkRed;
+                    break;
+                case "PNC":
+                    lvlColor = ConsoleColor.DarkYellow;
+                    break;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.Write($"{time} ");
+            Console.ForegroundColor = lvlColor;
+            Console.Write($"{lvl} ");
+            if (msg != null && msg != "")
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($"{msg} ");
+            }
+
+            foreach ((var n, var v) in vals)
+            {
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.Write($"{n}=");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($"{v} ");
+            }
+
+            Console.WriteLine();
         }
 
         public LoggerContext With()

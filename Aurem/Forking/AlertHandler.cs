@@ -113,7 +113,7 @@ namespace Aurem.Forking
                 return;
             }
 
-            (var data, err) = await Rmc.AcceptFinished(id, pid, conn.NetStream);
+            (var data, err) = await Rmc.AcceptFinished(id, pid, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptFinished.AcceptData").Msg(err.Message);
@@ -174,7 +174,7 @@ namespace Aurem.Forking
             Conn conn;
             try
             {
-                conn = await Netserv.Dial(pid);
+                conn = (await Netserv.Dial(pid))!;
             }
             catch
             {
@@ -187,7 +187,7 @@ namespace Aurem.Forking
 
                 try
                 {
-                    await Greetings.Greet(conn, pid, id, (byte)AlertState.Finished);
+                    await Greetings.Greet(conn!, pid, id, (byte)AlertState.Finished);
                 }
                 catch (Exception ex)
                 {
@@ -195,7 +195,7 @@ namespace Aurem.Forking
                     return;
                 }
 
-                var err = await Rmc.SendFinished(id, conn.NetStream);
+                var err = await Rmc.SendFinished(id, conn!);
                 if (err != null)
                 {
                     log.Error().Str("where", "AlertHandler.SendFinished.SendFinished").Msg(err.Message);
@@ -250,7 +250,7 @@ namespace Aurem.Forking
                 comm = Commitments.GetByHash(unit.Hash());
                 if (comm == null)
                 {
-                    return (null, new Exception("this unit has no commitment"));
+                    return (null!, new Exception("this unit has no commitment"));
                 }
             }
             else
@@ -263,7 +263,7 @@ namespace Aurem.Forking
                     (comm, err) = BaseCommitment.CommitmentForParent(comm, commUnit);
                     if (err != null)
                     {
-                        return (null, err);
+                        return (null!, err);
                     }
 
                     Commitments.Add(comm, MyPid, commUnit.Creator());
@@ -273,7 +273,7 @@ namespace Aurem.Forking
                 var cu = comm.GetUnit();
                 if (cu == null || cu.Hash() != unit.Hash())
                 {
-                    return (null, new Exception("produced commitment for wrong unit"));
+                    return (null!, new Exception("produced commitment for wrong unit"));
                 }
             }
 
@@ -345,11 +345,11 @@ namespace Aurem.Forking
                 await conn.Write(new byte[] { 0 });
                 await conn.Write(comm.Marshal());
                 f = "WriteUnit";
-                await conn.Write(EncodeUtil.EncodeUnit(null));
+                await conn.Write(EncodeUtil.EncodeUnit(null!));
                 f = "Flush";
                 conn.Flush();
                 f = "SendFinished";
-                var exc = await Rmc.SendFinished(comm.RmcID(), conn.NetStream);
+                var exc = await Rmc.SendFinished(comm.RmcID(), conn);
                 if (exc != null) throw exc;
                 f = "Flush`2";
                 conn.Flush();
@@ -415,7 +415,7 @@ namespace Aurem.Forking
                     return new Exception("peer was unaware of forker");
                 }
 
-                (var comms, err) = await ForkingUtil.AcquireCommitments(conn.NetStream);
+                (var comms, err) = await ForkingUtil.AcquireCommitments(conn);
                 if (err != null)
                 {
                     log.Error().Str("where", "alertHandler.RequestCommitment.AcquireCommitments").Msg(err.Message);
@@ -423,7 +423,7 @@ namespace Aurem.Forking
                 }
 
                 (_, var raiser, _, _) = DecodeAlertID(comms[0].RmcID(), 0);
-                (var data, err) = await Rmc.AcceptFinished(comms[0].RmcID(), raiser, conn.NetStream);
+                (var data, err) = await Rmc.AcceptFinished(comms[0].RmcID(), raiser, conn);
                 if (err != null)
                 {
                     log.Error().Str("where", "alertHandler.RequestCommitment.AcceptFinished").Msg(err.Message);
@@ -465,7 +465,7 @@ namespace Aurem.Forking
                 return;
             }
 
-            (var data, err) = await Rmc.AcceptData(id, pid, conn.NetStream);
+            (var data, err) = await Rmc.AcceptData(id, pid, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptAlert.AcceptData").Msg(err.Message);
@@ -529,7 +529,7 @@ namespace Aurem.Forking
 
         public async Task<Exception?> MaybeSign(ulong id, Conn conn)
         {
-            var err = await Rmc.SendSignature(id, conn.NetStream);
+            var err = await Rmc.SendSignature(id, conn);
             if (err != null)
             {
                 return err;
@@ -548,7 +548,7 @@ namespace Aurem.Forking
 
         public async Task AcceptProof(ulong id, Conn conn, Logger log)
         {
-            var err = await Rmc.AcceptProof(id, conn.NetStream);
+            var err = await Rmc.AcceptProof(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptProof.AcceptProof").Msg(err.Message);
@@ -649,11 +649,11 @@ namespace Aurem.Forking
             {
                 await Greetings.Greet(conn, MyPid, id, (byte)AlertState.Alert);
 
-                var err = await Rmc.SendData(id, data, conn.NetStream);
+                var err = await Rmc.SendData(id, data, conn);
                 if (err != null) return err;
                 
                 conn.Flush();
-                (_, err) = await Rmc.AcceptSignature(id, pid, conn.NetStream);
+                (_, err) = await Rmc.AcceptSignature(id, pid, conn);
                 if (err != null) return err;
 
                 return null;
@@ -674,7 +674,7 @@ namespace Aurem.Forking
             {
                 await Greetings.Greet(conn, MyPid, id, (byte)AlertState.Proving);
 
-                var err = await Rmc.SendProof(id, conn.NetStream);
+                var err = await Rmc.SendProof(id, conn);
                 if (err != null) return err;
 
                 conn.Flush();

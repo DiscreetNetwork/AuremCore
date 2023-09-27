@@ -9,9 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoLib2", "CryptoLib2\Cr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BN256Core", "BN256Core\BN256Core.csproj", "{1EE88CEB-DBED-4C90-80F5-0B451DC58871}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aurem", "Aurem\Aurem.csproj", "{E9682979-6A7B-4E44-A1CA-CEA3C5D0140B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aurem", "Aurem\Aurem.csproj", "{E9682979-6A7B-4E44-A1CA-CEA3C5D0140B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscreetCoreLib", "DiscreetCore\DiscreetCoreLib.csproj", "{870DC3BE-B6F2-40AA-A671-7BF3F681870C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscreetCoreLib", "DiscreetCore\DiscreetCoreLib.csproj", "{870DC3BE-B6F2-40AA-A671-7BF3F681870C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuremTests", "AuremTests\AuremTests.csproj", "{FD137004-9374-4982-9898-F8F929C0E3B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,6 +85,18 @@ Global
 		{870DC3BE-B6F2-40AA-A671-7BF3F681870C}.Release|x64.Build.0 = Release|Any CPU
 		{870DC3BE-B6F2-40AA-A671-7BF3F681870C}.Release|x86.ActiveCfg = Release|Any CPU
 		{870DC3BE-B6F2-40AA-A671-7BF3F681870C}.Release|x86.Build.0 = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|x64.Build.0 = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Debug|x86.Build.0 = Debug|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x64.ActiveCfg = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x64.Build.0 = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x86.ActiveCfg = Release|Any CPU
+		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

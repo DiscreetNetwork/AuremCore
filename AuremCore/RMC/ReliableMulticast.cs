@@ -1,4 +1,5 @@
 ﻿using AuremCore.Crypto.Multi;
+using AuremCore.Network;
 using BN256Core;
 using System;
 using System.Collections.Concurrent;
@@ -116,7 +117,7 @@ namespace AuremCore.RMC
             return ins.GetStatus();
         }
 
-        public async Task<(byte[], Exception?)> AcceptFinished(ulong id, ushort pid, Stream s)
+        public async Task<(byte[], Exception?)> AcceptFinished(ulong id, ushort pid, Conn conn)
         {
             (var ins, var err) = GetIn(id);
             if (err != null)
@@ -124,10 +125,10 @@ namespace AuremCore.RMC
                 (ins, _) = NewIncomingInstance(id, pid);
             }
 
-            return await ins.AcceptFinished(s);
+            return await ins.AcceptFinished(conn);
         }
 
-        public async Task<Exception?> SendFinished(ulong id, Stream s)
+        public async Task<Exception?> SendFinished(ulong id, Conn conn)
         {
             (var ins, var err) = Get(id);
             if (err != null)
@@ -135,10 +136,10 @@ namespace AuremCore.RMC
                 return err;
             }
 
-            return await ins.SendFinished(s);
+            return await ins.SendFinished(conn);
         }
 
-        public async Task<Exception?> SendProof(ulong id, Stream s)
+        public async Task<Exception?> SendProof(ulong id, Conn conn)
         {
             (var ins, var err) = Get(id);
             if (err != null)
@@ -146,10 +147,10 @@ namespace AuremCore.RMC
                 return err;
             }
 
-            return await ins.SendProof(s);
+            return await ins.SendProof(conn);
         }
 
-        public async Task<(bool, Exception?)> AcceptSignature(ulong id, ushort pid, Stream s)
+        public async Task<(bool, Exception?)> AcceptSignature(ulong id, ushort pid, Conn conn)
         {
             (var ins, var err) = Get(id);
             if (err != null)
@@ -157,10 +158,10 @@ namespace AuremCore.RMC
                 return (false, err);
             }
 
-            return await ins.AcceptSignature(pid, s);
+            return await ins.AcceptSignature(pid, conn);
         }
 
-        public async Task<Exception?> SendData(ulong id, byte[] data, Stream s)
+        public async Task<Exception?> SendData(ulong id, byte[] data, Conn conn)
         {
             if (Status(id) != RMC.Status.Unknown)
             {
@@ -170,16 +171,16 @@ namespace AuremCore.RMC
                     return err;
                 }
 
-                return await outs.SendData(s);
+                return await outs.SendData(conn);
             }
             else
             {
                 var outs = NewOutgoingInstance(id, data);
-                return await outs.SendData(s);
+                return await outs.SendData(conn);
             }
         }
 
-        public async Task<Exception?> AcceptProof(ulong id, Stream s)
+        public async Task<Exception?> AcceptProof(ulong id, Conn conn)
         {
             (var ins, var err) = Get(id);
             if (err != null)
@@ -187,10 +188,10 @@ namespace AuremCore.RMC
                 return err;
             }
 
-            return await ins.AcceptProof(s);
+            return await ins.AcceptProof(conn);
         }
 
-        public async Task<Exception?> SendSignature(ulong id, Stream s)
+        public async Task<Exception?> SendSignature(ulong id, Conn conn)
         {
             (var ins, var err) = Get(id);
             if (err != null)
@@ -198,10 +199,10 @@ namespace AuremCore.RMC
                 return err;
             }
 
-            return await ins.SendSignature(s);
+            return await ins.SendSignature(conn);
         }
 
-        public async Task<(byte[], Exception?)> AcceptData(ulong id, ushort pid, Stream s)
+        public async Task<(byte[], Exception?)> AcceptData(ulong id, ushort pid, Conn conn)
         {
             (var ins, var err) = GetIn(id);
             if (err != null)
@@ -214,7 +215,7 @@ namespace AuremCore.RMC
                 return (Array.Empty<byte>(), err);
             }
 
-            return await ins.AcceptData(s);
+            return await ins.AcceptData(conn);
         }
 
         public Exception? InitiateRaw(ulong id, byte[] data)

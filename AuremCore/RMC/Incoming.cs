@@ -1,5 +1,6 @@
 ﻿using AuremCore.Crypto.Multi;
 using AuremCore.Crypto.Threshold;
+using AuremCore.Network;
 using BN256Core.Extensions;
 using System;
 using System.Buffers.Binary;
@@ -21,9 +22,9 @@ namespace AuremCore.RMC
             Pid = pid;
         }
 
-        public async Task<(byte[], Exception?)> AcceptData(Stream s)
+        public async Task<(byte[], Exception?)> AcceptData(Conn conn)
         {
-            (var rawLen, var err) = await DecodeUint32(s);
+            (var rawLen, var err) = await DecodeUint32(conn);
             if (err != null)
             {
                 return (Array.Empty<byte>(), err);
@@ -33,7 +34,7 @@ namespace AuremCore.RMC
 
             try
             {
-                var _signedDataRead = await s.ReadAsync(signedData);
+                var _signedDataRead = await conn.Read(signedData);
                 if (_signedDataRead != signedData.Length)
                 {
                     return (Array.Empty<byte>(), new Exception("did not receive correct length of data"));
@@ -93,20 +94,20 @@ namespace AuremCore.RMC
             }
         }
 
-        public async Task<(byte[], Exception?)> AcceptFinished(Stream s)
+        public async Task<(byte[], Exception?)> AcceptFinished(Conn conn)
         {
-            (var res, var err) = await AcceptData(s);
+            (var res, var err) = await AcceptData(conn);
             if (err != null) return (res, err);
 
-            return (res, await AcceptProof(s));
+            return (res, await AcceptProof(conn));
         }
 
-        public static async Task<(uint, Exception?)> DecodeUint32(Stream s)
+        public static async Task<(uint, Exception?)> DecodeUint32(Conn conn)
         {
             try
             {
                 var buf = new byte[4];
-                await s.ReadAsync(buf);
+                await conn.Read(buf);
 
                 return (BinaryPrimitives.ReadUInt32LittleEndian(buf), null);
             }
@@ -116,14 +117,14 @@ namespace AuremCore.RMC
             }
         }
 
-        public static async Task<Exception?> EncodeUint32(Stream s, uint i)
+        public static async Task<Exception?> EncodeUint32(Conn conn, uint i)
         {
             try
             {
                 var buf = new byte[4];
                 BinaryPrimitives.WriteUInt32LittleEndian(buf, i);
 
-                await s.WriteAsync(buf);
+                await conn.Write(buf);
 
                 return null;
             }

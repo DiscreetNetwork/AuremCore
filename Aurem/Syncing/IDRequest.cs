@@ -41,7 +41,7 @@ namespace Aurem.Syncing
         {
             try
             {
-                await conn.NetStream.WriteAsync(new IDRequest { UnitIDs = unitIDs }.Serialize());
+                await conn.Write(new IDRequest { UnitIDs = unitIDs }.Serialize());
                 return null;
             }
             catch (Exception ex)

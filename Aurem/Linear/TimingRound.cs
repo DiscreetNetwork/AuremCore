@@ -69,8 +69,7 @@ namespace Aurem.Linear
             var seenUnits = new Dictionary<Hash, bool>();
             var result = new List<List<IUnit>>();
 
-            Action<IUnit> dfs = (u) => { };
-            dfs = (IUnit u) =>
+            void dfs(IUnit u)
             {
                 seenUnits[u.Hash()] = true;
                 var minLayerBelow = -1;

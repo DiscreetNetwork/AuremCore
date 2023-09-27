@@ -149,9 +149,9 @@ namespace Aurem.Config
             return c;
         }
 
-        public static void StoreAddresses(Stream s, int pid, Dictionary<string, List<string>> addresses, IList<string> types)
+        public static void StoreAddresses(StreamWriter s, int pid, Dictionary<string, List<string>> addresses, IList<string> types)
         {
-            var w = new StreamWriter(s);
+            var w = s;
 
             for (int j = 0; j < types.Count; j++)
             {
@@ -174,11 +174,13 @@ namespace Aurem.Config
                 w.Write(PublicKeys[i].Encode() + "|");
                 w.Write(P2PPublicKeys[i].Encode() + "|");
                 w.Write(RMCVerificationKeys[i].Encode() + "|");
-                StoreAddresses(s, i, SetupAddresses, new string[] { "rmc", "fetch", "gossip" });
+                StoreAddresses(w, i, SetupAddresses, new string[] { "rmc", "fetch", "gossip" });
                 w.Write("|");
-                StoreAddresses(s, i, Addresses, new string[] { "rmc", "mcast", "fetch", "gossip" });
+                StoreAddresses(w, i, Addresses, new string[] { "rmc", "mcast", "fetch", "gossip" });
                 w.Write("\n");
             }
+
+            w.Flush();
         }
     }
 }

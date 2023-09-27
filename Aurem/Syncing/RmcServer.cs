@@ -206,7 +206,7 @@ namespace Aurem.Syncing
             try
             {
                 var id = u.UnitID();
-                await DelegateExtensions.InvokeAndCaptureException(Greetings.Greet, conn!, Pid, id, MsgRequestFinished, out err);
+                err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Greetings.Greet, conn!, Pid, id, MsgRequestFinished);
                 if (err != null)
                 {
                     return (null!, new Exception($"Rmc.FetchFinished.Greet for PID={pid}: {err.Message}"));
@@ -218,7 +218,7 @@ namespace Aurem.Syncing
                     return (null!, new Exception($"Rmc.FetchFinished.Flush for PID={pid}: {err.Message}"));
                 }
 
-                (var data, err) = await State.AcceptFinished(id, u.Creator(), conn!.NetStream);
+                (var data, err) = await State.AcceptFinished(id, u.Creator(), conn!);
                 if (err != null)
                 {
                     return (null!, new Exception($"Rmc.FetchFinished.AcceptFinished for PID={pid}: {err.Message}"));
@@ -234,7 +234,7 @@ namespace Aurem.Syncing
             }
             finally
             {
-                await DelegateExtensions.InvokeAndCaptureException(conn!.Close, out err);
+                err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(conn!.Close);
                 if (err != null)
                 {
                     Log.Error().Str("where", "Rmc.FetchFinishedFromAll.Close").Msg($"error while closing connection for PID={pid}: {err.Message}");
@@ -250,7 +250,7 @@ namespace Aurem.Syncing
                 return;
             }
 
-            var err = await State.SendFinished(id, conn.NetStream);
+            var err = await State.SendFinished(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "Rmc.In.SendFinished").Msg(err.Message);
@@ -273,7 +273,7 @@ namespace Aurem.Syncing
                 return;
             }
 
-            (var data, var err) = await State.AcceptData(id, sender, conn.NetStream);
+            (var data, var err) = await State.AcceptData(id, sender, conn);
             if (err != null)
             {
                 log.Error().Str("where", "Rmc.In.AcceptData").Msg(err.Message);
@@ -293,7 +293,7 @@ namespace Aurem.Syncing
                 return;
             }
 
-            err = await State.SendSignature(id, conn.NetStream);
+            err = await State.SendSignature(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "Rmc.In.SendSignature").Msg(err.Message);
@@ -309,7 +309,7 @@ namespace Aurem.Syncing
 
         public async Task<bool> AcceptProof(ulong id, Conn conn, Logger log)
         {
-            var err = await State.AcceptProof(id, conn.NetStream);
+            var err = await State.AcceptProof(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "Rmc.AcceptProof.AcceptProof").Msg(err.Message);
@@ -321,7 +321,7 @@ namespace Aurem.Syncing
 
         public async Task In()
         {
-            var conn = await DelegateExtensions.InvokeAndCaptureException(Netserv.Listen, out var err);
+            (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
             if (err != null)
             {
                 return;
@@ -329,7 +329,7 @@ namespace Aurem.Syncing
 
             try
             {
-                (var pid, var id, var msgType) = await DelegateExtensions.InvokeAndCaptureException(Greetings.AcceptGreeting, conn, out err);
+                ((var pid, var id, var msgType), err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Greetings.AcceptGreeting, conn);
                 if (err != null)
                 {
                     Log.Error().Str("where", "Rmc.In.AcceptGreeting").Msg(err.Message);
@@ -376,16 +376,16 @@ namespace Aurem.Syncing
         {
             try
             {
-                await DelegateExtensions.InvokeAndCaptureException(Greetings.Greet, conn, Pid, id, MsgSendData, out var err);
+                var err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Greetings.Greet, conn, Pid, id, MsgSendData);
                 if (err != null) return err;
 
-                err = await State.SendData(id, data, conn.NetStream);
+                err = await State.SendData(id, data, conn);
                 if (err != null) return err;
 
                 err = conn.TryFlush();
                 if (err != null) return err;
 
-                (_, err) = await State.AcceptSignature(id, recipient, conn.NetStream);
+                (_, err) = await State.AcceptSignature(id, recipient, conn);
                 if (err != null) return err;
 
                 return null;
@@ -456,10 +456,10 @@ namespace Aurem.Syncing
             (var conn, var err) = await Netserv.TryDial(recipient);
             if (err != null) return err;
 
-            await DelegateExtensions.InvokeAndCaptureException(Greetings.Greet, conn!, Pid, id, MsgSendProof, out err);
+            err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Greetings.Greet, conn!, Pid, id, MsgSendProof);
             if (err != null) return err;
 
-            err = await State.SendProof(id, conn!.NetStream);
+            err = await State.SendProof(id, conn!);
             if (err != null) return err;
 
             err = conn!.TryFlush();

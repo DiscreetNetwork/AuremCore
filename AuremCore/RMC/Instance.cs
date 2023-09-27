@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Buffers.Binary;
 using BN256Core.Common;
 using AuremCore.Crypto.Threshold;
+using AuremCore.Network;
 
 namespace AuremCore.RMC
 {
@@ -90,6 +91,30 @@ namespace AuremCore.RMC
             }
         }
 
+        public async Task<Exception?> SendData(Conn conn)
+        {
+            await Mutex.WaitAsync();
+
+            try
+            {
+                var fullBuf = new byte[4 + SignedData.Length];
+                BinaryPrimitives.WriteUInt32LittleEndian(fullBuf, RawLength);
+                Array.Copy(SignedData, 0, fullBuf, 4, SignedData.Length);
+
+                await conn.Write(fullBuf);
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            finally
+            {
+                Mutex.Release();
+            }
+        }
+
         public async Task<Exception?> SendProof(Stream s)
         {
             await Mutex.WaitAsync();
@@ -102,6 +127,31 @@ namespace AuremCore.RMC
                 }
 
                 await s.WriteAsync(Proof.Marshal());
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            finally
+            {
+                Mutex.Release();
+            }
+        }
+
+        public async Task<Exception?> SendProof(Conn conn)
+        {
+            await Mutex.WaitAsync();
+
+            try
+            {
+                if (Stat != Status.Finished)
+                {
+                    throw new Exception("no proof to send");
+                }
+
+                await conn.Write(Proof.Marshal());
 
                 return null;
             }
@@ -130,12 +180,67 @@ namespace AuremCore.RMC
             return null;
         }
 
+        public async Task<Exception?> SendFinished(Conn conn)
+        {
+            try
+            {
+                var err = await SendData(conn);
+                if (err != null) throw err;
+                return await SendProof(conn);
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+        }
+
         public async Task<(bool, Exception?)> AcceptSignature(ushort pid, Stream s)
         {
             var signature = new byte[Keychain.SignatureLength];
             try
             {
                 await s.ReadAsync(signature);
+            }
+            catch (Exception ex)
+            {
+                return (false, ex);
+            }
+
+            await Mutex.WaitAsync();
+
+            try
+            {
+                if (Keys.Verify(pid, SignedData.Concat(signature).ToArray()))
+                {
+                    return (false, new Exception("wrong signature"));
+                }
+
+                if (Stat != Status.Finished)
+                {
+                    (var done, var err) = Proof.Aggregate(pid, signature);
+                    if (done)
+                    {
+                        Stat = Status.Finished;
+                        return (true, err);
+                    }
+
+                    return (false, err);
+                }
+
+                return (false, null);
+            }
+            finally
+            {
+                Mutex.Release();
+            }
+        }
+
+        public async Task<(bool, Exception?)> AcceptSignature(ushort pid, Conn conn)
+        {
+            var signature = new byte[Keychain.SignatureLength];
+            try
+            {
+                await conn.Read(signature);
             }
             catch (Exception ex)
             {
@@ -203,6 +308,38 @@ namespace AuremCore.RMC
             }
         }
 
+        public async Task<Exception?> SendSignature(Conn conn)
+        {
+            await Mutex.WaitAsync();
+
+            try
+            {
+                if (Stat == Status.Unknown)
+                {
+                    return new Exception("cannot signed unknown data");
+                }
+
+                var sig = Keys.Sign(SignedData);
+
+                await conn.Write(sig);
+
+                if (Stat == Status.Data)
+                {
+                    Stat = Status.Signed;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            finally
+            {
+                Mutex.Release();
+            }
+        }
+
         public async Task<Exception?> AcceptProof(Stream s)
         {
             await Mutex.WaitAsync();
@@ -219,6 +356,53 @@ namespace AuremCore.RMC
                 var data = new byte[proof.Length];
 
                 int _dataRead = await s.ReadAsync(data);
+
+                if (_dataRead != data.Length)
+                {
+                    throw new Exception("received less than the expected number of bytes");
+                }
+
+                proof.Unmarshal(data);
+
+                if (!Keys.MultiVerify(proof))
+                {
+                    return new Exception("wrong multisignature");
+                }
+
+                if (Stat != Status.Finished)
+                {
+                    Proof = proof;
+                    Stat = Status.Finished;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            finally
+            {
+                Mutex.Release();
+            }
+        }
+
+        public async Task<Exception?> AcceptProof(Conn conn)
+        {
+            await Mutex.WaitAsync();
+
+            try
+            {
+                if (Stat == Status.Unknown)
+                {
+                    throw new Exception("cannot accept proof of unknown data");
+                }
+
+                var nproc = (ushort)Keys.Length;
+                var proof = new MultiSignature(TUtil.MinimalQuorum(nproc), SignedData);
+                var data = new byte[proof.Length];
+
+                int _dataRead = await conn.Read(data);
 
                 if (_dataRead != data.Length)
                 {

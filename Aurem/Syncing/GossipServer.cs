@@ -81,7 +81,7 @@ namespace Aurem.Syncing
 
         public async Task In()
         {
-            var conn = await DelegateExtensions.InvokeAndCaptureException(Netserv.Listen, out var err);
+            (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
             if (err != null) return;
 
             try
@@ -113,7 +113,7 @@ namespace Aurem.Syncing
                     log.Info().Msg(Logging.Constants.SyncStarted);
 
                     // 1. Receive their DagInfo
-                    var theirDagInfo = await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.ReadDagInfosAsync, conn.NetStream, out err);
+                    (var theirDagInfo, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadDagInfosAsync, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.In.GetDagInfo").Msg(err.Message);
@@ -125,7 +125,7 @@ namespace Aurem.Syncing
 
                     // 3. Send our DagInfo
                     log.Debug().Msg(Logging.Constants.SendInfo);
-                    await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.WriteDagInfosAsync, dagInfo, conn.NetStream, out err);
+                    err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.WriteDagInfosAsync, dagInfo, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.In.SendDagInfo").Msg(err.Message);
@@ -135,7 +135,7 @@ namespace Aurem.Syncing
                     // 4. Send units
                     var units = await Orderer.Delta(theirDagInfo);
                     log.Debug().Val(Logging.Constants.Sent, units.Count).Msg(Logging.Constants.SendUnits);
-                    await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.WriteChunkAsync, units, conn.NetStream, out err);
+                    err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.WriteChunkAsync, units, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.In.SendUnits").Msg(err.Message);
@@ -151,7 +151,7 @@ namespace Aurem.Syncing
 
                     // 5. Receive units
                     log.Debug().Msg(Logging.Constants.GetUnits);
-                    var theirPreunitsReceived = await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.ReadChunkAsync, conn.NetStream, out err);
+                    (var theirPreunitsReceived, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadChunkAsync, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.In.GetPreunits").Msg(err.Message);
@@ -217,7 +217,7 @@ namespace Aurem.Syncing
                     // 2. Send DagInfo
                     var dagInfo = await Orderer.GetInfo();
                     log.Debug().Msg(Logging.Constants.SendInfo);
-                    await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.WriteDagInfosAsync, dagInfo, conn.NetStream, out err);
+                    err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.WriteDagInfosAsync, dagInfo, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.Out.SendDagInfo").Msg(err.Message);
@@ -233,7 +233,7 @@ namespace Aurem.Syncing
 
                     // 3. Receive DagInfo
                     log.Debug().Msg(Logging.Constants.GetInfo);
-                    var theirDagInfo = await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.ReadDagInfosAsync, conn.NetStream, out err);
+                    (var theirDagInfo, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadDagInfosAsync, conn);
                     if (err != null)
                     {
                         // errors may happen here when the remote peer rejects the gossip attempt, thus aren't true errors.
@@ -243,7 +243,7 @@ namespace Aurem.Syncing
 
                     // 4. Receive units
                     log.Debug().Msg(Logging.Constants.GetUnits);
-                    var theirPreunitsReceived = await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.ReadChunkAsync, conn.NetStream, out err);
+                    (var theirPreunitsReceived, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadChunkAsync, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.Out.GetPreunits").Msg(err.Message);
@@ -253,7 +253,7 @@ namespace Aurem.Syncing
                     // 5. Send units
                     var units = await Orderer.Delta(theirDagInfo);
                     log.Debug().Val(Logging.Constants.Sent, units.Count).Msg(Logging.Constants.SendUnits);
-                    await DelegateExtensions.InvokeAndCaptureException(EncodeUtil.WriteChunkAsync, units, conn.NetStream, out err);
+                    err = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.WriteChunkAsync, units, conn);
                     if (err != null)
                     {
                         log.Error().Str("where", "Gossip.Out.SendUnits").Msg(err.Message);
