@@ -14,6 +14,8 @@ namespace AuremCore.Tests
         private Channel<Conn> listenChan;
         private TimeSpan timeout;
 
+        public static Dictionary<string, Server[]> Instances;
+
         public LocalServer(Channel<Conn>[] chans, int id, TimeSpan timeout)
         {
             this.timeout = timeout;

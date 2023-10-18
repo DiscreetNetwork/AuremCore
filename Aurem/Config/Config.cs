@@ -104,14 +104,14 @@ namespace Aurem.Config
             cnf.LogFile = logFile;
             cnf.LogBuffer = 100_000;
             cnf.LogHuman = false;
-            cnf.LogLevel = 1;
+            cnf.LogLevel = -2;
         }
 
         private static void AddSyncConf(Config cnf, Dictionary<string, List<string>> addresses, bool setup)
         {
             cnf.Timeout = TimeSpan.FromSeconds(5);
             cnf.FetchInterval = TimeSpan.FromSeconds(1);
-            cnf.GossipInterval = TimeSpan.FromMilliseconds(100);
+            cnf.GossipInterval = TimeSpan.FromSeconds(10);
             cnf.GossipAbove = 50;
 
             cnf.RMCNetType = "tcp";
@@ -123,8 +123,11 @@ namespace Aurem.Config
             cnf.FetchNetType = "tcp";
             cnf.FetchAddresses = addresses["fetch"];
 
-            cnf.MCastNetType = "tcp";
-            cnf.MCastAddresses = addresses["mcast"];
+            if (!setup)
+            {
+                cnf.MCastNetType = "tcp";
+                cnf.MCastAddresses = addresses["mcast"];
+            }
 
             var n = (int)cnf.NProc;
             cnf.GossipWorkers = new int[] { n / 20 + 1, n / 40 + 1 };
@@ -163,7 +166,7 @@ namespace Aurem.Config
             var cnf = RequiredByLinear();
 
             AddKeys(cnf, m, c);
-            AddSyncConf(cnf, c.SetupAddresses, false);
+            AddSyncConf(cnf, c.Addresses, false);
             AddLogConf(cnf, cnf.Pid.ToString());
             AddConsensusConf(cnf);
             AddLastLevel(cnf);

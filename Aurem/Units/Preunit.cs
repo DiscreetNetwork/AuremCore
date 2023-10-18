@@ -40,6 +40,7 @@ namespace Aurem.Units
             _crown = crown;
             _data = data;
             _rsData = rsData;
+            _hash = ComputeHash(id, crown, data, rsData);
         }
 
         public uint EpochID() => _epochId;

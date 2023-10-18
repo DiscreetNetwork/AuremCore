@@ -48,6 +48,20 @@ namespace BN256Core
             return c;
         }
 
+        public static BigInteger RandomScalar(Random rnd)
+        {
+            byte[] data = new byte[65];
+            rnd.NextBytes(data);
+            data[64] = 0;
+
+            BigInteger b = new BigInteger(data);
+            //Console.WriteLine(b.ToString());
+            var c = b % Constants.Order;
+
+            Array.Clear(data);
+            return c;
+        }
+
         public SecretKey()
         {
             s = new BigInteger(0);
@@ -100,7 +114,7 @@ namespace BN256Core
         public void Add(BigInteger a)
         {
             s = BigInteger.Add(s, a) % Constants.Order;
-            BN.ToBN(a, scalar.n.array);
+            BN.ToBN(s, scalar.n.array);
         }
 
         public void Add(SecretKey a) => Add(a.s);
@@ -114,7 +128,7 @@ namespace BN256Core
         {
             s = ((s - a) % Constants.Order);
             while (s < 0) s += Constants.Order;
-            BN.ToBN(a, scalar.n.array);
+            BN.ToBN(s, scalar.n.array);
         }
 
         public void Sub(SecretKey a) => Sub(a.s);
@@ -122,7 +136,7 @@ namespace BN256Core
         public void Mul(BigInteger a)
         {
             s = BigInteger.Multiply(s, a) % Constants.Order;
-            BN.ToBN(a, scalar.n.array);
+            BN.ToBN(s, scalar.n.array);
         }
 
         public void Mul(SecretKey a) => Mul(a.s);

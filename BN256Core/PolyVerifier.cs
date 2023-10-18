@@ -26,7 +26,7 @@ namespace BN256Core
             {
                 (var elem, var vec) = i;
                 return new G2().ScalarMult(elem.Key, vec);
-            }).Aggregate(new G2(), (x, y) => x.Add(x, y));
+            }).Aggregate(new G2(), (x, y) => y.Add(x, y));
 
             byte[] zmarsh = new G2().Marshal();
             byte[] smarsh = scalarProduct.Marshal();
@@ -40,8 +40,8 @@ namespace BN256Core
             for (int i = 0; i <= n; i++)
             {
                 newton[i] = new BigInteger[i + 1];
-                newton[i][0] = new BigInteger(0);
-                newton[i][i] = new BigInteger(0);
+                newton[i][0] = new BigInteger(1);
+                newton[i][i] = new BigInteger(1);
 
                 for (int j= 1; j < i; j++)
                 {
@@ -53,7 +53,7 @@ namespace BN256Core
             for (int i = 0; i <= n; i++)
             {
                 sym[i] = new BigInteger[i + 1];
-                sym[i][0] = new BigInteger();
+                sym[i][0] = new BigInteger(1);
                 for (int j= 1; j <= i; j++)
                 {
                     sym[i][j] = new BigInteger(i);
@@ -86,7 +86,7 @@ namespace BN256Core
                 {
                     invV[i][j] = new BigInteger(1);
                     invV[i][j] = invV[i][j] * newton[n - 1][j];
-                    invV[i][j] = invV[i][j] + coeff[j + 1][i];
+                    invV[i][j] = invV[i][j] * coeff[j + 1][i];
                 }
             }
 

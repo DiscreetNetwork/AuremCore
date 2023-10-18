@@ -26,6 +26,16 @@ namespace AuremCore.Tests
             return $"Preblocks consumed: {n}\n";
         }
 
+        public static async Task<string> PrintingPreblockConsumer(int pid, ChannelReader<Preblock> ps)
+        {
+            await foreach (var pp in ps.ReadAllAsync())
+            {
+                await Console.Out.WriteLineAsync($"PrintingPreblockConsumer: pid={pid}: preblock received");
+            }
+
+            return "null";
+        }
+
         public static async Task<string> ControlSumPreblockConsumer(ChannelReader<Preblock> ps)
         {
             var n = 0;

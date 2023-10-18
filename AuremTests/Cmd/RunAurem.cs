@@ -1,6 +1,7 @@
 ﻿using Aurem.Config;
 using AuremCore.Core;
 using AuremCore.Core.Extensions;
+using AuremCore.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,6 +66,8 @@ namespace AuremTests.Cmd
             public long Delay { get; set; } = 0;
 
             public int RandomBytesPerUnit { get; set; } = 300;
+
+            public bool UseLocalServer { get; set; } = false;
         }
 
         public static async Task Run(AuremSettings settings)
@@ -122,11 +125,15 @@ namespace AuremTests.Cmd
                 {
                     if (settings.Output == 1)
                     {
-                        await AuremCore.Tests.PreblockConsumers.ControlSumPreblockConsumer(preblockSink.Reader);
+                        await Console.Out.WriteLineAsync($"PID={consensusConfig.Pid}" + await AuremCore.Tests.PreblockConsumers.ControlSumPreblockConsumer(preblockSink.Reader));
                     }
                     else if (settings.Output == 2)
                     {
                         await AuremCore.Tests.PreblockConsumers.CountingPreblockConsumer(preblockSink.Reader);
+                    }
+                    else if (settings.Output == 3)
+                    {
+                        await AuremCore.Tests.PreblockConsumers.PrintingPreblockConsumer(consensusConfig.Pid, preblockSink.Reader);
                     }
                     else
                     {
@@ -149,7 +156,7 @@ namespace AuremTests.Cmd
                 if (err != null)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}");
+                    await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
                     return;
                 }
                 (start, stop, err) = Aurem.Run.Process.Create(setupConfig, consensusConfig, ds, preblockSink.Writer);
@@ -169,8 +176,8 @@ namespace AuremTests.Cmd
             await start!.Invoke();
             while (!done.IsCancellationRequested)
             {
-                Console.WriteLine("Process finished; waiting for termination...");
-                await Task.Delay(3000, done.Token);
+                //Console.WriteLine("Process finished; waiting for termination...");
+                await Task.Delay(3000, done.Token).ContinueWith(t => t.Exception == default);
             }
             await stop!.Invoke();
 

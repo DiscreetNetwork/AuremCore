@@ -72,6 +72,15 @@ namespace Aurem.Serialize
             return infos;
         }
 
+        public static (DagInfo[], int) ReadDagInfos(ReadOnlySpan<byte> s)
+        {
+            var infos = new DagInfo[2];
+            (infos[0], var tot) = Decoder.DeserializeDagInfo(s);
+            (infos[1], var t) = Decoder.DeserializeDagInfo(s);
+
+            return (infos, t + tot);
+        }
+
         public static async Task<DagInfo[]> ReadDagInfosAsync(Stream s)
         {
             var infos = new DagInfo[2];
@@ -149,7 +158,10 @@ namespace Aurem.Serialize
 
         public static int ComputeLayer(IUnit u, Dictionary<IUnit, int> layers)
         {
-            if (layers[u] == -1)
+            var success = layers.TryGetValue(u, out var layer);
+            if (!success) layer = 0;
+
+            if (layer == -1)
             {
                 var maxParentLayer = 0;
                 foreach (var v in u.Parents())
@@ -160,9 +172,12 @@ namespace Aurem.Serialize
                         maxParentLayer = cl;
                     }
                 }
+
+                layers[u] = maxParentLayer + 1;
             }
 
-            return layers[u];
+            layers.TryGetValue(u, out layer);
+            return layer;
         }
 
         /// <summary>
@@ -214,6 +229,7 @@ namespace Aurem.Serialize
                 }
             }
 
+            //Console.WriteLine($"SORTCHUNK: len={units.Count}, resLen={result.Count}");
             return result;
         }
     }

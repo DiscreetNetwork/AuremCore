@@ -7,6 +7,7 @@ using AuremCore.Core.Extensions;
 using AuremCore.FastLogger;
 using AuremCore.Network;
 using AuremCore.RMC;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace Aurem.Syncing
 {
     public class RmcServer : IService
     {
-        public const int InPoolSize = 8;
+        public const int InPoolSize = 1;
         public const string RmcMismatch = "unit differs from successfully RMC'd unit";
         public const byte MsgSendData = 0;
         public const byte MsgSendProof = 1;
@@ -33,7 +34,7 @@ namespace Aurem.Syncing
 
         protected SemaphoreSlim multicastInProgress;
         protected bool Quit;
-        protected AsyncRWLock Mx;
+        protected AsyncReaderWriterLock Mx;
         protected WaitGroup Wg;
 
         protected RmcServer(Config.Config conf, IOrderer orderer, Server netserv, Logger log)
@@ -49,7 +50,7 @@ namespace Aurem.Syncing
             
             multicastInProgress = new SemaphoreSlim(1, 1);
             Quit = false;
-            Mx = new AsyncRWLock();
+            Mx = new AsyncReaderWriterLock();
             Wg = new WaitGroup();
         }
 
@@ -59,10 +60,10 @@ namespace Aurem.Syncing
             return (s, s.Send);
         }
 
-        public Exception? Start()
+        public Task<Exception?> Start()
         {
             InPool.Start();
-            return null;
+            return Task.FromResult<Exception?>(null);
         }
 
         public void StopIn()
@@ -88,6 +89,7 @@ namespace Aurem.Syncing
 
         public async Task Send(IUnit u)
         {
+            //await Console.Out.WriteLineAsync($"unit id:  {u.UnitID()}, current process = {Pid}");
             var rlock = await Mx.ReaderLockAsync();
 
             try
@@ -137,7 +139,7 @@ namespace Aurem.Syncing
                 return err;
             }
 
-            if (!u.Equals(pu))
+            if (!u.PEquals(pu))
             {
                 return new ComplianceException(RmcMismatch);
             }
@@ -432,13 +434,13 @@ namespace Aurem.Syncing
             for (ushort pid = 0; pid < NProc; pid++)
             {
                 if (pid == Pid) continue;
-
+                var _pid = pid;
                 gathering.Add(1);
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        signedBy[pid] = await GetMemberSignature(data, id, pid);
+                        signedBy[_pid] = await GetMemberSignature(data, id, _pid);
                     }
                     finally
                     {
@@ -471,6 +473,7 @@ namespace Aurem.Syncing
         public async Task Multicast(IUnit u)
         {
             var id = u.UnitID();
+            //await Console.Out.WriteLineAsync($"unit id: {id}, pid={Pid}");
             var data = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.EncodeUnit, u, out var err);
             if (err != null)
             {
@@ -486,13 +489,13 @@ namespace Aurem.Syncing
             for (ushort pid = 0; pid < NProc; pid++)
             {
                 if (pid == Pid) continue;
-
+                var _pid = pid;
                 wg.Add(1);
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var err = await SendProof(pid, id);
+                        var err = await SendProof(_pid, id);
                         if (err != null)
                         {
                             Log.Error().Str("where", "RmcServer.SendProof").Msg(err.Message);

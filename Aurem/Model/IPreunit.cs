@@ -98,13 +98,13 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public virtual bool Equals(object? obj)
+        public virtual bool PEquals(object? obj)
         {
             if (obj == null) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj is IPreunit u)
             {
-                return u.Creator() == Creator() && u.Height() == Height() && u.EpochID() == u.EpochID() && u.Hash().Equals(Hash());
+                return u.Creator() == Creator() && u.Height() == Height() && u.EpochID() == EpochID() && u.Hash().Equals(Hash());
             }
             
             return false;

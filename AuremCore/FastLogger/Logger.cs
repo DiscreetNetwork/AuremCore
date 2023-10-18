@@ -20,6 +20,10 @@ namespace AuremCore.FastLogger
 
         private bool printStdOut = false;
 
+        private bool neverStart = false;
+
+        private CancellationTokenSource? _source;
+
         public static Logger New(Stream s, LoggerContext ctx = null, bool printStdOut = false)
         {
             Logger logger = new()
@@ -32,12 +36,36 @@ namespace AuremCore.FastLogger
             logger.printStdOut = printStdOut;
             ctx.EnsureLoggerSet(logger);
 
+            logger.Start();
+
+            return logger;
+        }
+
+        internal static Logger New(Logger other, LoggerContext ctx)
+        {
+            Logger logger = new()
+            {
+                Base = other.Base,
+                printStdOut = other.printStdOut,
+                EventQueue = other.EventQueue,
+                Context = ctx,
+                neverStart = true
+            };
+
             return logger;
         }
 
         public void Start()
         {
-            _ = Task.Run(async () => await Start(default));
+            if (neverStart) return;
+            _source = new CancellationTokenSource();
+            _ = Task.Run(async () => await Start(_source.Token));
+        }
+
+        public void Stop()
+        {
+            if (neverStart) return;
+            _source?.Cancel();
         }
 
         public async Task Start(CancellationToken token)
@@ -173,7 +201,7 @@ namespace AuremCore.FastLogger
 
         public LogEvent NewEvent(LogLvl lvl, Action<string>? done)
         {
-            var enabled = Context.Level > lvl;
+            var enabled = Context.Level <= lvl;
             if (!enabled)
             {
                 if (done != null)

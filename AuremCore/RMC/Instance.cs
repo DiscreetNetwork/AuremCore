@@ -32,11 +32,14 @@ namespace AuremCore.RMC
             var rawLen = (uint)data.Length;
             var buf = new byte[8 + rawLen];
             BinaryPrimitives.WriteUInt64LittleEndian(buf, id);
-            Buffer.BlockCopy(buf, 8, data, 0, data.Length);
+            Buffer.BlockCopy(data, 0, buf, 8, data.Length);
             var signedData = buf.Concat(keys.Sign(buf));
             var nproc = (ushort)keys.Length;
             var proof = new MultiSignature(TUtil.MinimalQuorum(nproc), signedData);
+
             proof.Aggregate(keys.Pid(), keys.Sign(signedData));
+
+            //Console.WriteLine($"signed data for id={id}: {Convert.ToHexString(signedData)}");
 
             return new Instance
             {
@@ -248,10 +251,9 @@ namespace AuremCore.RMC
             }
 
             await Mutex.WaitAsync();
-
             try
             {
-                if (Keys.Verify(pid, SignedData.Concat(signature).ToArray()))
+                if (!Keys.Verify(pid, SignedData.Concat(signature)))
                 {
                     return (false, new Exception("wrong signature"));
                 }

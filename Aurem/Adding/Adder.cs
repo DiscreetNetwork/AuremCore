@@ -111,56 +111,64 @@ namespace Aurem.Adding
         /// <param name="source"></param>
         /// <param name="preunits"></param>
         /// <returns></returns>
-        public async Task<List<Exception>?> AddPreunits(ushort source, params IPreunit[] preunits)
+        public async Task<List<Exception?>?> AddPreunits(ushort source, params IPreunit[] preunits)
         {
-            Log.Debug().Val(Constants.Size, preunits.Length).Val(Constants.PID, source).Msg(Constants.AddPreunits);
-            
-            List<Exception>? errors = null;
-            var getErrors = () =>
+            try
             {
-                if (errors == null || errors.Count == 0) errors = Enumerable.Repeat<Exception>(null, preunits.Length).ToList();
-                return errors;
-            };
+                Log.Debug().Val(Constants.Size, preunits.Length).Val(Constants.PID, source).Msg(Constants.AddPreunits);
 
-            var hashes = preunits.Select(x => x.Hash()).ToArray();
-            var alreadyInDag = Dag.GetUnits(hashes);
-
-            var failed = Enumerable.Repeat(false, preunits.Length).ToArray();
-            foreach ((var i, var pu) in preunits.Index())
-            {
-                if (alreadyInDag[i] == null)
+                List<Exception?>? errors = null;
+                var getErrors = () =>
                 {
-                    var err = CheckCorrectness(pu);
-                    if (err != null)
+                    if (errors == null || errors.Count == 0) errors = Enumerable.Repeat<Exception?>(null, preunits.Length).ToList();
+                    return errors;
+                };
+
+                var hashes = preunits.Select(x => x.Hash()).ToArray();
+                var alreadyInDag = Dag.GetUnits(hashes);
+
+                var failed = Enumerable.Repeat(false, preunits.Length).ToArray();
+                foreach ((var i, var pu) in preunits.Index())
+                {
+                    if (alreadyInDag[i] == null)
                     {
-                        getErrors()[i] = err;
+                        var err = CheckCorrectness(pu);
+                        if (err != null)
+                        {
+                            getErrors()[i] = err;
+                            failed[i] = true;
+                        }
+                    }
+                    else
+                    {
+                        getErrors()[i] = new DuplicateUnitException(alreadyInDag[i]);
                         failed[i] = true;
                     }
                 }
-                else
-                {
-                    getErrors()[i] = new DuplicateUnitException(alreadyInDag[i]);
-                    failed[i] = true;
-                }
-            }
 
-            await Mx.WaitAsync();
+                await Mx.WaitAsync();
 
-            try
-            {
-                foreach((var i, var pu) in preunits.Index())
+                try
                 {
-                    if (!failed[i])
+                    foreach ((var i, var pu) in preunits.Index())
                     {
-                        getErrors()[i] = await AddToWaiting(pu, source);
+                        if (!failed[i])
+                        {
+                            getErrors()[i] = await AddToWaiting(pu, source);
+                        }
                     }
-                }
 
-                return errors;
+                    return errors;
+                }
+                finally
+                {
+                    Mx.Release();
+                }
             }
-            finally
+            catch (Exception ex)
             {
-                Mx.Release();
+                //await Console.Out.WriteLineAsync($"AddPreunits failed bc {ex.Message}");
+                throw ex;
             }
         }
 
@@ -320,7 +328,7 @@ namespace Aurem.Adding
 
             foreach ((var creator, var height) in wp.Pu.View().Heights.Index())
             {
-                for (int h = height;  h > maxHeights[creator]; h--)
+                for (int h = height;  h > (creator >= maxHeights.Count ? -1 : maxHeights[creator]); h--)
                 {
                     var id = IPreunit.ID(h, (ushort)creator, epoch);
                     if (!WaitingByID.ContainsKey(id))
@@ -393,7 +401,7 @@ namespace Aurem.Adding
 
             foreach ((var creator, var height) in wp.Pu.View().Heights.Index())
             {
-                if (height > maxHeights[creator])
+                if (height > (creator >= maxHeights.Length ? -1 : maxHeights[creator]))
                 {
                     var parentID = IPreunit.ID(height, (ushort)creator, epoch);
                     var success = WaitingByID.TryGetValue(parentID, out var par);
@@ -477,7 +485,7 @@ namespace Aurem.Adding
             if (success)
             {
                 Log.Warn().Val(Constants.Height, pu.Height()).Val(Constants.Creator, pu.Creator()).Val(Constants.PID, source).Msg(Constants.ForkDetected);
-                Alerter.NewFork(pu, fork.Pu);
+                await Alerter.NewFork(pu, fork.Pu);
             }
 
             var wp = new WaitingPreunit { Pu = pu, Id = id, Source = source };
@@ -489,7 +497,7 @@ namespace Aurem.Adding
             if (wp.MissingParents > 0)
             {
                 Log.Debug().Val(Constants.Height, wp.Pu.Height()).Val(Constants.Creator, wp.Pu.Creator()).Val(Constants.PID, source).Val(Constants.Size, wp.MissingParents).Msg(Constants.UnknownParents);
-                FetchMissing(wp, maxHeights);
+                await FetchMissing(wp, maxHeights);
                 return new UnknownParentsException(wp.MissingParents);
             }
             

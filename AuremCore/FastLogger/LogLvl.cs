@@ -8,8 +8,6 @@ namespace AuremCore.FastLogger
 {
     public enum LogLvl
     {
-        Disabled = 7,
-        NoLevel = 6,
         PanicLevel = 5,
         FatalLevel = 4,
         ErrorLevel = 3,
@@ -17,7 +15,9 @@ namespace AuremCore.FastLogger
         InfoLevel = 1,
         DebugLevel = 0,
         TraceLevel = -1,
-        All = -2,
+        Disabled = -3,
+        NoLevel = -2,
+        All = -5,
     }
 
 

@@ -28,7 +28,7 @@ namespace AuremTests.Cmd
                 var s = f.ReadLine();
                 if (s == null) break;
 
-                dec.Write(Encoding.ASCII.GetBytes(s));
+                dec.Write(s);
             }
 
             f.Close();

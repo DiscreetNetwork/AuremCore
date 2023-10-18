@@ -51,7 +51,7 @@ namespace Aurem.Dag.Checks
                 throw new ComplianceException("unit without a predecessor but with other parents");
             }
 
-            if (u.Predecessor() == null && u.Predecessor().Level() >= u.Level())
+            if (u.Predecessor() != null && u.Predecessor().Level() >= u.Level())
             {
                 throw new ComplianceException("non-prime unit");
             }
@@ -102,7 +102,7 @@ namespace Aurem.Dag.Checks
         {
             if (u.Dealing()) return false;
             var f = u.Floor(creator).ToList();
-            return f.Count > 1 || (f.Count == 1 && f[0].Equals(u.Parents().ToArray()[creator]));
+            return f.Count > 1 || (f.Count == 1 && !f[0].PEquals(u.Parents().ToArray()[creator]));
         }
 
         /// <summary>

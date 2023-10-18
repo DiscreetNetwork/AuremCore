@@ -68,7 +68,7 @@ namespace AuremCore.FastLogger
 
         public LoggerContext Val<T>(string key, T value)
         {
-            DefaultItems.Add(key, value);
+            DefaultItems[key] = value;
             return this;
         }
 
@@ -116,7 +116,7 @@ namespace AuremCore.FastLogger
             DurationNumberFunc = other.DurationNumberFunc;
             DefaultItems = new();
             foreach ((var k, var v) in other.DefaultItems) DefaultItems.Add(k, v);
-            MyLogger = logger;
+            MyLogger = FastLogger.Logger.New(logger, this);
         }
 
         public void EnsureLoggerSet(Logger logger) { MyLogger = (MyLogger) ?? logger; }

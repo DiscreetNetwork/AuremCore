@@ -11,6 +11,9 @@ namespace Aurem.Model.Exceptions
     /// </summary>
     public class ComplianceException : Exception
     {
-        public ComplianceException(string msg) : base("ComplianceException: " + msg) { }
+        public ComplianceException(string msg) : base("ComplianceException: " + msg) 
+        { 
+        
+        }
     }
 }

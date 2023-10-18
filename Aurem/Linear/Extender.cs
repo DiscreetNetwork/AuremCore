@@ -28,18 +28,21 @@ namespace Aurem.Linear
         public CommonRandomPermutation CRPIterator;
         public Logger Log;
 
+        private ushort Pid;
+
         public Extender(IDag dag, IRandomSource rs, Config.Config conf, Logger log)
         {
             Dag = dag;
             RandomSource = rs;
             Deciders = new(new Hash.HashEqualityComparer());
-            LastTUs = new List<IUnit>(conf.ZeroVoteRoundForCommonVote);
+            LastTUs = new List<IUnit>(Enumerable.Repeat<IUnit>(null, conf.ZeroVoteRoundForCommonVote));
             ZeroVoteRoundForCommonVote = conf.ZeroVoteRoundForCommonVote;
             FirstDecidingRound = conf.FirstDecidingRound;
             OrderStartLevel = conf.OrderStartLevel;
             CommonVoteDeterministicPrefix = conf.CommonVoteDeterministicPrefix;
             CRPIterator = new CommonRandomPermutation(dag, rs, conf.CRPFixedPrefix);
             Log = log;
+            Pid = conf.Pid;
         }
 
         public static int DagMaxLevel(IDag dag)
@@ -111,7 +114,9 @@ namespace Aurem.Linear
             if (!randomBytesPresent) Log.Debug().Val(Constants.Round, level).Msg(Constants.MissingRandomBytes);
 
             if (!decided) return null;
-            return new TimingRound(CurrentTU, LastTUs);
+            var tr = new TimingRound(CurrentTU, LastTUs);
+            //if (Pid == 0) Console.WriteLine($"New timing round: creator={tr.CurrentTU.Creator()}, level={tr.CurrentTU.Level()}");
+            return tr;
         }
     }
 }

@@ -48,7 +48,7 @@ namespace Aurem.Model
         {
             if (u == null || v == null) return false;
 
-            if (u.Equals(v)) return true;
+            if (u.PEquals(v)) return true;
 
             foreach (var w in u.Floor(v.Creator())) {
                 if (w.AboveWithinProc(v)) return true;

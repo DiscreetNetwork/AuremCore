@@ -2,13 +2,16 @@
 using Aurem.Creating;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
+using Aurem.Random;
 using AuremCore.Core;
 using AuremCore.FastLogger;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Aurem.Ordering
@@ -19,15 +22,15 @@ namespace Aurem.Ordering
         public ISyncer Syncer;
         public IRandomSourceFactory Rsf;
         public IAlerter Alerter;
-        public PreblockMaker ToPreblock;
+        public PreblockMaker ToPreblock { get; set; }
         public IDataSource Ds;
         public Creator Creator;
         public Epoch Current;
         public Epoch Previous;
-        public ConcurrentQueue<IUnit> UnitBelt; // Note: units on the unit belt do not have to appear in topological order
-        public ConcurrentQueue<IUnit> LastTiming; // Used to pass the last timing unit of the epoch to the creator
-        public ConcurrentQueue<List<IUnit>> OrderedUnits;
-        public AsyncRWLock Mx;
+        public Channel<IUnit> UnitBelt { get; set; } // Note: units on the unit belt do not have to appear in topological order
+        public Channel<IUnit> LastTiming; // Used to pass the last timing unit of the epoch to the creator
+        public Channel<List<IUnit>> OrderedUnits { get; set; }
+        public AsyncReaderWriterLock Mx;
         public WaitGroup Wg;
         public Logger Log;
 
@@ -41,13 +44,14 @@ namespace Aurem.Ordering
             Conf = conf;
             ToPreblock = toPreblock;
             Ds = ds;
-            UnitBelt = new ConcurrentQueue<IUnit>();
-            LastTiming = new ConcurrentQueue<IUnit>();
-            OrderedUnits = new ConcurrentQueue<List<IUnit>>();
+            UnitBelt = Channel.CreateBounded<IUnit>(conf.EpochLength*conf.NProc);
+            LastTiming = Channel.CreateBounded<IUnit>(conf.NumberOfEpochs);
+            OrderedUnits = Channel.CreateBounded<List<IUnit>>(conf.EpochLength);
             Log = log.With().Val(Logging.Constants.Service, Logging.Constants.OrderService).Logger();
-            Mx = new AsyncRWLock();
+            Mx = new AsyncReaderWriterLock();
             Wg = new WaitGroup();
             TokenSourceTiming = new();
+            TokenSourceOrdered = new();
             TokenSourceBelt = new();
             Source = new();
         }
@@ -60,7 +64,15 @@ namespace Aurem.Ordering
 
             var send = async (IUnit u) =>
             {
+                if (u.Level() > 0)
+                {
+                    Log.Debug().Val(Logging.Constants.Level, u.Level()).Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.Creator, u.Creator()).Msg("attempting to send unit");
+                }
                 await Insert(u);
+                if (u.Level() > 0)
+                {
+                    Log.Debug().Val(Logging.Constants.Level, u.Level()).Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.Creator, u.Creator()).Msg("sending unit has been inserted");
+                }
                 await Syncer.Multicast(u);
             };
 
@@ -68,7 +80,7 @@ namespace Aurem.Ordering
             Creator = new Creator(Conf, Ds, send, RsData, epochProofBuilder, Log.With().Val(Logging.Constants.Service, Logging.Constants.CreatorService).Logger());
 
             await NewEpoch(0);
-            Syncer.Start();
+            await Syncer.Start();
             Alerter.Start();
 
             Wg.Add(1);
@@ -101,20 +113,30 @@ namespace Aurem.Ordering
             _ = Task.Run(async () =>
             {
                 var rng = new System.Random();
-                while (await ticker.WaitForNextTickAsync(Source.Token))
+                try
+                {
+                    while (await ticker.WaitForNextTickAsync(Source.Token))
+                    {
+                        if (Source.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        var pidToCall = (ushort)rng.Next(Conf.NProc - 1);
+                        if (pidToCall >= Conf.Pid)
+                        {
+                            pidToCall++;
+                        }
+
+                        await Syncer.RequestGossip(pidToCall);
+                    }
+                }
+                catch (OperationCanceledException)
                 {
                     if (Source.Token.IsCancellationRequested)
                     {
-                        break;
+                        ticker.Dispose();
                     }
-
-                    var pidToCall = (ushort)rng.Next(Conf.NProc - 1);
-                    if (pidToCall >= Conf.Pid)
-                    {
-                        pidToCall++;
-                    }
-
-                    await Syncer.RequestGossip(pidToCall);
                 }
             });
 
@@ -132,6 +154,8 @@ namespace Aurem.Ordering
             TokenSourceOrdered.Cancel();
             TokenSourceBelt.Cancel();
             Source.Cancel();
+            OrderedUnits.Writer.Complete();
+            UnitBelt.Writer.Complete();
             await Wg.WaitAsync();
 
             Log.Log().Msg(Logging.Constants.ServiceStopped);
@@ -142,26 +166,18 @@ namespace Aurem.Ordering
             try
             {
                 uint current = 0;
-                while (!TokenSourceOrdered.IsCancellationRequested)
+                await foreach (var round in OrderedUnits.Reader.ReadAllAsync())
                 {
-                    while (OrderedUnits.IsEmpty) await Task.Delay(50);
-
-                    while (!OrderedUnits.IsEmpty)
+                    var timingUnit = round!.Last();
+                    var epoch = timingUnit.EpochID();
+                    if (timingUnit.Level() == Conf.LastLevel)
                     {
-                        var success = OrderedUnits.TryDequeue(out var round);
-                        if (!success) break;
+                        await LastTiming.Writer.WriteAsync(timingUnit);
+                        await FinishEpoch(epoch);
 
-                        var timingUnit = round!.Last();
-                        var epoch = timingUnit.EpochID();
-                        if (timingUnit.Level() == Conf.LastLevel)
+                        if ((int)epoch == Conf.NumberOfEpochs - 1)
                         {
-                            LastTiming.Enqueue(timingUnit);
-                            await FinishEpoch(epoch);
-                            
-                            if ((int)epoch == Conf.NumberOfEpochs - 1)
-                            {
-                                Source.Cancel();
-                            }
+                            Source.Cancel();
                         }
 
                         if (epoch >= current && timingUnit.Level() <= Conf.LastLevel)
@@ -176,12 +192,17 @@ namespace Aurem.Ordering
             }
             finally
             {
+                LastTiming.Writer.Complete();
                 TokenSourceTiming.Cancel();
             }
         }
 
         public async Task<List<Exception>?> AddPreunits(ushort source, params IPreunit[] preunits)
         {
+            if (preunits.Length > 1)
+            {
+
+            }
             var errorsSize = preunits.Length;
             Exception[] errors = null!;
             var getErrors = () =>
@@ -326,6 +347,10 @@ namespace Aurem.Ordering
                 if (ep != null)
                 {
                     (result, err) = ep.Rs.DataToInclude(parents.ToList(), level);
+                    if (ep.Rs is Coin)
+                    {
+
+                    }
                 }
                 else
                 {
@@ -350,7 +375,7 @@ namespace Aurem.Ordering
                 return;
             }
 
-            (var ep, var newer) = await GetEpoch(unit.Creator());
+            (var ep, var newer) = await GetEpoch(unit.EpochID());
             if (newer)
             {
                 ep = await NewEpoch(unit.EpochID());
@@ -470,6 +495,7 @@ namespace Aurem.Ordering
 
                     Previous = Current;
                     Current = new Epoch(epoch, Conf, Syncer, Rsf, Alerter, UnitBelt, OrderedUnits, Log);
+
                     return Current;
                 }
 

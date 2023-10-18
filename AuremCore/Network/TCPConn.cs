@@ -15,6 +15,7 @@ namespace AuremCore.Network
         private bool _connected;
         private CancellationTokenSource _cancellationTokenSource;
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
+        private ulong _debug_RegisterPrint = 0;
 
         public override IPEndPoint RemoteEndPoint => _remote;
         public override bool IsConnected => _connected;
@@ -26,6 +27,11 @@ namespace AuremCore.Network
         TcpClient client;
 
         public TCPConn() { }
+
+        public void Debug_RegisterPrintActivity()
+        {
+            Interlocked.Exchange(ref _debug_RegisterPrint, 1);
+        }
 
         public TCPConn(TcpClient client)
         {
@@ -56,50 +62,57 @@ namespace AuremCore.Network
         public override async Task<int> Read(byte[] s)
         {
             //return await client.GetStream().ReadAsync(s, _cancellationTokenSource.Token);
-            var res = client.GetStream().BeginRead(s, 0, s.Length, null, null);
-            var _timeout = DateTime.Now.Add(timeout).Ticks;
-            while (!res.IsCompleted && _timeout < DateTime.Now.Ticks && !_cancellationTokenSource.IsCancellationRequested)
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+            cts.CancelAfter(timeout);
+            var res = await client.GetStream().ReadAsync(s, cts.Token);
+            if (cts.IsCancellationRequested && !_cancellationTokenSource.IsCancellationRequested) throw new Exception("Timeout");
+            if (Interlocked.Read(ref _debug_RegisterPrint) > 0)
             {
-                await Task.Delay(50, _cancellationTokenSource.Token);
+                //await Console.Out.WriteLineAsync($"CONNECTION READ: {Convert.ToHexString(s)}");
             }
 
-            var x = client.GetStream().EndRead(res);
-            if (res.IsCompleted)
-            {
-                return s.Length;
-            }
-            else
-            {
-                return x;
-            }
+            return res;
         }
 
         public override async Task<int> Write(byte[] s)
         {
             //await client.GetStream().WriteAsync(s, _cancellationTokenSource.Token);
             //return s.Length;
-            var res = client.GetStream().BeginWrite(s, 0, s.Length, null, null);
-            var _timeout = DateTime.Now.Add(timeout).Ticks;
-            while (!res.IsCompleted && _timeout < DateTime.Now.Ticks && !_cancellationTokenSource.IsCancellationRequested)
+
+            //await Console.Out.WriteLineAsync($"Connection {RemoteEndPoint} writing: " + Convert.ToHexString(s));
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+            cts.CancelAfter(timeout);
+            await client.GetStream().WriteAsync(s, cts.Token);
+
+            if (_cancellationTokenSource.IsCancellationRequested) return 0;
+            if (cts.IsCancellationRequested)
             {
-                await Task.Delay(50, _cancellationTokenSource.Token);
+                // timeout
+                throw new Exception("Timeout");
             }
 
-            client.GetStream().EndWrite(res);
-            if (res.IsCompleted)
-            {
-                return s.Length;
-            }
-            else
-            {
-                return 0;
-            }
+            return s.Length;
         }
 
         public override async Task Close()
         {
-            await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
-            client.Close();
+            if (Interlocked.Read(ref _debug_RegisterPrint) > 0)
+            {
+                //await Console.Out.WriteLineAsync("Connection Read: close");
+            }
+
+            try
+            {
+                await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
+            }
+            catch (Exception)
+            {
+
+            }
+            finally
+            {
+                client.Close();
+            }
         }
 
         public override async Task Interrupt()

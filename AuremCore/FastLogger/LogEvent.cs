@@ -15,7 +15,7 @@ namespace AuremCore.FastLogger
         public LogLvl Level { get; set; }
         public bool Stack { get; set; }
 
-        public Dictionary<string, object> Values = new();
+        public Dictionary<string, object> Values;
 
         //public StreamWriter Writer { get; set; }
         public Action<string> Done { get; set; }
@@ -36,6 +36,7 @@ namespace AuremCore.FastLogger
                 Level = lvl,
                 Stack = false,
                 Done = x => { },
+                Values = new(),
                 //Writer = new StreamWriter(s),
                 Logger = logger,
             };
@@ -209,7 +210,7 @@ namespace AuremCore.FastLogger
             }
 
             Write();
-            Done(msg);
+            if (Done != null) Done(msg);
         }
 
         public void Msg(string format, params object[] args)

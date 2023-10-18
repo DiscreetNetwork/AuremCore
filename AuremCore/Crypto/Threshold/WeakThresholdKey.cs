@@ -23,7 +23,8 @@ namespace AuremCore.Crypto.Threshold
 
         public override Share? CreateShare(byte[] msg)
         {
-            if (!shareProviders[owner]) return null;
+            shareProviders.TryGetValue(owner, out var can);
+            if (!can) return null;
 
             return new Share { owner = this.owner, sig = this.sk.Sign(msg) };
         }
@@ -60,7 +61,7 @@ namespace AuremCore.Crypto.Threshold
             var coeffs = new BigInteger[threshold];
             for (int i = 0; i < threshold; i++)
             {
-                coeffs[i] = SecretKey.RandomScalar();
+                coeffs[i] = SecretKey.RandomScalar(rnd);
             }
 
             var skeys = new P2PSecretKey[nproc];

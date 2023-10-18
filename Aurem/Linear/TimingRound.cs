@@ -77,11 +77,18 @@ namespace Aurem.Linear
                 {
                     if (uParent == null) continue;
                     if (CheckIfAlreadyOrdered(uParent, prevTUs)) continue;
-                    if (seenUnits.ContainsKey(uParent.Hash()) && !seenUnits[uParent.Hash()]) dfs(uParent);
-                    if (unitToLayer.ContainsKey(uParent.Hash()) && unitToLayer[uParent.Hash()] > minLayerBelow) minLayerBelow = unitToLayer[uParent.Hash()];
+
+                    var success = seenUnits.TryGetValue(uParent.Hash(), out var seenUnitsVal);
+                    if (!success) seenUnitsVal = false;
+                    if (!seenUnitsVal) dfs(uParent);
+
+
+                    var success2 = unitToLayer.TryGetValue(uParent.Hash(), out var unitToLayerVal);
+                    if (!success2) unitToLayerVal = 0;
+                    if (unitToLayerVal > minLayerBelow) minLayerBelow = unitToLayerVal;
                 }
 
-                var uLayer = minLayerBelow - 1;
+                var uLayer = minLayerBelow + 1;
                 unitToLayer[u.Hash()] = uLayer;
                 if (result.Count <= uLayer)
                 {

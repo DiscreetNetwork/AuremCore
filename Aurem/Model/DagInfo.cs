@@ -24,18 +24,20 @@ namespace Aurem.Model
         public static DagInfo MaxView(IDag dag)
         {
             var maxes = dag.MaximalUnitsPerProcess();
-            var heights = new List<int>(dag.NProc());
+            var heights = new List<int>(Enumerable.Repeat(-1, dag.NProc()));
             maxes.Iterate((List<IUnit> units) =>
             {
                 var h = -1;
+                var c = -1;
                 foreach (var u in units)
                 {
+                    if (c == -1) c = u.Creator();
                     if (u.Height() > h)
                     {
                         h = u.Height();
                     }
                 }
-                heights.Add(h);
+                if (c != -1) heights[c] = h;
                 return true;
             });
 

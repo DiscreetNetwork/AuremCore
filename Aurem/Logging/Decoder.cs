@@ -56,9 +56,20 @@ namespace Aurem.Logging
             var data = dataObjs.ToDictionary(dataObjs => dataObjs.Key, dataObjs => (JsonElement)dataObjs.Value);
 
             var res = Decode(data);
-            Base.Write(Encoding.ASCII.GetBytes(res));
+            Base.Write(Encoding.ASCII.GetBytes($"{res}\n"));
 
-            Base.Write(buffer, offset, count);
+            //Base.Write(buffer, offset, count);
+        }
+
+        public void Write(string json)
+        {
+            Dictionary<string, object> dataObjs = JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? throw new ArgumentException("expected a JSON string or byte array", nameof(json));
+            var data = dataObjs.ToDictionary(dataObjs => dataObjs.Key, dataObjs => (JsonElement)dataObjs.Value);
+
+            var res = Decode(data);
+            Base.Write(Encoding.ASCII.GetBytes($"{res}\n"));
+
+            //Base.Write(buffer, offset, count);
         }
 
         private static string Decode(Dictionary<string, JsonElement> data)
@@ -75,7 +86,7 @@ namespace Aurem.Logging
             var ret = "";
             if (data.ContainsKey(Constants.Time))
             {
-                ret += $"{data[Constants.Time].GetDateTime():HH:mm:ss:fff}|";
+                ret += $"{data[Constants.Time].GetString()}|";
             }
 
             if (data.ContainsKey(Constants.LogLevel))
@@ -85,7 +96,7 @@ namespace Aurem.Logging
 
             if (data.ContainsKey(Constants.Service))
             {
-                ret += $"{Constants.FieldNameDict[Constants.Service]}:{Constants.ServiceTypeDict[data[Constants.Service].GetInt32()]}";
+                ret += $"{Constants.FieldNameDict[Constants.Service]}:{Constants.ServiceTypeDict[data[Constants.Service].GetInt32()]}|";
             }
 
             var slice = new List<string>();

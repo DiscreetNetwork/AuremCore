@@ -181,10 +181,20 @@ namespace Aurem.Dag
                 hook(u);
             }
 
-            UpdateUnitsOnHeight(u);
-            UpdateUnitsOnLevel(u);
-            Units.Add(u);
-            UpdateMaximal(u);
+            // FIXME: try removing this later
+            try
+            {
+                UpdateUnitsOnHeight(u);
+                UpdateUnitsOnLevel(u);
+                Units.Add(u);
+                UpdateMaximal(u);
+            }
+            catch (Exception e)
+            {
+                //Console.WriteLine(e.Message);
+                throw e;
+            }
+            
 
             foreach (var hook in PostInsert)
             {
@@ -201,7 +211,7 @@ namespace Aurem.Dag
             // works assuming no unit in the DAG created by creator is greater than or equal to u.
             foreach (var v in maxByCreator)
             {
-                if (IUnit.Above(u, v)) maxByCreator.Add(v);
+                if (IUnit.Above(u, v)) newMaxByCreator.Add(v);
             }
 
             newMaxByCreator.Add(u);
@@ -230,7 +240,7 @@ namespace Aurem.Dag
 
             if (height >= HeightUnits.Length())
             {
-                LevelUnits.ExtendBy((u.Level() - LevelUnits.Length()) + 10); // 10 might not be perfectly optimal
+                HeightUnits.ExtendBy((u.Level() - HeightUnits.Length()) + 10); // 10 might not be perfectly optimal
             }
 
             (var su, _) = HeightUnits.GetFiber(height);

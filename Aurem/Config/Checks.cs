@@ -103,12 +103,17 @@ namespace Aurem.Config
             }
 
             var n = (int)cnf.NProc;
-            var ok = (IList<string> s) => s.Count == n;
+            var ok = (IList<string> s) =>
+            {
+                if (s == null && n == 0) return true;
+                if (s == null) return false;
+                return s.Count == n;
+            };
 
             if (!ok(cnf.RMCAddresses)) throw new ConfigException("wrong number of RMC addresses");
             if (!ok(cnf.GossipAddresses)) throw new ConfigException("wrong number of gossip addresses");
             if (!ok(cnf.FetchAddresses)) throw new ConfigException("wrong number of fetch addresses");
-            if (!setup && !ok(cnf.MCastAddresses)) throw new ConfigException("wrong number of mcast addresses");
+            if (!setup) if (!ok(cnf.MCastAddresses)) throw new ConfigException("wrong number of mcast addresses");
 
             if (cnf.GossipWorkers == null || cnf.GossipWorkers.Length != 2) throw new ConfigException("Gossip workers is malformed");
             if (cnf.FetchWorkers == null || cnf.FetchWorkers.Length != 2) throw new ConfigException("Fetch workers is malformed");
@@ -192,7 +197,7 @@ namespace Aurem.Config
         /// <param name="cnf"></param>
         public static void ValidSetup(Config cnf)
         {
-            Valid(cnf);
+            IsValid(cnf);
             if (cnf.CanSkipLevel)
             {
                 throw new ConfigException("Cannot skip level in setup");

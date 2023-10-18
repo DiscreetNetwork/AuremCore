@@ -76,12 +76,13 @@ namespace AuremCore.Network
         public override async Task<Conn?> Dial(ushort pid)
         {
             // parse the connection
+            //await Console.Out.WriteLineAsync($"Dial pid={pid}, total addresses={remoteAddresses?.Length}");
             if (pid >= remoteAddresses.Length) throw new ArgumentOutOfRangeException();
             var addr = IPEndPoint.Parse(remoteAddresses[pid]);
 
             var _client = new TcpClient();
             var connres = _client.BeginConnect(addr.Address, addr.Port, null, null);
-            var _timeout = timeout.Ticks;
+            var _timeout = DateTime.UtcNow.Ticks + timeout.Ticks;
             while (!connres.IsCompleted && _timeout > DateTime.UtcNow.Ticks && !cancellationTokenSource.Token.IsCancellationRequested) await Task.Delay(100);
 
             if (!connres.IsCompleted)

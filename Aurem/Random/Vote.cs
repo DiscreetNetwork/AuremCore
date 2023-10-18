@@ -47,7 +47,7 @@ namespace Aurem.Random
         public static byte[] MarshalVotes(Vote[,] votes, ushort pid)
         {
             using var ms = new MemoryStream();
-            for (int i = 0; i < votes.Length; i++)
+            for (int i = 0; i < votes.GetLength(0); i++)
             {
                 var v = votes[pid, i];
                 if (v == null) ms.WriteByte(0);

@@ -64,7 +64,7 @@ namespace Aurem.Serialize
             foreach (var h in crown.Heights)
             {
                 if (h == -1) BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(s), uint.MaxValue);
-                else BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(s), (uint)h);
+                else BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(s), (uint)h);
 
                 s += 4;
             }
@@ -125,7 +125,7 @@ namespace Aurem.Serialize
             foreach (var h in dagInfo.Heights)
             {
                 if (h == -1) BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(s), uint.MaxValue);
-                else BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(s), (uint)h);
+                else BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(s), (uint)h);
 
                 s += 4;
             }

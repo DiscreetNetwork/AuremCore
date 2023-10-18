@@ -43,6 +43,7 @@ namespace Aurem.Run
                     if (head.Level() == conf.OrderStartLevel)
                     {
                         await wtkchan.Writer.WriteAsync(rsf.GetWTK(head.Creator()));
+                        log.Info().Msg("Setup phase has completed successfully");
                         return;
                     }
 
@@ -54,7 +55,11 @@ namespace Aurem.Run
                 if (err != null) throw err;
 
                 var start = () => ord.Start(rsf, sync, NopAlerter.Instance);
-                var stop = () => ord.Stop().ContinueWith(x => wtkchan.Writer.Complete(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                var stop = () => ord.Stop().ContinueWith(x =>
+                {
+                    log.Stop();
+                    wtkchan.Writer.Complete();
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             
                 return (start, stop, null);
             }
@@ -116,6 +121,7 @@ namespace Aurem.Run
                     await started.Task;
                     netserv.Stop();
                     await ord.Stop();
+                    log.Stop();
                 };
 
                 return (start, stop, null);
@@ -129,7 +135,7 @@ namespace Aurem.Run
         public static (Func<Task>?, Func<Task>?, Exception?) NoBeacon(Config.Config conf, IDataSource ds, ChannelWriter<Preblock> ps)
         {
             var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
-            wtkchan.Writer.TryWrite(WeakThresholdKey.Seeded(conf.NProc, conf.Pid, 2137, new Dictionary<ushort, bool>()));
+            wtkchan.Writer.TryWrite(WeakThresholdKey.Seeded(conf.NProc, conf.Pid, 2137, null));
             (var start, var stop, var err) = Consensus(conf, wtkchan, ds, ps);
             
             return (start, stop, err);

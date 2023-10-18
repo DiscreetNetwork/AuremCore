@@ -42,7 +42,7 @@ namespace Aurem.Random
         public static byte[] Nonce(int level, uint epoch)
         {
             var data = new byte[8];
-            BinaryPrimitives.WriteUInt64LittleEndian(data, (ulong)(epoch << 16) + (ulong)level);
+            BinaryPrimitives.WriteUInt64LittleEndian(data, ((ulong)epoch << 16) + (ulong)level);
             return data;
         }
 
@@ -54,7 +54,8 @@ namespace Aurem.Random
 
         private void Update(IUnit u)
         {
-            if (ShareProviders[u.Creator()])
+            ShareProviders.TryGetValue(u.Creator(), out var v1);
+            if (v1)
             {
                 var cs = new Share();
                 var offset = Constants.SignatureLength;
@@ -81,7 +82,8 @@ namespace Aurem.Random
 
         private Exception? CheckCompliance(IUnit u, IDag dag)
         {
-            if (u.Dealing() && ShareProviders[u.Creator()])
+            ShareProviders.TryGetValue(u.Creator(), out var v0);
+            if (u.Dealing() && v0)
             {
                 DelegateExtensions.InvokeAndCaptureException(new Share().Unmarshal, u.RandomSourceData(), out var exc);
                 return exc;
@@ -112,7 +114,8 @@ namespace Aurem.Random
                     }
                 }
 
-                if (ShareProviders[u.Creator()])
+                ShareProviders.TryGetValue(u.Creator(), out var v1);
+                if (v1)
                 {
                     var err = DelegateExtensions.InvokeAndCaptureException(new Share().Unmarshal, u.RandomSourceData()[Constants.SignatureLength..], out var exc);
                     if (exc != null) return exc;
@@ -151,7 +154,8 @@ namespace Aurem.Random
                 ms.Write(rb);
             }
 
-            if (ShareProviders[Pid])
+            ShareProviders.TryGetValue(Pid, out var v1);
+            if (v1)
             {
                 ms.Write(Wtk.CreateShare(Nonce(level, Dag.EpochID()))!.Marshal());
             }
@@ -174,7 +178,10 @@ namespace Aurem.Random
             {
                 foreach (var v in us)
                 {
-                    if (!ShareProviders[v.Creator()] || shareCollected[v.Creator()]) continue;
+                    ShareProviders.TryGetValue(v.Creator(), out var v1);
+                    shareCollected.TryGetValue(v.Creator(), out var v2);
+
+                    if (!v1 || v2) continue;
 
                     var success = CoinShares.TryGetValue(v.Hash(), out var cs);
                     if (success)

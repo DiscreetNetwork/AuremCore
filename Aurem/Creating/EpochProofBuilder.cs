@@ -80,7 +80,11 @@ namespace Aurem.Creating
             }
 
             var sig = Shares.Add(share, msg);
-            if (sig != null) return ProofUtil.EncodeSignature(sig, msg);
+            if (sig != null)
+            {
+                Log.Info().Str("where", "creator.TryBuilding").Msg("successfully built a proof of the epoch");
+                return ProofUtil.EncodeSignature(sig, msg);
+            }
 
             return null;
         }

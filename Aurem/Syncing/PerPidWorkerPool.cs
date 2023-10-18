@@ -39,6 +39,7 @@ namespace Aurem.Syncing
                             while (Interlocked.Read(ref Quit) == 0)
                             {
                                 await Work(xi);
+                                await Task.Delay(10);
                             }
                         }
                         finally

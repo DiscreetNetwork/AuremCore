@@ -25,7 +25,7 @@ namespace Aurem.Ordering
 
         private Channel<bool> More;
 
-        public Epoch(uint id, Config.Config conf, ISyncer syncer, IRandomSourceFactory rsf, IAlerter alert, ConcurrentQueue<IUnit> belt, ConcurrentQueue<List<IUnit>> output, Logger log)
+        public Epoch(uint id, Config.Config conf, ISyncer syncer, IRandomSourceFactory rsf, IAlerter alert, Channel<IUnit> belt, Channel<List<IUnit>> output, Logger log)
         {
             Log = log.With().Val(Logging.Constants.Epoch, id).Logger();
             Dag = new DAG(conf, id);
@@ -39,19 +39,20 @@ namespace Aurem.Ordering
                 Log.Debug().Val(Logging.Constants.Creator, u.Creator()).Val(Logging.Constants.Epoch, u.EpochID()).Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.Level, u.Level()).Msg(Logging.Constants.SendingUnitToCreator);
                 if (u.Creator() != conf.Pid)
                 {
-                    Log.Debug().Val(Logging.Constants.Creator, u.Creator()).Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.Level, u.Level()).Msg(Logging.Constants.SendingUnitToCreator);
-                    belt.Enqueue(u);
+                    //Log.Debug().Val(Logging.Constants.Creator, u.Creator()).Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.Level, u.Level()).Msg(Logging.Constants.SendingUnitToCreator);
+                    belt.Writer.TryWrite(u);
                 }
             });
 
             Log.Log().Msg(Logging.Constants.NewEpoch);
             More = Channel.CreateBounded<bool>(1);
+            EpochID = id;
         }
 
         public async Task Close()
         {
             await Adder.Close();
-            Extender.Close(); // NOTE: this *will* be async. Remember to change and fix, and delete this comment.
+            await Extender.Close();
             Log.Log().Msg(Logging.Constants.EpochEnd);
         }
 
@@ -63,8 +64,13 @@ namespace Aurem.Ordering
         {
             if (!More.Reader.Completion.IsCompleted)
             {
-                await More.Reader.ReadAsync();
-                return true;
+                return false;
+            }
+
+            var success = More.Reader.TryRead(out bool rv);
+            if (success)
+            {
+                return rv;
             }
 
             return false;

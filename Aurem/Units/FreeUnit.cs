@@ -55,7 +55,7 @@ namespace Aurem.Units
                 return _floor[pid];
             }
 
-            if (_parents[pid] == null) return null;
+            if (_parents[pid] == null) return Enumerable.Empty<IUnit>();
 
             return _parents.GetRange(pid, 1);
         }
@@ -82,7 +82,7 @@ namespace Aurem.Units
             for (ushort pid = 0; pid < _parents.Count; pid++)
             {
                 var maximal = IUnit.MaximalByPid(_parents, pid).ToList();
-                if (maximal.Count > 1 || (maximal.Count == 1 && !maximal[0].Equals(_parents[pid])))
+                if (maximal.Count > 1 || (maximal.Count == 1 && !maximal[0].PEquals(_parents[pid])))
                 {
                     _floor[pid] = maximal;
                 }

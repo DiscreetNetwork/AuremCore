@@ -18,7 +18,7 @@ namespace Aurem.Model
         /// <param name="id"></param>
         /// <param name="preunits"></param>
         /// <returns></returns>
-        public Task<List<Exception>?> AddPreunits(ushort id, params IPreunit[] preunits);
+        public Task<List<Exception?>?> AddPreunits(ushort id, params IPreunit[] preunits);
 
         /// <summary>
         /// Closes the adder.

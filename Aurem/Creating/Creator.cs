@@ -1,6 +1,7 @@
 ﻿using Aurem.Common;
 using Aurem.Logging;
 using Aurem.Model;
+using Aurem.Serialize;
 using Aurem.Units;
 using AuremCore.Core;
 using AuremCore.FastLogger;
@@ -9,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Aurem.Creating
@@ -129,8 +131,26 @@ namespace Aurem.Creating
             var rsData = await RSData(level, parents, Epoch);
             var u = new FreeUnit(Conf.Pid, Epoch, parents, level, data, rsData, Conf.PrivateKey);
             Log.Info().Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, level).Msg(Constants.UnitCreated);
-            await Send(u);
-            await Update(u);
+
+            // FIXME remove
+            //if (data != null && data.Length > 0 && Conf.Pid == 0)
+            //{
+            //    await Console.Out.WriteLineAsync($"PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+            //}
+            //else if (Conf.Pid == 0)
+            //{
+            //    await Console.Out.WriteLineAsync($"PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+            //}
+
+            try
+            {
+                await Send(u);
+                await Update(u);
+            }
+            catch (Exception ex)
+            {
+
+            }
         }
 
         /// <summary>
@@ -215,7 +235,7 @@ namespace Aurem.Creating
             if (prev == null || prev.Level() < u.Level())
             {
                 Candidates[u.Creator()] = u;
-                
+
                 if (u.Level() == MaxLevel)
                 {
                     OnMaxLevel++;
@@ -244,7 +264,8 @@ namespace Aurem.Creating
             Log.Debug().Val(Constants.Creator, u.Creator()).Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, u.Level()).Val(Constants.Size, OnMaxLevel).Msg(Constants.CreatorProcessingUnit);
 
             // if the unit is from an older epoch or the units creator is known to be a forker, ignore it
-            if (Frozen[u.Creator()] || u.EpochID() < Epoch) return;
+            var success = Frozen.TryGetValue(u.Creator(), out var froz);
+            if (success && (froz || u.EpochID() < Epoch)) return;
 
             /* if the unit is from a new epoch, switch to that epoch.
              * Since units appear on the belt in the order they were added to the DAG,
@@ -266,7 +287,11 @@ namespace Aurem.Creating
             var epochProof = EpochProof.TryBuilding(u);
             if (epochProof != null)
             {
-                await NewEpoch(Epoch + 1, epochProof);
+                if (u.EpochID() == Epoch)
+                {
+                    await NewEpoch(Epoch + 1, epochProof);
+                }
+                
                 return;
             }
 
@@ -281,7 +306,7 @@ namespace Aurem.Creating
         /// <param name="level"></param>
         /// <param name="lastTiming"></param>
         /// <returns></returns>
-        public async Task<byte[]> GetData(int level, ConcurrentQueue<IUnit> lastTiming)
+        public async Task<byte[]> GetData(int level, Channel<IUnit> lastTiming)
         {
             if (level <= Conf.LastLevel)
             {
@@ -291,19 +316,10 @@ namespace Aurem.Creating
             // in a rare case there can be timing units from previous epochs left in the queue. The purpose of this loop is to drain and ignore them.
             while (true)
             {
-                while (lastTiming.IsEmpty) await Task.Delay(50);
-
-                bool wasOld = false;
-                while (!lastTiming.IsEmpty)
+                var success = lastTiming.Reader.TryRead(out var timingUnit);
+                if (success)
                 {
-                    var success = lastTiming.TryDequeue(out var timingUnit);
-                    if (!success) break;
-
-                    if (timingUnit.EpochID() < Epoch)
-                    {
-                        wasOld = true;
-                        break;
-                    }
+                    if (timingUnit!.EpochID() < Epoch) continue;
 
                     if (timingUnit.EpochID() == Epoch)
                     {
@@ -316,11 +332,8 @@ namespace Aurem.Creating
 
                         return EpochProof.BuildShare(timingUnit);
                     }
-
                     Log.Warn().Val(Constants.Epoch, timingUnit.EpochID()).Msg(Constants.FutureLastTiming);
                 }
-
-                if (wasOld) continue;
 
                 return Array.Empty<byte>();
             }
@@ -355,7 +368,7 @@ namespace Aurem.Creating
         /// LastTiming is a queue on which the last timing unit of each epoch is expected to appear.
         /// This method is stopped by closing the cancellation token.
         /// </summary>
-        public async Task CreateUnits(ConcurrentQueue<IUnit> unitBelt, ConcurrentQueue<IUnit> lastTiming, IAlerter alerter, CancellationToken token)
+        public async Task CreateUnits(Channel<IUnit> unitBelt, Channel<IUnit> lastTiming, IAlerter alerter, CancellationToken token)
         {
             var om = alerter.AddForkObserver(async (u, _) => await FreezeParent(u.Creator()));
 
@@ -365,20 +378,21 @@ namespace Aurem.Creating
 
                 while (!token.IsCancellationRequested)
                 {
-                    while (!token.IsCancellationRequested && unitBelt.IsEmpty) await Task.Delay(50, token);
-
+                    IUnit u;
+                    try
+                    {
+                        u = await unitBelt.Reader.ReadAsync(token);
+                    }
+                    catch (ChannelClosedException)
+                    {
+                        return;
+                    }
                     if (token.IsCancellationRequested) return;
 
                     await Mx.WaitAsync(token);
-                    
-                    // step 1: update candidates with all units waiting on belt
-                    while (!unitBelt.IsEmpty)
-                    {
-                        var success = unitBelt.TryDequeue(out var u);
-                        if (!success) break;
 
-                        await Update(u);
-                    }
+                    // step 1: update candidates with all units waiting on belt
+                    await Update(u);
 
                     while (Ready())
                     {
@@ -386,6 +400,7 @@ namespace Aurem.Creating
                         (var parents, var level) = BuildParents();
 
                         // 3. make unit
+                        Log.Debug().Val(Logging.Constants.Level, level).Val(Logging.Constants.Height, parents.Where(x => x != null).First().Height() + 1).Val("NumParents", parents.Length).Val(Logging.Constants.Creator, Conf.Pid).Msg("creator ready to produce unit");
                         await CreateUnit(parents, level, await GetData(level, lastTiming));
                     }
 

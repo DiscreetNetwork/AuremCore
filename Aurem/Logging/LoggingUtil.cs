@@ -122,7 +122,7 @@ namespace Aurem.Logging
             }
 
             var log = Logger.New(output, BaseContext).With().Timestamp().Logger().Level((LogLvl)conf.LogLevel);
-            log.Log().Str(Constants.Genesis, Genesis.ToLongTimeString());
+            log.Log().Str(Constants.Genesis, Genesis.ToLongTimeString()).Msg(Constants.Genesis);
 
             return log;
         }

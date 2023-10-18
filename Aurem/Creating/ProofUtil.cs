@@ -24,7 +24,7 @@ namespace Aurem.Creating
         /// </summary>
         public static bool EpochProof(IPreunit pu, WeakThresholdKey wtk)
         {
-            if (pu.Dealing() || wtk == null) return false;
+            if (!pu.Dealing() || wtk == null) return false;
             if (pu.EpochID() == 0) return true;
             try
             {

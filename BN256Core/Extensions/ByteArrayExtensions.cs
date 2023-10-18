@@ -52,7 +52,7 @@ namespace BN256Core.Extensions
 
             byte[] r = new byte[a.Length + b.Length];
 
-            Buffer.BlockCopy(r, 0, a, 0, a.Length);
+            Buffer.BlockCopy(a, 0, r, 0, a.Length);
             b.CopyTo(r.AsSpan(a.Length));
 
             return r;
@@ -67,8 +67,8 @@ namespace BN256Core.Extensions
 
             byte[] r = new byte[a.Length + b.Length];
 
-            Buffer.BlockCopy(r, 0, a, 0, a.Length);
-            Buffer.BlockCopy(r, a.Length, b, 0, b.Length);
+            Buffer.BlockCopy(a, 0, r, 0, a.Length);
+            Buffer.BlockCopy(b, 0, r, a.Length, b.Length);
 
             return r;
         }
@@ -84,7 +84,7 @@ namespace BN256Core.Extensions
 
             foreach (var b in iter)
             {
-                Buffer.BlockCopy(rv, offset, b, 0, b.Length);
+                Buffer.BlockCopy(b, 0, rv, offset, b.Length);
                 offset += b.Length;
             }
 

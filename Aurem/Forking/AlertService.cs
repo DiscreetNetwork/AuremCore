@@ -30,7 +30,7 @@ namespace Aurem.Forking
 
         public Task<Exception?> RequestCommitment(IPreunit preunit, ushort proc) => Handler.RequestCommitment(preunit, proc);
 
-        public Task<Exception?> ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc) => ResolveMissingCommitment(exc, preunit, proc);
+        public Task<Exception?> ResolveMissingCommitment(Exception exc, IPreunit preunit, ushort proc) => Handler.ResolveMissingCommitment(exc, preunit, proc);
 
         public void Unlock(ushort proc) => Handler.Unlock(proc);
 

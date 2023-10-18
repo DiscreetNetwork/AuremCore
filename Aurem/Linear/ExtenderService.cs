@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Aurem.Linear
@@ -21,14 +22,14 @@ namespace Aurem.Linear
     {
         public Extender Ordering;
         public ushort Pid;
-        public ConcurrentQueue<List<IUnit>> Output;
-        public long TimingRoundsRemaining = 0;
-        public ConcurrentQueue<TimingRound> TimingRounds;
+        public Channel<List<IUnit>> Output;
+        public Channel<TimingRound> TimingRounds;
         public long Trigger = 0;
         public long Finished = 0;
+        public WaitGroup Wg;
         public Logger Log;
         
-        public ExtenderService(IDag dag, IRandomSource rs, Config.Config conf, ConcurrentQueue<List<IUnit>> output, Logger log)
+        public ExtenderService(IDag dag, IRandomSource rs, Config.Config conf, Channel<List<IUnit>> output, Logger log)
         {
             Log = log.With().Val(Constants.Service, Constants.ExtenderService).Logger();
             Ordering = new Extender(dag, rs, conf, log);
@@ -36,9 +37,10 @@ namespace Aurem.Linear
             Output = output;
             Trigger = 0;
             Finished = 0;
-            TimingRounds = new();
-            TimingRoundsRemaining = conf.EpochLength;
+            TimingRounds = Channel.CreateBounded<TimingRound>(conf.EpochLength);
+            Wg = new WaitGroup();
 
+            Wg.Add(2);
             _ = Task.Run(async () => await TimingUnitDecider());
             _ = Task.Run(async () => await RoundSorter());
             Log.Info().Msg(Constants.ServiceStarted);
@@ -47,11 +49,10 @@ namespace Aurem.Linear
         /// <summary>
         /// Stops the extender.
         /// </summary>
-        public void Close()
+        public async Task Close()
         {
-            Interlocked.Exchange(ref Trigger, 0);
-            // TODO: implement means of waiting for work to finish.
-            // CRITICAL: YOU CAN FIX THIS NOW, BRANDON.
+            Interlocked.Exchange(ref Finished, 1);
+            await Wg.WaitAsync();
             Log.Info().Msg(Constants.ServiceStopped);
         }
 
@@ -69,25 +70,32 @@ namespace Aurem.Linear
         /// <returns></returns>
         private async Task TimingUnitDecider()
         {
-            while (true)
+            try
             {
-                if (Interlocked.Read(ref Trigger) > 0)
+                while (true)
                 {
-                    Interlocked.Decrement(ref Trigger);
-                    var round = Ordering.NextRound();
-                    while (round != null)
+                    if (Interlocked.Read(ref Trigger) > 0)
                     {
-                        TimingRounds.Enqueue(round);
-                        round = Ordering.NextRound();
+                        Interlocked.Decrement(ref Trigger);
+                        var round = Ordering.NextRound();
+                        while (round != null)
+                        {
+                            await TimingRounds.Writer.WriteAsync(round);
+                            round = Ordering.NextRound();
+                        }
                     }
-                }
-                else if (Interlocked.Read(ref Finished) > 0)
-                {
-                    Interlocked.Exchange(ref Finished, 0);
-                    return;
-                }
+                    else if (Interlocked.Read(ref Finished) > 0)
+                    {
+                        return;
+                    }
 
-                await Task.Delay(10);
+                    await Task.Delay(10);
+                }
+            }
+            finally
+            {
+                TimingRounds.Writer.Complete();
+                Wg.Done();
             }
         }
 
@@ -98,28 +106,29 @@ namespace Aurem.Linear
         /// <returns></returns>
         private async Task RoundSorter()
         {
-            while (Interlocked.Read(ref TimingRoundsRemaining) > 0)
+            try
             {
-                while (TimingRounds.IsEmpty)
+                await foreach(var round in TimingRounds.Reader.ReadAllAsync())
                 {
-                    await Task.Delay(10);
-                }
+                    var units = round.OrderedUnits();
+                    Log.Debug().Msg($"units have been received for the timing round");
+                    await Output.Writer.WriteAsync(units.ToList());
 
-                TimingRounds.TryDequeue(out var round);
-
-                var units = round.OrderedUnits();
-                Output.Enqueue(units.ToList());
-
-                foreach (var u in units)
-                {
-                    Log.Debug().Val(Constants.Creator, u.Creator()).Val(Constants.Height, u.Height()).Val(Constants.Epoch, u.EpochID()).Msg(Constants.UnitOrdered);
-                    if (u.Creator() == Pid)
+                    foreach (var u in units)
                     {
-                        Log.Info().Val(Constants.Height, u.Height()).Val(Constants.Level, u.Level()).Msg(Constants.OwnUnitOrdered);
+                        Log.Debug().Val(Constants.Creator, u.Creator()).Val(Constants.Height, u.Height()).Val(Constants.Epoch, u.EpochID()).Msg(Constants.UnitOrdered);
+                        if (u.Creator() == Pid)
+                        {
+                            Log.Info().Val(Constants.Height, u.Height()).Val(Constants.Level, u.Level()).Msg(Constants.OwnUnitOrdered);
+                        }
                     }
-                }
 
-                Log.Info().Val(Constants.Size, units.Count).Msg(Constants.LinearOrderExtended);
+                    Log.Info().Val(Constants.Size, units.Count).Msg(Constants.LinearOrderExtended);
+                }
+            }
+            finally
+            {
+                Wg.Done();
             }
         }
     }

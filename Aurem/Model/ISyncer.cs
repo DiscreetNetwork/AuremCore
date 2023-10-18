@@ -33,7 +33,7 @@ namespace Aurem.Model
         /// <summary>
         /// Starts the syncer.
         /// </summary>
-        public void Start();
+        public Task Start();
 
         /// <summary>
         /// Stops the syncer.

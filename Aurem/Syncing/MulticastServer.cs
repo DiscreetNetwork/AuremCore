@@ -1,8 +1,8 @@
 ﻿using Aurem.Logging;
 using Aurem.Model;
 using Aurem.Serialize;
-using AuremCore.Core;
 using AuremCore.Core.Extensions;
+using AuremCore.Core;
 using AuremCore.FastLogger;
 using AuremCore.Network;
 using System;
@@ -11,25 +11,28 @@ using System.Linq;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Aurem.Syncing.Internals;
+using Aurem.Syncing.Internals.Packets.Bodies;
+using System.Security.Cryptography;
+using Aurem.Units;
+using Aurem.Syncing.Internals.Packets;
 
 namespace Aurem.Syncing
 {
     public class MulticastServer : IService
     {
-        public const int OutPoolSize = 4;
-        public const int InPoolSize = 4;
+        public const int OutPoolSize = 1;
+        public const int InPoolSize = 1;
 
         protected ushort Pid;
         protected ushort NProc;
         protected IOrderer Orderer;
-        protected Server Netserv;
+        protected Network Netserv;
         protected Channel<MCastRequest>[] Requests;
-        protected IWorkerPool OutPool;
-        protected IWorkerPool InPool;
         protected CancellationTokenSource StopOut;
         protected Logger Log;
 
-        protected MulticastServer(Config.Config conf, IOrderer orderer, Server netserv, Logger log)
+        protected MulticastServer(Config.Config conf, IOrderer orderer, Network network, Logger log)
         {
             Requests = new Channel<MCastRequest>[conf.NProc];
             for (int i = 0; i < conf.NProc; i++)
@@ -40,31 +43,28 @@ namespace Aurem.Syncing
             Pid = conf.Pid;
             NProc = conf.NProc;
             Orderer = orderer;
-            Netserv = netserv;
+            Netserv = network;
             StopOut = new CancellationTokenSource();
             Log = log;
-            OutPool = new PerPidWorkerPool(conf.NProc, OutPoolSize, Out);
-            InPool = new WorkerPool(InPoolSize * conf.NProc, In);
+
+            network.AddHandle(In);
         }
 
-        public static (IService, Requests.Multicast) NewServer(Config.Config conf, IOrderer orderer, Server netserv, Logger log)
+        public static (IService, Requests.Multicast) NewServer(Config.Config conf, IOrderer orderer, Network network, Logger log)
         {
-            var s = new MulticastServer(conf, orderer, netserv, log);
+            var s = new MulticastServer(conf, orderer, network, log);
             return (s, s.Send);
         }
 
-        public Exception? Start()
+        public async Task<Exception?> Start()
         {
-            OutPool.Start();
-            InPool.Start();
+            await Netserv.Start();
             return null;
         }
 
         public async Task StopAsync()
         {
             StopOut.Cancel();
-            await OutPool.StopAsync();
-            await InPool.StopAsync();
         }
 
         protected virtual async Task Send(IUnit u)
@@ -86,7 +86,9 @@ namespace Aurem.Syncing
             foreach (var idx in indices)
             {
                 if (idx == Pid) continue;
-                await Requests[idx].Writer.WriteAsync(new MCastRequest { EncodedUnit = encUnit, Height = u.Height() }); // unlikely to block for long, if at all
+                Netserv.Send((ushort)idx, new Packet(PacketID.MCASTSEND, new MCastSendUnit(u)));
+                Log.Info().Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.PID, idx).Msg(Logging.Constants.SentUnit);
+                //await Requests[idx].Writer.WriteAsync(new MCastRequest { EncodedUnit = encUnit, Height = u.Height() }); // unlikely to block for long, if at all
             }
         }
 
@@ -104,66 +106,21 @@ namespace Aurem.Syncing
             return indices;
         }
 
-        protected virtual async Task In()
+        protected virtual async Task In(Packet p)
         {
-            (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
-            if (err != null)
+            if (p.Body is MCastSendUnit m)
             {
-                return;
-            }
-
-            try
-            {
-                (var preunit, err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(EncodeUtil.ReadPreunitAsync, conn);
-                if (err != null)
+                try
                 {
-                    Log.Error().Str("where", "Multicast.In.Decode").Msg(err.Message);
-                    return;
+                    LoggingUtil.AddingErrors(await Orderer.AddPreunits(m.Unit.Creator(), m.Unit), 1, Log);
                 }
-
-                LoggingUtil.AddingErrors(await Orderer.AddPreunits(preunit.Creator(), preunit), 1, Log);
-            }
-            finally
-            {
-                await conn.Close();
-            }
-        }
-
-        protected virtual async Task Out(ushort pid)
-        {
-            var r = await Requests[pid].Reader.ReadAsync(StopOut.Token);
-            if (StopOut.Token.IsCancellationRequested)
-            {
-                return;
-            }
-
-            (var conn, var err) = await Netserv.TryDial(pid);
-            if (err != null)
-            {
-                return;
-            }
-
-            try
-            {
-                (_, err) = await conn!.TryWrite(r.EncodedUnit);
-                if (err != null)
+                finally
                 {
-                    Log.Error().Str("where", "Multicast.Out.SendUnit").Msg(err.Message);
-                    return;
                 }
-
-                err = conn!.TryFlush();
-                if (err != null)
-                {
-                    Log.Error().Str("where", "Multicast.Out.Flush").Msg(err.Message);
-                    return;
-                }
-
-                Log.Info().Val(Logging.Constants.Height, r.Height).Val(Logging.Constants.PID, pid).Msg(Logging.Constants.SentUnit);
             }
-            finally
+            else
             {
-                await conn!.Close();
+                Log.Error().Msg("received wrong packet type");
             }
         }
     }

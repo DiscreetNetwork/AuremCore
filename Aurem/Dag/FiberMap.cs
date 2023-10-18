@@ -87,9 +87,9 @@ namespace Aurem.Dag
 
             var min = heights.Min();
             var result = new List<IUnit>();
-            var length = _length;
             lock ( _accessLock)
             {
+                var length = _length;
                 for (var height = min + 1; height < length; height++)
                 {
                     var su = Content[height];

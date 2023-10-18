@@ -73,5 +73,11 @@ namespace AuremCore.Crypto.P2P
         {
             return new P2PPublicKey().Unmarshal(Convert.FromBase64String(enc));
         }
+
+        // utility methods to ensure network traffic cannot be faked
+        public bool Verify(byte[] data, Signature sig)
+        {
+            return new VerificationKey(g2).Verify(sig, data);
+        }
     }
 }

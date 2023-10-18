@@ -147,7 +147,7 @@ namespace Aurem.Random
                         }
 
                         // slow
-                        if (Tks[pid].VerifyShare(shares[pid], Nonce(u.Level())))
+                        if (!Tks[pid].VerifyShare(shares[pid], Nonce(u.Level())))
                         {
                             return new Exception("invalid share");
                         }

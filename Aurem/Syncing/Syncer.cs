@@ -1,7 +1,9 @@
 ﻿using Aurem.Model;
+using Aurem.Syncing.Internals;
 using AuremCore.Core;
 using AuremCore.FastLogger;
 using AuremCore.Network;
+using AuremCore.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,20 +28,20 @@ namespace Aurem.Syncing
             Server netserv;
             Exception? err;
 
-            (netserv, subservices, err) = GetNetserv(conf.FetchNetType, conf.Pid, conf.FetchAddresses, new List<IService>(), conf.Timeout, log);
+            (var net, subservices, err) = GetNetwork(conf.Pid, conf.FetchAddresses, new List<IService>(), conf.Timeout, log, conf);
             if (err != null)
             {
                 throw err;
             }
-            (var serv, fetch) = FetchServer.NewServer(conf, orderer, netserv, log.With().Val(Logging.Constants.Service, Logging.Constants.FetchService).Logger());
+            (var serv, fetch) = FetchServer.NewServer(conf, orderer, net, log.With().Val(Logging.Constants.Service, Logging.Constants.FetchService).Logger());
             servers.Add(serv);
 
-            (netserv, subservices, err) = GetNetserv(conf.GossipNetType, conf.Pid, conf.GossipAddresses, subservices, conf.Timeout, log);
+            (net, subservices, err) = GetNetwork(conf.Pid, conf.GossipAddresses, subservices, conf.Timeout, log, conf);
             if (err != null)
             {
                 throw err;
             }
-            (serv, gossip) = GossipServer.NewServer(conf, orderer, netserv, log.With().Val(Logging.Constants.Service, Logging.Constants.GossipService).Logger());
+            (serv, gossip) = GossipServer.NewServer(conf, orderer, net, log.With().Val(Logging.Constants.Service, Logging.Constants.GossipService).Logger());
             servers.Add(serv);
 
             if (setup)
@@ -54,12 +56,12 @@ namespace Aurem.Syncing
             }
             else
             {
-                (netserv, subservices, err) = GetNetserv(conf.MCastNetType, conf.Pid, conf.MCastAddresses, subservices, conf.Timeout, log);
+                (net, subservices, err) = GetNetwork(conf.Pid, conf.MCastAddresses, subservices, conf.Timeout, log, conf);
                 if (err != null)
                 {
                     throw err;
                 }
-                (serv, mcast) = MulticastServer.NewServer(conf, orderer, netserv, log.With().Val(Logging.Constants.Service, Logging.Constants.MCService).Logger());
+                (serv, mcast) = MulticastServer.NewServer(conf, orderer, net, log.With().Val(Logging.Constants.Service, Logging.Constants.MCService).Logger());
                 servers.Add(serv);
             }
         }
@@ -82,15 +84,16 @@ namespace Aurem.Syncing
 
         public Task RequestGossip(ushort pid) => gossip(pid);
 
-        public void Start()
+        public async Task Start()
         {
             foreach (var service in subservices)
             {
-                service.Start();
+                await service.Start();
             }
             foreach (var server in servers)
             {
-                server.Start();
+                await server.Start();
+                //await Console.Out.WriteLineAsync("server started");
             }
         }
 
@@ -118,7 +121,25 @@ namespace Aurem.Syncing
                 wrapped = netserv;
             }
 
-            public Exception? Start() => null;
+            public Task<Exception?> Start() => Task.FromResult<Exception?>(null);
+
+            public Task StopAsync()
+            {
+                wrapped.Stop();
+                return Task.CompletedTask;
+            }
+        }
+
+        private sealed class NetService : IService
+        {
+            private Network wrapped;
+
+            public NetService(Network netserv)
+            {
+                wrapped = netserv;
+            }
+
+            public Task<Exception?> Start() =>Task.FromResult<Exception?>(null);
 
             public Task StopAsync()
             {
@@ -136,6 +157,18 @@ namespace Aurem.Syncing
                     throw new NotImplementedException();
                 case "pers":
                     throw new NotImplementedException();
+                case "loc":
+                    var netLoggerLoc = log.With().Val(Logging.Constants.Service, Logging.Constants.NetworkService).Logger();
+                    if (LocalServer.Instances == null)
+                    {
+                        throw new Exception("initialize local server instances before starting Process");
+                    }
+                    // TODO: implement local
+                    throw new NotImplementedException();
+                    //var netservLoc = LocalServer.Instances[pid];
+                    //var netServiceLoc = new NetworkService(netservLoc);
+                    //services.Add(netServiceDefault);
+                    //return (netservLoc, services, err);
                 default:
                     var netLoggerDefault = log.With().Val(Logging.Constants.Service, Logging.Constants.NetworkService).Logger();
                     var netservDefault = new TCPServer(addresses[pid], addresses.ToArray(), netLoggerDefault, timeout);
@@ -143,6 +176,16 @@ namespace Aurem.Syncing
                     services.Add(netServiceDefault);
                     return (netservDefault, services, err);
             }
+        }
+
+        private (Network, List<IService>, Exception?) GetNetwork(ushort pid, List<string> addrs, List<IService> services, TimeSpan timeout, Logger log, Config.Config conf)
+        {
+            Exception? err = null;
+            var logger = log.With().Val(Logging.Constants.Service, Logging.Constants.NetworkService).Logger();
+            var net = new Network(addrs[pid], addrs.ToArray(), logger, timeout, conf);
+            var networkService = new NetService(net);
+            services.Add(networkService);
+            return (net, services, err);
         }
     }
 }

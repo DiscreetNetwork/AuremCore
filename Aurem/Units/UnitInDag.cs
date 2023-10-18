@@ -10,7 +10,7 @@ namespace Aurem.Units
     /// <summary>
     /// A unit that is already inside the DAG and has all its properties precomputed and cached. It uses forking heights to optimize AboveWithinProc calls.
     /// </summary>
-    public class UnitInDag : IUnit
+    public class UnitInDag : IUnit, IPreunit
     {
         private IUnit _unit;
         private int _forkingHeight;

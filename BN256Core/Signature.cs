@@ -32,6 +32,7 @@ namespace BN256Core
         public static Signature Add(Signature s1, Signature s2)
         {
             if (s1 == null) return s2;
+            if (s2 == null) return s1;
 
             return new Signature(new G1().Add(s1.Sig, s2.Sig));
         }
