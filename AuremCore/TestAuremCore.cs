@@ -15,7 +15,7 @@ using BN256Core.Extensions;
 
 namespace AuremCore
 {
-    public class Program
+    public static class TestAuremCore
     {
         public static void TestRSA()
         {
@@ -342,7 +342,7 @@ namespace AuremCore
             wg.Done();
         }
 
-        public static async Task Main(string[] args)
+        public static async Task TestAuremCoreMain(string[] args)
         {
             (var v, var s) = VerificationKey.GenerateKeys();
             var vE = new VerificationKey();

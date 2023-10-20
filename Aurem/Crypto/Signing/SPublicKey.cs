@@ -16,6 +16,12 @@ namespace Aurem.Crypto.Signing
             this.keyData = keyData;
         }
 
+        public SPublicKey(ReadOnlySpan<byte> kd)
+        {
+            keyData = new byte[32];
+            kd.Slice(0, 32).CopyTo(keyData);
+        }
+
         public bool Verify(IPreunit preunit)
         {
             var sig = new DiscreetCoreLib.Signature(preunit.Signature().Concat(keyData).ToArray());
@@ -23,6 +29,11 @@ namespace Aurem.Crypto.Signing
         }
 
         public string Encode() => Convert.ToBase64String(keyData);
+
+        public byte[] Serialize()
+        {
+            return keyData;
+        }
 
         public static SPublicKey DecodePublicKey(string enc)
         {

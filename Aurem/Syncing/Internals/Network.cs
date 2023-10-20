@@ -29,6 +29,7 @@ namespace Aurem.Syncing.Internals
         private Logger Log;
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
         private Config.Config Conf;
+        private WaitGroup taskWg;
 
         internal Func<Packet, Task> OnReceive = (_) => Task.CompletedTask; 
 
@@ -46,6 +47,7 @@ namespace Aurem.Syncing.Internals
 
             connsDialed = new Connection[remoteAddresses.Length];
             connsListened = new Connection[remoteAddresses.Length];
+            taskWg = new WaitGroup();
         }
 
         public void AddHandle(Func<Packet, Task> handle)
@@ -174,8 +176,9 @@ namespace Aurem.Syncing.Internals
             }
         }
 
-        public void Stop()
+        public async Task StopAsync()
         {
+            await taskWg.WaitAsync();
             cancellationTokenSource.Cancel();
             foreach (var conn in connsDialed)
             {
@@ -202,6 +205,7 @@ namespace Aurem.Syncing.Internals
                             {
                                 _ = Task.Run(async () =>
                                 {
+                                    taskWg.Add(1);
                                     try
                                     {
                                         await conn.SendAll(p);
@@ -209,6 +213,10 @@ namespace Aurem.Syncing.Internals
                                     catch (Exception ex)
                                     {
                                         Log.Error().Msg(ex.Message);
+                                    }
+                                    finally
+                                    {
+                                        taskWg.Done();
                                     }
                                 });
                             }
@@ -220,6 +228,7 @@ namespace Aurem.Syncing.Internals
                             {
                                 _ = Task.Run(async () =>
                                 {
+                                    taskWg.Add(1);
                                     try
                                     {
                                         await conn.ReceiveAll();
@@ -227,6 +236,10 @@ namespace Aurem.Syncing.Internals
                                     catch (Exception ex)
                                     {
                                         Log.Error().Msg(ex.Message);
+                                    }
+                                    finally
+                                    {
+                                        taskWg.Done();
                                     }
                                 });
                             }

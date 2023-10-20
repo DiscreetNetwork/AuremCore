@@ -23,5 +23,11 @@ namespace Aurem.Model
         /// </summary>
         /// <returns></returns>
         public string Encode();
+
+        /// <summary>
+        /// Serializes the public key as a byte array of constant 32-byte size.
+        /// </summary>
+        /// <returns></returns>
+        public byte[] Serialize();
     }
 }

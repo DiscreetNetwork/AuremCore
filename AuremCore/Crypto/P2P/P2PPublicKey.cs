@@ -51,15 +51,15 @@ namespace AuremCore.Crypto.P2P
             return res;
         }
 
-        public P2PPublicKey Unmarshal(byte[] data)
+        public P2PPublicKey Unmarshal(ReadOnlySpan<byte> data)
         {
             if (data.Length < 4) throw new Exception("data too short");
 
             var g1len = BinaryPrimitives.ReadInt32LittleEndian(data);
             if (data.Length < g1len + 4) throw new Exception("data too short");
 
-            g1 = new G1().Unmarshal(data.AsSpan(4));
-            g2 = new G2().Unmarshal(data.AsSpan(4 + g1len));
+            g1 = new G1().Unmarshal(data.Slice(4));
+            g2 = new G2().Unmarshal(data.Slice(4 + g1len));
 
             return this;
         }

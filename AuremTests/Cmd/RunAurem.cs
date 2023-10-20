@@ -5,6 +5,8 @@ using AuremCore.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -68,6 +70,12 @@ namespace AuremTests.Cmd
             public int RandomBytesPerUnit { get; set; } = 300;
 
             public bool UseLocalServer { get; set; } = false;
+
+            public bool UseBlockScheduler { get; set; } = false;
+
+            public TimeSpan BlockSchedule { get; set; } = TimeSpan.FromSeconds(1);
+
+            public bool WaitForNodes { get; set; } = false;
         }
 
         public static async Task Run(AuremSettings settings)
@@ -115,7 +123,11 @@ namespace AuremTests.Cmd
                 consensusConfig.LastLevel = consensusConfig.EpochLength + consensusConfig.OrderStartLevel - 1;
             }
 
-            var ds = (settings.RandomBytesPerUnit >= 32) ? new AuremCore.Tests.RandomDataSource(settings.RandomBytesPerUnit) : new AuremCore.Tests.RandomDataSource(32);
+            IDataSource ds = (settings.RandomBytesPerUnit >= 32) ? new AuremCore.Tests.RandomDataSource(settings.RandomBytesPerUnit) : new AuremCore.Tests.RandomDataSource(32);
+            if (settings.UseBlockScheduler)
+            {
+                ds = new AuremCore.Tests.BlockSchedulerDataSource(Math.Max(settings.RandomBytesPerUnit, 32), settings.BlockSchedule, consensusConfig.NProc, consensusConfig.Pid);
+            }
 
             var preblockSink = Channel.CreateUnbounded<Preblock>();
             CancellationTokenSource done = new CancellationTokenSource();
@@ -171,6 +183,68 @@ namespace AuremTests.Cmd
                 Console.ForegroundColor = ConsoleColor.Red;
                 await Console.Out.WriteLineAsync($"Process failed to start: {err.Message}");
                 return;
+            }
+
+            if (settings.WaitForNodes)
+            {
+                List<object> acknowledged = new List<object>();
+                List<object> sentAcknowledge = new List<object>();
+                List<TcpClient> clients = new List<TcpClient>();
+                async Task ListenForAcknowledge()
+                {
+                    var listener = new TcpListener(IPAddress.Any, 8367);
+                    while (acknowledged.Count < consensusConfig!.NProc)
+                    {
+                        var tclient = await listener.AcceptTcpClientAsync();
+                        acknowledged.Add(new object());
+                        clients.Add(tclient);
+                    }
+                }
+
+                async Task SendAcknowledge(int i)
+                {
+                    var tc = new TcpClient();
+                    var rep = IPEndPoint.Parse(consensusConfig!.RMCAddresses[i]);
+                    var ep = new IPEndPoint(rep.Address, 8367);
+                    
+                    while (!tc.Connected)
+                    {
+                        try
+                        {
+                            await tc.ConnectAsync(ep);
+                        }
+                        catch (Exception ex)
+                        {
+                            await Console.Out.WriteLineAsync($"WaitForNodes: failed to connect to node {ep}: {ex.Message}");
+                        }
+                    }
+
+                    sentAcknowledge.Add(new object());
+                    clients.Add(tc);
+                }
+
+                List<Task> tasks = new List<Task>();
+                for (int i = 0; i < consensusConfig!.NProc; i++)
+                {
+                    tasks.Add(SendAcknowledge(i));
+                }
+                tasks.Add(ListenForAcknowledge());
+
+                await Task.WhenAll(tasks);
+
+                foreach (var client in clients)
+                {
+                    try
+                    {
+                        client.Dispose();
+                    }
+                    finally // ignore errors due to disposing on both ends
+                    {
+                        // ...
+                    }
+                }
+
+                await Console.Out.WriteLineAsync("WaitForNodes: all nodes online");
             }
 
             await start!.Invoke();

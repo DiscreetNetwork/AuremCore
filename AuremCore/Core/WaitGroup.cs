@@ -63,7 +63,8 @@ namespace AuremCore.Core
 
         public async Task WaitAsync(CancellationToken token = default)
         {
-            await _waitAsync.Task;
+            var t = _waitAsync?.Task ?? Task.CompletedTask;
+            await t;
         }
     }
 }

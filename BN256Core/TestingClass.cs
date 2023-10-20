@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace BN256Core
 {
-    public class Program
+    public static class TestingClass
     {
         public static void TestMiller()
         {
@@ -186,7 +186,7 @@ namespace BN256Core
             //Console.WriteLine(PrintUtil.Hexify(enc.bytes));
         }
 
-        public static void Main(string[] args)
+        public static void TestingClassMain(string[] args)
         {
             TestMiller();
 

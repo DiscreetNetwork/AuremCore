@@ -77,7 +77,7 @@ namespace BN256Core.Models
 
         public G2 Unmarshal(ReadOnlySpan<byte> data)
         {
-            G2Enc g2Enc = new G2Enc { bytes = data.ToArray() };
+            G2Enc g2Enc = new G2Enc { bytes = data.Slice(0, 129).ToArray() };
             Native.Native.Instance.UnmarshalG2(ref this, ref g2Enc);
             return this;
         }

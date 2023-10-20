@@ -29,7 +29,7 @@ namespace Aurem.Syncing
         protected IOrderer Orderer;
         protected Network Netserv;
         protected Channel<MCastRequest>[] Requests;
-        protected CancellationTokenSource StopOut;
+        protected CancellationTokenSource StopOut { get; set; }
         protected Logger Log;
 
         protected MulticastServer(Config.Config conf, IOrderer orderer, Network network, Logger log)

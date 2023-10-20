@@ -76,7 +76,7 @@ namespace Aurem.Serialize
         {
             var infos = new DagInfo[2];
             (infos[0], var tot) = Decoder.DeserializeDagInfo(s);
-            (infos[1], var t) = Decoder.DeserializeDagInfo(s);
+            (infos[1], var t) = Decoder.DeserializeDagInfo(s.Slice(tot));
 
             return (infos, t + tot);
         }

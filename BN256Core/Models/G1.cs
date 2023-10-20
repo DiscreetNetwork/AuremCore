@@ -84,7 +84,7 @@ namespace BN256Core.Models
 
         public G1 Unmarshal(ReadOnlySpan<byte> dat)
         {
-            G1Enc g1Enc = new G1Enc { bytes = dat.ToArray() };
+            G1Enc g1Enc = new G1Enc { bytes = dat.Slice(0, 64).ToArray() };
             Native.Native.Instance.UnmarshalG1(ref this, ref g1Enc);
             return this;
         }

@@ -111,7 +111,7 @@ namespace Aurem.Config
         {
             cnf.Timeout = TimeSpan.FromSeconds(5);
             cnf.FetchInterval = TimeSpan.FromSeconds(1);
-            cnf.GossipInterval = TimeSpan.FromSeconds(10);
+            cnf.GossipInterval = TimeSpan.FromSeconds(2);
             cnf.GossipAbove = 50;
 
             cnf.RMCNetType = "tcp";

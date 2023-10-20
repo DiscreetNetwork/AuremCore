@@ -28,6 +28,12 @@ namespace BN256Core
             return this;
         }
 
+        public VerificationKey Unmarshal(ReadOnlySpan<byte> data)
+        {
+            Key.Unmarshal(data);
+            return this;
+        }
+
         public bool Verify(Signature s, ReadOnlySpan<byte> msg)
         {
             var p1 = new GT().Pair(s.Sig, Constants.G2Gen).Marshal();

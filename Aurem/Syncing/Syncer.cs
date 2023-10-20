@@ -86,6 +86,7 @@ namespace Aurem.Syncing
 
         public async Task Start()
         {
+            // TODO: launch starts in parallel
             foreach (var service in subservices)
             {
                 await service.Start();
@@ -143,8 +144,7 @@ namespace Aurem.Syncing
 
             public Task StopAsync()
             {
-                wrapped.Stop();
-                return Task.CompletedTask;
+                return wrapped.StopAsync();
             }
         }
 
