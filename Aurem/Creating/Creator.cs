@@ -88,7 +88,7 @@ namespace Aurem.Creating
         /// In other words, units seen from U directly as parents cannot be below the ones seen indirectly (parents of parents).
         /// </summary>
         /// <param name="parents"></param>
-        public void MakeConsistent(IList<IUnit> parents)
+        public static void MakeConsistent(IList<IUnit> parents)
         {
             for (int i = 0; i < parents.Count; i++)
             {
@@ -135,11 +135,11 @@ namespace Aurem.Creating
             // FIXME remove
             if (data != null && data.Length > 0 && Conf.Pid == 0)
             {
-                await Console.Out.WriteLineAsync($"PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
             }
             else if (Conf.Pid == 0)
             {
-                await Console.Out.WriteLineAsync($"PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
             }
 
             try

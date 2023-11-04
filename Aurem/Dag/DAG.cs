@@ -42,7 +42,7 @@ namespace Aurem.Dag
             LevelUnits = new FiberMap(conf.NProc, conf.EpochLength);
             HeightUnits = new FiberMap(conf.NProc, conf.EpochLength);
             MaxUnits = new SlottedUnits(conf.NProc);
-            Checks = new List<UnitChecker>(conf.Checks);
+            Checks = new List<UnitChecker>(conf.Checks ?? Enumerable.Empty<UnitChecker>());
             PreInsert = new List<InsertHook>();
             PostInsert = new List<InsertHook>();
         }
@@ -211,7 +211,7 @@ namespace Aurem.Dag
             // works assuming no unit in the DAG created by creator is greater than or equal to u.
             foreach (var v in maxByCreator)
             {
-                if (IUnit.Above(u, v)) newMaxByCreator.Add(v);
+                if (!IUnit.Above(u, v)) newMaxByCreator.Add(v);
             }
 
             newMaxByCreator.Add(u);

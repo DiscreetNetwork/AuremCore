@@ -18,6 +18,10 @@ namespace Aurem.Dag
         public SlottedUnits(ushort n)
         {
             Contents = new();
+            foreach (ushort i in Enumerable.Range(0, n).Select(v => (ushort)v))
+            {
+                Contents.TryAdd(i, null!);
+            }
             Max = n;
             Empty = new();
             locks = Enumerable.Range(0, n).Select(x => new object()).ToArray();
@@ -39,7 +43,7 @@ namespace Aurem.Dag
             lock (locks[id])
             {
                 var success = Contents.TryGetValue(id, out var result);
-                if (success) return result;
+                if (success && result != null) return result;
             }
 
             return Empty;
@@ -71,7 +75,7 @@ namespace Aurem.Dag
             {
                 lock (locks[k])
                 {
-                    if (!work(Contents[k])) return;
+                    if (!work(Contents[k] ?? Empty)) return;
                 }
             }
         }

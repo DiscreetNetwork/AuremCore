@@ -317,7 +317,7 @@ namespace Aurem.Serialize
             var sig = new byte[64];
             await ReadAsync(sig, 0, 64);
 
-            var crown = DecodeCrown();
+            var crown = await DecodeCrownAsync();
 
             await ReadAsync(intBuf, 0, 4);
             var unitDataLen = BinaryPrimitives.ReadUInt32LittleEndian(intBuf);

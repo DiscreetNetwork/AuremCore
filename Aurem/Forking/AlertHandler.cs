@@ -312,7 +312,7 @@ namespace Aurem.Forking
             var comm = Commitments.GetByHash(requested);
             if (comm == null)
             {
-                if (IsForker(unit.Creator()))
+                if (!IsForker(unit.Creator()))
                 {
                     log.Error().Str("where", "AlertHandler.HandleCommitmentRequest.GetByHash").Msg("alerter was unaware a fork was present");
 
@@ -580,7 +580,8 @@ namespace Aurem.Forking
                 return true;
             }
 
-            var maxes = (await Orderer.MaxUnits(u.EpochID())).Get(creator);
+            var _mm = await Orderer.MaxUnits(u.EpochID());
+            var maxes = _mm.Get(creator);
             if (maxes == null || maxes.Count == 0)
             {
                 return false;
@@ -588,7 +589,7 @@ namespace Aurem.Forking
 
             // we can only have one max because the creator is not a forker yet.
             var max = maxes.First();
-            if (max.Height() >=u.Height())
+            if (max.Height() >= u.Height())
             {
                 var v = max;
                 while (v.Height() > u.Height())
@@ -603,7 +604,8 @@ namespace Aurem.Forking
                 }
 
                 // FIXME: check if this needs to be pinned to this routine or is fine running as its own task
-                _ = Task.Run(async () => await RaiseAlert(proof));
+                //_ = Task.Run(async () => await RaiseAlert(proof));
+                await RaiseAlert(proof);
                 return true;
             }
 
@@ -630,17 +632,19 @@ namespace Aurem.Forking
                     continue;
                 }
 
+                wg.Add(1);
+                gathering.Add(1);
+                var _pid = pid;
                 _ = Task.Run(async () =>
                 {
-                    wg.Add(1);
-                    gathering.Add(1);
-                    await SendAlert(data, id, pid, gathering, wg);
+                    await SendAlert(data, id, _pid, gathering, wg);
                 });
-                await wg.WaitAsync();
-
-                var comm = proof.ExtractCommitment(id);
-                Commitments.Add(comm, MyPid, proof.ForkerID());
             }
+
+            await wg.WaitAsync();
+
+            var comm = proof.ExtractCommitment(id);
+            Commitments.Add(comm, MyPid, proof.ForkerID());
         }
 
         public async Task<Exception?> AttemptGather(Conn conn, byte[] data, ulong id, ushort pid)

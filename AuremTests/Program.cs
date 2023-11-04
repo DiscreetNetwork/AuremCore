@@ -521,6 +521,10 @@ namespace AuremCore
                     await Console.Out.WriteLineAsync($"Node has completed.");
                 }
             }
+            else if (args[0] == "forktest")
+            {
+                await TestForking.TestAlert();
+            }
             else
             {
                 PrintHelp();
@@ -529,7 +533,7 @@ namespace AuremCore
 
         public static async Task Main(string[] args)
         {
-            await Run(args);
+            await Run(new string[] {"forktest"});
         }
     }
 }

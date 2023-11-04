@@ -30,7 +30,7 @@ namespace Aurem.Forking
                 if (cu != null)
                 {
                     var h = cu.Hash();
-                    if (!ToUnit.ContainsKey(h) || ToUnit[h].GetParentHash(0).Equals(Hash.Empty))
+                    if (!ToUnit.ContainsKey(h) || ToUnit[h] == null || ToUnit[h].GetParentHash(0).Equals(Hash.Empty))
                     {
                         ToUnit[h] = c;
                     }
@@ -52,7 +52,7 @@ namespace Aurem.Forking
         {
             lock (_lock)
             {
-                return ToUnit[h];
+                return ToUnit.ContainsKey(h) ? ToUnit[h] : null!;
             }
         }
 
@@ -60,7 +60,7 @@ namespace Aurem.Forking
         {
             lock (_lock)
             {
-                if (ByMember[forker] == null || !ByMember[forker].ContainsKey(commiter)) return null;
+                if (!ByMember.ContainsKey(forker) || ByMember[forker] == null || !ByMember[forker].ContainsKey(commiter)) return null;
                 return ByMember[forker][commiter];
             }
         }

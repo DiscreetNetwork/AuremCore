@@ -12,9 +12,9 @@ using System.Threading.Tasks;
 
 namespace Aurem.Forking
 {
-    internal class AlertService : IAlerter
+    public class AlertService : IAlerter
     {
-        private AlertHandler Handler;
+        public AlertHandler Handler;
 
         public IObserverManager AddForkObserver(Action<IPreunit, IPreunit> handler) => Handler.AddForkObserver(handler);
 

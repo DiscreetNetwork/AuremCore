@@ -31,6 +31,12 @@ namespace AuremCore.Tests
             var ts = DateTime.UtcNow.Ticks;
             currentBeginning = new DateTime(ts - (ts % interval.Ticks));
             currentEnd = currentBeginning.Add(interval);
+
+            //if (pid == 0)
+            //{
+            //    Console.WriteLine($"PID {pid} blockscheduler start: {currentBeginning:HH:mm:ss.ffff}");
+            //    Console.WriteLine($"PID {pid} blockscheduler end: {currentEnd:HH:mm:ss.ffff}");
+            //}
         }
 
         public async Task<byte[]> Get()

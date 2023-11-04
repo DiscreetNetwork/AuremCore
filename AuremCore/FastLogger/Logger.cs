@@ -22,7 +22,25 @@ namespace AuremCore.FastLogger
 
         private bool neverStart = false;
 
+        private bool nop = false;
+
         private CancellationTokenSource? _source;
+
+        public static Logger Nop()
+        {
+            Logger logger = new()
+            {
+                Base = new NopStream(),
+                nop = true
+            };
+
+            var ctx = new LoggerContext(logger);
+            logger.Context = ctx;
+            logger.printStdOut = false;
+            ctx.EnsureLoggerSet(logger);
+
+            return logger;
+        }
 
         public static Logger New(Stream s, LoggerContext ctx = null, bool printStdOut = false)
         {
@@ -83,12 +101,19 @@ namespace AuremCore.FastLogger
                         throw new Exception("error encountered when dequeueing from the event queue");
                     }
 
+                    if (nop)
+                    {
+                        continue;
+                    }
+
                     await writer.WriteLineAsync(e!.EncodeData().AsMemory(), token);
                     if (printStdOut)
                     {
                         PrintToStdOut(e!, token);
                     }
                 }
+
+                if (nop) continue; // skip flush
 
                 await writer.FlushAsync();
             }

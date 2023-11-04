@@ -50,6 +50,8 @@ namespace AuremCore.Tests
         //}
         private ChannelReader<byte[]> read;
         private ChannelWriter<byte[]> write;
+        private int senderId;
+        private int receiverId;
 
         private readonly SemaphoreSlim readMutex;
         private byte[]? _leftover;
@@ -58,19 +60,21 @@ namespace AuremCore.Tests
 
         public override bool IsConnected => !cancellationTokenSource.IsCancellationRequested;
 
-        public LocalConn(ChannelWriter<byte[]> write, ChannelReader<byte[]> read)
+        public LocalConn(ChannelWriter<byte[]> write, ChannelReader<byte[]> read, int senderId, int receiverId)
         {
             readMutex = new SemaphoreSlim(1, 1);
             cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.Token.Register(() => write.Complete());
             this.write = write;
             this.read = read;
+            this.senderId = senderId;
+            this.receiverId = receiverId;
         }
 
         public override Task Close()
         {
             cancellationTokenSource.Cancel();
-
+            //Console.WriteLine("CLOSED CHAN");
             return Task.CompletedTask;
         }
 
@@ -99,7 +103,8 @@ namespace AuremCore.Tests
                         Buffer.BlockCopy(_leftover, 0, s, 0, s.Length);
                         _leftover = _leftover[s.Length..];
                         if (_leftover.Length == 0) _leftover = null;
-                        return s.Length;
+                        offset = s.Length;
+                        return offset;
                     }
                     else
                     {
@@ -124,7 +129,8 @@ namespace AuremCore.Tests
                         Buffer.BlockCopy(bytes, 0, s, offset, rem);
                         _leftover = bytes[rem..];
                         if (_leftover.Length == 0) _leftover = null;
-                        return s.Length;
+                        offset = s.Length;
+                        return offset;
                     }
                     else
                     {
@@ -137,6 +143,7 @@ namespace AuremCore.Tests
             }
             finally
             {
+                //await Console.Out.WriteLineAsync($"Read {offset} bytes");
                 readMutex.Release();
             }
         }
@@ -146,6 +153,8 @@ namespace AuremCore.Tests
             if (cancellationTokenSource.IsCancellationRequested) return 0;
 
             await write.WriteAsync(data);
+
+            //await Console.Out.WriteLineAsync($"Wrote {data.Length} bytes");
             return data.Length;
         }
 

@@ -66,6 +66,7 @@ namespace Aurem.Config
 
         public void AddCheck(UnitChecker check)
         {
+            if (Checks == null) Checks = new();
             Checks.Add(check);
         }
 

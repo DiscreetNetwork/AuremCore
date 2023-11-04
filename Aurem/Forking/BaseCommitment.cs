@@ -118,7 +118,7 @@ namespace Aurem.Forking
                 else Array.Copy(p.Hash().Data, 0, parEncoded, (i << 5), 32);
             }
 
-            encoded = enc.Concat(parEncoded).ToArray();
+            encoded = encoded.Concat(parEncoded).ToArray();
             var pu = EncodeUtil.DecodeUnit(predEncoded);
 
             comm.SetParentHashes(parEncoded);

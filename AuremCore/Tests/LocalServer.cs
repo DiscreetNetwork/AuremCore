@@ -13,6 +13,7 @@ namespace AuremCore.Tests
         private ChannelWriter<Conn>[] dialChans;
         private Channel<Conn> listenChan;
         private TimeSpan timeout;
+        private int myID;
 
         public static Dictionary<string, Server[]> Instances;
 
@@ -21,14 +22,15 @@ namespace AuremCore.Tests
             this.timeout = timeout;
             dialChans = chans.Select(x => x.Writer).ToArray();
             listenChan = chans[id];
+            myID = id;
         }
 
-        public static (Conn, Conn) NewConn()
+        public (Conn, Conn) NewConn(int pid)
         {
             var c1 = Channel.CreateUnbounded<byte[]>();
             var c2 = Channel.CreateUnbounded<byte[]>();
 
-            return (new LocalConn(c2.Writer, c1.Reader), new LocalConn(c1.Writer, c2.Reader));
+            return (new LocalConn(c2.Writer, c1.Reader, myID, pid), new LocalConn(c1.Writer, c2.Reader, pid, myID));
         }
 
         public static Server[] NewNetwork(int len, TimeSpan timeout)
@@ -66,7 +68,8 @@ namespace AuremCore.Tests
 
         public override async Task<Conn?> Dial(ushort pid)
         {
-            (var _out, var _in) = NewConn();
+            //await Console.Out.WriteLineAsync($"server pid={myID} is dialing pid={pid}...");
+            (var _out, var _in) = NewConn(pid);
             if (pid >= dialChans.Length)
             {
                 throw new Exception("unknown host");
@@ -77,9 +80,11 @@ namespace AuremCore.Tests
             await dialChans[pid].WriteAsync(_in, ctsTimeout.Token);
             if (ctsTimeout.IsCancellationRequested)
             {
+                //await Console.Out.WriteLineAsync("DIAL TIMEOUT");
                 throw new Exception("Dial timeout");
             }
 
+            ctsTimeout.Dispose();
             return _out;
         }
 
@@ -99,6 +104,30 @@ namespace AuremCore.Tests
                 throw new Exception("Listen timeout");
             }
 
+            ctsTimeout.Dispose();
+            return conn;
+        }
+
+        public async Task<Conn> Listen(bool _timeout = true)
+        {
+            CancellationTokenSource ctsTimeout = new CancellationTokenSource();
+            if (_timeout)
+            {
+                ctsTimeout.CancelAfter(timeout);
+            }
+
+            if (listenChan.Reader.Completion.IsCompleted)
+            {
+                throw new Exception("done");
+            }
+
+            var conn = await listenChan.Reader.ReadAsync(ctsTimeout.Token);
+            if (ctsTimeout.IsCancellationRequested)
+            {
+                throw new Exception("Listen timeout");
+            }
+
+            ctsTimeout.Dispose();
             return conn;
         }
     }
