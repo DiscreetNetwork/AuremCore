@@ -31,7 +31,7 @@ namespace AuremTests.Packets
             Deserialize(data);
         }
 
-        public static int Size => 32 + 2 * 129 + 64;
+        public static int Size => 4 + 32 + 2 * 129 + 64;
 
         public byte[] Serialize()
         {

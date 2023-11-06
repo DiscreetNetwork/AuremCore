@@ -15,7 +15,7 @@ namespace AuremCore.FastLogger
         public override bool CanWrite => true;
 
         public override long Length => long.MaxValue;
-
+        
         public override long Position { get; set; }
 
         public override void Flush()

@@ -193,6 +193,7 @@ namespace AuremTests.Cmd
                 async Task ListenForAcknowledge()
                 {
                     var listener = new TcpListener(IPAddress.Any, 8367);
+                    listener.Start();
                     while (acknowledged.Count < consensusConfig!.NProc)
                     {
                         var tclient = await listener.AcceptTcpClientAsync();

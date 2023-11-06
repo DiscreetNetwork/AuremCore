@@ -100,7 +100,7 @@ namespace AuremCore
         {
             var ports = new ushort[] { 8360, 8361, 8362, 8363, 8364, 8365, 8366, 8367 };
             bool success = IPEndPoint.TryParse(registryEndpoint, out var endpoint);
-
+            IPAddress? ourAddress = null;
             if (!success)
             {
                 await Console.Out.WriteLineAsync("BuildCommittee: could not parse registry endpoint");
@@ -160,6 +160,9 @@ namespace AuremCore
                 else if (ack[0] == 0x01)
                 {
                     // we were validated
+                    var bytes = new byte[16];
+                    await client.GetStream().ReadAsync(bytes);
+                    ourAddress = RegisterPacket.DeserializeIP(bytes);
                 }
                 else
                 {
@@ -168,7 +171,7 @@ namespace AuremCore
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync($"BuildCommittee: failed to add ourself to registry server: {ex.Message}");
+                await Console.Out.WriteLineAsync($"BuildCommittee: failed to add ourself to registry server: {ex.Message}\nStack trace:\n{ex.StackTrace}");
                 return;
             }
 
@@ -194,7 +197,7 @@ namespace AuremCore
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync($"BuildCommittee: failed to receive registry: {ex.Message}");
+                await Console.Out.WriteLineAsync($"BuildCommittee: failed to receive registry: {ex.Message}\nStack trace:\n{ex.StackTrace}");
                 return;
             }
 
@@ -216,6 +219,12 @@ namespace AuremCore
                 {
                     try
                     {
+                        if (p.Address.Equals(ourAddress))
+                        {
+                            lock (keymats) keymats.Add(ourKeyMat);
+                            return;
+                        }
+
                         var ncts = new CancellationTokenSource();
                         ncts.CancelAfter(TimeSpan.FromSeconds(5));
                         var nclient = new TcpClient();
@@ -241,8 +250,8 @@ namespace AuremCore
                     }
                     catch (Exception ex)
                     {
-                        await Console.Out.WriteLineAsync($"BuildCommittee: could not connect to consensus node at {new IPEndPoint(p.Address, p.SetupCommitteePort)}: {ex.Message}");
-                        errs.Add(ex);
+                        await Console.Out.WriteLineAsync($"BuildCommittee: could not connect to consensus node at {new IPEndPoint(p.Address, p.SetupCommitteePort)}: {ex.Message}\nStack trace:\n{ex.StackTrace}");
+                        lock (errs) errs.Add(ex);
                         return;
                     }
                 }
@@ -250,6 +259,7 @@ namespace AuremCore
                 async Task listenToConsensus()
                 {
                     var listener = new TcpListener(IPAddress.Any, rp!.SetupCommitteePort);
+                    listener.Start();
                     var ctsTot = new CancellationTokenSource();
                     ctsTot.CancelAfter(TimeSpan.FromSeconds(30));
                     try
@@ -258,7 +268,7 @@ namespace AuremCore
                         {
                             var listen = await listener.AcceptTcpClientAsync();
 
-                            while (!listen.GetStream().DataAvailable) await Task.Delay(10);
+                            //while (!listen.GetStream().DataAvailable) await Task.Delay(10);
 
                             // receive data
                             var kmb = new byte[KeyMaterialPacket.Size];
@@ -272,7 +282,8 @@ namespace AuremCore
                             }
 
                             var kmp = new KeyMaterialPacket(kmb);
-                            keymats.Add(kmp);
+                            lock (keymats)
+                                keymats.Add(kmp);
 
                             rkmcts.Dispose();
                         }
@@ -284,8 +295,9 @@ namespace AuremCore
                     }
                     catch (Exception ex)
                     {
-                        await Console.Out.WriteLineAsync($"BuildCommittee: failed to retrieve key material for a node: {ex.Message}");
-                        errs.Add(ex);
+                        await Console.Out.WriteLineAsync($"BuildCommittee: failed to retrieve key material for a node: {ex.Message}\nStack trace:\n{ex.StackTrace}");
+                        lock (errs)
+                            errs.Add(ex);
                         return;
                     }
                 }
@@ -293,10 +305,14 @@ namespace AuremCore
                 List<Task> broadcastTasks = new List<Task>();
                 foreach (var node in registry)
                 {
-                    broadcastTasks.Add(connectToClient(node));
+                    var _node = node;
+                    broadcastTasks.Add(connectToClient(_node));
                 }
                 broadcastTasks.Add(listenToConsensus());
                 await Task.WhenAll(broadcastTasks);
+
+                // just to be kind and make sure all data gets sent
+                await Task.Delay(3000);
 
                 if (errs.Count > 0 && errs.Any(x => x != null))
                 {
@@ -306,7 +322,7 @@ namespace AuremCore
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync($"BuildCommittee: key material phase failed: {ex.Message}");
+                await Console.Out.WriteLineAsync($"BuildCommittee: key material phase failed: {ex.Message}\nStack trace:\n{ex.StackTrace}");
                 return;
             }
 
@@ -401,7 +417,7 @@ namespace AuremCore
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync($"BuildCommittee: could not build committee and member files: {ex.Message}");
+                await Console.Out.WriteLineAsync($"BuildCommittee: could not build committee and member files: {ex.Message}\nStack trace:\n{ex.StackTrace}");
             }
         }
 
@@ -533,7 +549,7 @@ namespace AuremCore
 
         public static async Task Main(string[] args)
         {
-            await Run(new string[] {"forktest"});
+            await Run(args);
         }
     }
 }

@@ -76,6 +76,38 @@ namespace AuremTests.Packets
             return data;
         }
 
+        public static byte[] SerializeIP(IPAddress ip)
+        {
+            var data = new byte[16];
+            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+            {
+                Array.Copy(ip.GetAddressBytes(), data, 16);
+            }
+            else
+            {
+                data[10] = 0xff;
+                data[11] = 0xff;
+                Array.Copy(ip.GetAddressBytes(), 0, data, 12, 4);
+            }
+
+            return data;
+        }
+
+        public static IPAddress DeserializeIP(ReadOnlySpan<byte> data)
+        {
+            IPAddress ip;
+            if (IsIPv4(data))
+            {
+                ip = new IPAddress(data.Slice(12, 4));
+            }
+            else
+            {
+                ip = new IPAddress(data.Slice(0, 16));
+            }
+
+            return ip;
+        }
+
         private static bool IsIPv4(ReadOnlySpan<byte> b)
         {
             bool _isIPv4 = b[0] == 0 && b[1] == 0 && b[2] == 0 && b[3] == 0 && b[4] == 0 && b[5] == 0 && b[6] == 0 && b[7] == 0 && b[8] == 0 && b[9] == 0 && b[10] == 0xff && b[11] == 0xff;
@@ -96,7 +128,7 @@ namespace AuremTests.Packets
                 Address = new IPAddress(data.Slice(0, 16));
             }
 
-            var ports = new ushort[8];
+            ports = new ushort[8];
             for(int i = 0; i < ports.Length; i++)
             {
                 ports[i] = BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(16 + 2 * i));
@@ -105,7 +137,7 @@ namespace AuremTests.Packets
 
         public void Deserialize(ReadOnlySpan<byte> data)
         {
-            var ports = new ushort[8];
+            ports = new ushort[8];
             if (data.Length < 16) throw new ArgumentException(nameof(data));
 
             for (int i = 0; i < ports.Length; i++)
