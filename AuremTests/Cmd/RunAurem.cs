@@ -190,20 +190,42 @@ namespace AuremTests.Cmd
                 List<object> acknowledged = new List<object>();
                 List<object> sentAcknowledge = new List<object>();
                 List<TcpClient> clients = new List<TcpClient>();
+                CancellationTokenSource _ctsWFN = new CancellationTokenSource();
+                // self-add
+                acknowledged.Add(new());
+                sentAcknowledge.Add(new());
+
                 async Task ListenForAcknowledge()
                 {
                     var listener = new TcpListener(IPAddress.Any, 8367);
                     listener.Start();
                     while (acknowledged.Count < consensusConfig!.NProc)
                     {
-                        var tclient = await listener.AcceptTcpClientAsync();
+                        var tclient = await listener.AcceptTcpClientAsync(_ctsWFN.Token);
                         acknowledged.Add(new object());
                         clients.Add(tclient);
                     }
                 }
 
+                async Task WaitForAll()
+                {
+                    int i = 0;
+                    while (acknowledged.Count < consensusConfig!.NProc || sentAcknowledge.Count < consensusConfig!.NProc)
+                    {
+                        await Task.Delay(100);
+                        i++;
+                        if (i % 100 == 0)
+                        {
+                            await Console.Out.WriteLineAsync("WaitForNodes: still waiting for nodes...");
+                        }
+                    }
+
+                    _ctsWFN.Cancel();
+                }
+
                 async Task SendAcknowledge(int i)
                 {
+                    if (i == consensusConfig.Pid) { return; }
                     var tc = new TcpClient();
                     var rep = IPEndPoint.Parse(consensusConfig!.RMCAddresses[i]);
                     var ep = new IPEndPoint(rep.Address, 8367);
@@ -213,10 +235,12 @@ namespace AuremTests.Cmd
                         try
                         {
                             await tc.ConnectAsync(ep);
+                            await Console.Out.WriteLineAsync("WaitForNodes:");
                         }
                         catch (Exception ex)
                         {
-                            await Console.Out.WriteLineAsync($"WaitForNodes: failed to connect to node {ep}: {ex.Message}");
+                            await Task.Delay(100);
+                            //await Console.Out.WriteLineAsync($"WaitForNodes: failed to connect to node {ep}: {ex.Message}");
                         }
                     }
 
@@ -225,11 +249,14 @@ namespace AuremTests.Cmd
                 }
 
                 List<Task> tasks = new List<Task>();
+                _ = Task.Factory.StartNew(ListenForAcknowledge);
                 for (int i = 0; i < consensusConfig!.NProc; i++)
                 {
-                    tasks.Add(SendAcknowledge(i));
+                    if (i == consensusConfig.Pid) continue;
+                    int _i = i;
+                    tasks.Add(SendAcknowledge(_i));
                 }
-                tasks.Add(ListenForAcknowledge());
+                tasks.Add(WaitForAll());
 
                 await Task.WhenAll(tasks);
 
@@ -244,6 +271,8 @@ namespace AuremTests.Cmd
                         // ...
                     }
                 }
+
+                _ctsWFN.Dispose();
 
                 await Console.Out.WriteLineAsync("WaitForNodes: all nodes online");
             }
