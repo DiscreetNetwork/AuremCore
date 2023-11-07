@@ -217,17 +217,24 @@ namespace AuremCore
 
                 async Task connectToClient(RegisterPacket p)
                 {
+                    await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): waiting...");
+                    await Task.Delay(100);
+                    await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): wait complete.");
                     try
                     {
+                        
                         if (p.Address.Equals(ourAddress))
                         {
+                            await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): adding our key mat (this is us)...");
                             lock (keymats) keymats.Add(ourKeyMat);
+                            await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): self-added key mat; returning");
                             return;
                         }
 
                         var ncts = new CancellationTokenSource();
                         ncts.CancelAfter(TimeSpan.FromSeconds(5));
                         var nclient = new TcpClient();
+                        await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): attempting to connect...");
                         await nclient.ConnectAsync(p.Address, p.SetupCommitteePort, ncts.Token);
 
                         if (ncts.IsCancellationRequested)
@@ -241,12 +248,16 @@ namespace AuremCore
 
                         var scts = new CancellationTokenSource();
                         scts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                        await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): attempting to send out key material...");
                         await nclient.GetStream().WriteAsync(ourKMb, scts.Token);
 
                         if (scts.IsCancellationRequested)
                         {
                             throw new Exception("sending key data timed out");
                         }
+
+                        await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): completed successfully");
                     }
                     catch (Exception ex)
                     {
@@ -261,40 +272,75 @@ namespace AuremCore
                     var listener = new TcpListener(IPAddress.Any, rp!.SetupCommitteePort);
                     listener.Start();
                     var ctsTot = new CancellationTokenSource();
-                    ctsTot.CancelAfter(TimeSpan.FromSeconds(30));
+                    ctsTot.CancelAfter(TimeSpan.FromSeconds(10));
                     try
                     {
+                        long active = 0;
                         while (keymats.Count < registry.Count && errs.Count == 0 && !ctsTot.IsCancellationRequested)
                         {
-                            var listen = await listener.AcceptTcpClientAsync();
-
-                            //while (!listen.GetStream().DataAvailable) await Task.Delay(10);
-
-                            // receive data
-                            var kmb = new byte[KeyMaterialPacket.Size];
-                            var rkmcts = new CancellationTokenSource();
-                            rkmcts.CancelAfter(TimeSpan.FromSeconds(10));
-                            await listen.GetStream().ReadAsync(kmb, rkmcts.Token);
-
-                            if (rkmcts.IsCancellationRequested)
+                            if (ctsTot.IsCancellationRequested)
                             {
-                                throw new Exception("reading timed out");
+                                throw new Exception("total listen time exceeded");
                             }
 
-                            var kmp = new KeyMaterialPacket(kmb);
-                            lock (keymats)
-                                keymats.Add(kmp);
+                            if (Interlocked.Read(ref active) < registry.Count)
+                            {
+                                await Console.Out.WriteLineAsync($"ListenToConsensus: keymats.Count is {keymats.Count} and registry.Count is {registry.Count}");
+                                await Console.Out.WriteLineAsync($"ListenToConsensus: checking if active is high enough (={Interlocked.Read(ref active)})");
+                                await Console.Out.WriteLineAsync($"ListenToConsensus: attempting to listen...");
+                                var listen = await listener.AcceptTcpClientAsync(ctsTot.Token);
 
-                            rkmcts.Dispose();
-                        }
+                                await Console.Out.WriteLineAsync($"ListenToConsensus: listened to a connection ({listen.Client.RemoteEndPoint})");
+                                //while (!listen.GetStream().DataAvailable) await Task.Delay(10);
 
-                        if (ctsTot.IsCancellationRequested)
-                        {
-                            throw new Exception("total listen time exceeded");
+                                // receive data
+                                _ = Task.Run(async () =>
+                                {
+                                    try
+                                    {
+                                        var kmb = new byte[KeyMaterialPacket.Size];
+                                        var rkmcts = new CancellationTokenSource();
+                                        rkmcts.CancelAfter(TimeSpan.FromSeconds(10));
+                                        await Console.Out.WriteLineAsync($"ListenToConsensus (subtask): attempting to read key mat from ({listen.Client.RemoteEndPoint})...");
+                                        await listen.GetStream().ReadAsync(kmb, rkmcts.Token);
+
+                                        if (rkmcts.IsCancellationRequested)
+                                        {
+                                            throw new Exception("reading timed out");
+                                        }
+
+                                        await Console.Out.WriteLineAsync($"ListenToConsensus (subtask): we successfully read key mat from ({listen.Client.RemoteEndPoint})...");
+                                        var kmp = new KeyMaterialPacket(kmb);
+                                        lock (keymats)
+                                            keymats.Add(kmp);
+
+                                        rkmcts.Dispose();
+                                        Interlocked.Decrement(ref active);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Interlocked.Decrement(ref active);
+                                        await Console.Out.WriteLineAsync($"BuildCommittee: failed to retrieve key material for a node: {ex.Message}\nStack trace:\n{ex.StackTrace}");
+                                        lock (errs)
+                                            errs.Add(ex);
+                                        return;
+                                    }
+                                });
+                                Interlocked.Increment(ref active);
+                            }
+                            else
+                            {
+                                await Task.Delay(1);
+                            }
                         }
+                        ctsTot.Dispose();
                     }
                     catch (Exception ex)
                     {
+                        if (ctsTot.IsCancellationRequested && keymats.Count == registry.Count)
+                        {
+                            return;
+                        }
                         await Console.Out.WriteLineAsync($"BuildCommittee: failed to retrieve key material for a node: {ex.Message}\nStack trace:\n{ex.StackTrace}");
                         lock (errs)
                             errs.Add(ex);
@@ -303,12 +349,13 @@ namespace AuremCore
                 }
                 
                 List<Task> broadcastTasks = new List<Task>();
+                broadcastTasks.Add(listenToConsensus());
                 foreach (var node in registry)
                 {
                     var _node = node;
                     broadcastTasks.Add(connectToClient(_node));
                 }
-                broadcastTasks.Add(listenToConsensus());
+
                 await Task.WhenAll(broadcastTasks);
 
                 // just to be kind and make sure all data gets sent
@@ -333,7 +380,7 @@ namespace AuremCore
                 committeeData.Sort((x, y) =>
                 {
                     var h1 = SHA256.HashData(x.Item2.PublicKey.Serialize());
-                    var h2 = SHA256.HashData(x.Item2.PublicKey.Serialize());
+                    var h2 = SHA256.HashData(y.Item2.PublicKey.Serialize());
 
                     return h1.Compare(h2);
                 });
