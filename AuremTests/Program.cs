@@ -594,6 +594,7 @@ namespace AuremCore
                 }
                 finally
                 {
+                    Console.ResetColor();
                     await Console.Out.WriteLineAsync($"Node has completed.");
                 }
             }
