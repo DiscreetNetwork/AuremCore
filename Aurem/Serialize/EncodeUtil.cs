@@ -166,6 +166,7 @@ namespace Aurem.Serialize
                 var maxParentLayer = 0;
                 foreach (var v in u.Parents())
                 {
+                    if (v == null) continue;
                     var cl = ComputeLayer(v, layers); 
                     if (cl > maxParentLayer)
                     {

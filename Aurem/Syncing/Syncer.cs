@@ -46,12 +46,12 @@ namespace Aurem.Syncing
 
             if (setup)
             {
-                (netserv, subservices, err) = GetNetserv(conf.RMCNetType, conf.Pid, conf.RMCAddresses, subservices, conf.Timeout, log);
+                (net, subservices, err) = GetNetwork(conf.Pid, conf.RMCAddresses, subservices, conf.Timeout, log, conf);
                 if (err != null)
                 {
                     throw err;
                 }
-                (serv, mcast) = RmcServer.NewServer(conf, orderer, netserv, log.With().Val(Logging.Constants.Service, Logging.Constants.RMCService).Logger());
+                (serv, mcast) = RmcServer.NewServer(conf, orderer, net, log.With().Val(Logging.Constants.Service, Logging.Constants.RMCService).Logger());
                 servers.Add(serv);
             }
             else

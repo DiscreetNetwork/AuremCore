@@ -23,12 +23,21 @@ namespace Aurem.Syncing.Internals.Packets
         FETCHRESPONSE = 33,
 
         // Rmc
-        RMCSignature = 48,
-        RMCSendData = 49,
-        RMCRequestFinished = 50,
-        RMCFinished = 51,
-        RMCProof = 52,
-        RMCBroadcastSignature = 53,
-        RMCBroadcastMultisignature = 54
+        RmcData = 48,
+        RmcProof = 49,
+        RmcFinished = 50,
+        RmcSendData = 51,
+        RmcSendProof = 52,
+        RmcSendFinished = 53,
+        RmcGreet = 54,
+        RmcSignature = 55,
+
+        //RMCSignature = 48,
+        //RMCSendData = 49,
+        //RMCRequestFinished = 50,
+        //RMCFinished = 51,
+        //RMCProof = 52,
+        //RMCBroadcastSignature = 53,
+        //RMCBroadcastMultisignature = 54
     }
 }

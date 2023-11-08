@@ -9,6 +9,7 @@ using BN256Core.Extensions;
 using Microsoft.Win32;
 using System;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -53,6 +54,7 @@ namespace AuremCore
                 conf[i].UseLocalServer = UseLocalServers;
                 conf[i].Output = 3;
                 conf[i].UseBlockScheduler = true;
+                conf[i].Local = true;
                 //conf[i].Setup = false;
             }
 
@@ -209,7 +211,7 @@ namespace AuremCore
             }
 
             // calculate key material and send data
-            List<KeyMaterialPacket> keymats = new List<KeyMaterialPacket>();
+            ConcurrentBag<KeyMaterialPacket> keymats = new ConcurrentBag<KeyMaterialPacket>();
             var ourKeyMat = new KeyMaterialPacket();
             keymats.Add(ourKeyMat);
             var ctsTot = new CancellationTokenSource();
@@ -259,7 +261,7 @@ namespace AuremCore
                             throw new Exception("sending key data timed out");
                         }
 
-                        await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): completed successfully");
+                        //await Console.Out.WriteLineAsync($"ConnectToClient ({p.Address}): completed successfully");
                     }
                     catch (Exception ex)
                     {
@@ -288,7 +290,7 @@ namespace AuremCore
                     var listener = new TcpListener(IPAddress.Any, rp!.SetupCommitteePort);
                     listener.Start();
                     var listenerCts = CancellationTokenSource.CreateLinkedTokenSource(ctsTot.Token);
-                    listenerCts.CancelAfter(10);
+                    listenerCts.CancelAfter(TimeSpan.FromSeconds(10));
                     try
                     {
                         long active = 0;
@@ -322,8 +324,7 @@ namespace AuremCore
 
                                         //await Console.Out.WriteLineAsync($"ListenToConsensus (subtask): we successfully read key mat from ({listen.Client.RemoteEndPoint})...");
                                         var kmp = new KeyMaterialPacket(kmb);
-                                        lock (keymats)
-                                            keymats.Add(kmp);
+                                        keymats.Add(kmp);
 
                                         rkmcts.Dispose();
                                         Interlocked.Decrement(ref active);
@@ -344,7 +345,6 @@ namespace AuremCore
                                 await Task.Delay(100);
                             }
                         }
-                        ctsTot.Dispose();
                     }
                     catch (Exception ex)
                     {
@@ -583,6 +583,7 @@ namespace AuremCore
                 conf.Output = 3;
                 conf.UseBlockScheduler = true;
                 conf.WaitForNodes = true;
+                conf.Local = false;
 
                 try
                 {
@@ -610,7 +611,7 @@ namespace AuremCore
 
         public static async Task Main(string[] args)
         {
-            await Run(args);
+            await Run(new string[] {"local"});
         }
     }
 }

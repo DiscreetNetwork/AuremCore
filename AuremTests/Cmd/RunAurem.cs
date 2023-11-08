@@ -76,6 +76,8 @@ namespace AuremTests.Cmd
             public TimeSpan BlockSchedule { get; set; } = TimeSpan.FromSeconds(1);
 
             public bool WaitForNodes { get; set; } = false;
+
+            public bool Local { get; set; } = false;
         }
 
         public static async Task Run(AuremSettings settings)
@@ -123,6 +125,11 @@ namespace AuremTests.Cmd
                 consensusConfig.LastLevel = consensusConfig.EpochLength + consensusConfig.OrderStartLevel - 1;
             }
 
+            if (settings.Local)
+            {
+                consensusConfig.IsLocal = true;
+            }
+
             IDataSource ds = (settings.RandomBytesPerUnit >= 32) ? new AuremCore.Tests.RandomDataSource(settings.RandomBytesPerUnit) : new AuremCore.Tests.RandomDataSource(32);
             if (settings.UseBlockScheduler)
             {
@@ -164,6 +171,10 @@ namespace AuremTests.Cmd
             if (settings.Setup)
             {
                 var setupConfig = Config.NewSetup(member, committee);
+                if (settings.Local)
+                {
+                    setupConfig.IsLocal = true;
+                }
                 DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
                 if (err != null)
                 {
@@ -187,13 +198,13 @@ namespace AuremTests.Cmd
 
             if (settings.WaitForNodes)
             {
-                List<object> acknowledged = new List<object>();
-                List<object> sentAcknowledge = new List<object>();
+                Dictionary<IPEndPoint, object> acknowledged = new Dictionary<IPEndPoint, object>();
+                Dictionary<IPEndPoint, object> sentAcknowledge = new Dictionary<IPEndPoint, object>();
                 List<TcpClient> clients = new List<TcpClient>();
                 CancellationTokenSource _ctsWFN = new CancellationTokenSource();
                 // self-add
-                acknowledged.Add(new());
-                sentAcknowledge.Add(new());
+                acknowledged[new IPEndPoint(IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address, 8367)] = new();
+                sentAcknowledge[new IPEndPoint(IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address, 8367)] = new();
 
                 async Task ListenForAcknowledge()
                 {
@@ -202,7 +213,7 @@ namespace AuremTests.Cmd
                     while (acknowledged.Count < consensusConfig!.NProc)
                     {
                         var tclient = await listener.AcceptTcpClientAsync(_ctsWFN.Token);
-                        acknowledged.Add(new object());
+                        acknowledged[(tclient.Client.RemoteEndPoint as IPEndPoint)!] = new();
                         clients.Add(tclient);
                     }
                 }
@@ -220,6 +231,7 @@ namespace AuremTests.Cmd
                         }
                     }
 
+                    await Task.Delay(1000);
                     _ctsWFN.Cancel();
                 }
 
@@ -244,7 +256,7 @@ namespace AuremTests.Cmd
                         }
                     }
 
-                    sentAcknowledge.Add(new object());
+                    acknowledged[ep] = new();
                     clients.Add(tc);
                 }
 

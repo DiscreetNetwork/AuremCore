@@ -70,6 +70,14 @@ namespace Aurem.Syncing.Internals.Packets
                 PacketID.MCASTSEND => new MCastSendUnit(s),
                 PacketID.FETCHREQUEST => new FetchRequestUnits(s),
                 PacketID.FETCHRESPONSE => new FetchSendUnits(s),
+                PacketID.RmcData => new RmcData(s),
+                PacketID.RmcProof => new RmcProof(s),
+                PacketID.RmcFinished => new RmcSendFinished(s),
+                PacketID.RmcSendData => new RmcSendData(s),
+                PacketID.RmcSendProof => new RmcSendProof(s),
+                PacketID.RmcSendFinished => new RmcSendFinished(s),
+                PacketID.RmcGreet => new RmcGreet(s),
+                PacketID.RmcSignature => new RmcSignature(s),
                 PacketID.NONE => throw new Exception("decoding packet body revealed packet of NONE type"),
                 _ => throw new Exception($"unimplemented or unknown packet type {t}")
             };
@@ -85,6 +93,14 @@ namespace Aurem.Syncing.Internals.Packets
                 PacketID.MCASTSEND => new MCastSendUnit(s),
                 PacketID.FETCHREQUEST => new FetchRequestUnits(s),
                 PacketID.FETCHRESPONSE => new FetchSendUnits(s),
+                PacketID.RmcData => new RmcData(s),
+                PacketID.RmcProof => new RmcProof(s),
+                PacketID.RmcFinished => new RmcSendFinished(s),
+                PacketID.RmcSendData => new RmcSendData(s),
+                PacketID.RmcSendProof => new RmcSendProof(s),
+                PacketID.RmcSendFinished => new RmcSendFinished(s),
+                PacketID.RmcGreet => new RmcGreet(s),
+                PacketID.RmcSignature => new RmcSignature(s),
                 PacketID.NONE => throw new Exception("decoding packet body revealed packet of NONE type"),
                 _ => throw new Exception($"unimplemented or unknown packet type {t}")
             };

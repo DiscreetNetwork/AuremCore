@@ -15,6 +15,7 @@ namespace AuremCore.Network
         private string[] remoteAddresses;
         private CancellationTokenSource cancellationTokenSource;
         private Logger Log;
+        private IPEndPoint localEndpoint;
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
         private const bool AllowListenTimeouts = false;
 
@@ -22,7 +23,8 @@ namespace AuremCore.Network
 
         public TCPServer(string local, string[] remotes, Logger log, TimeSpan timeout)
         {
-            IPEndPoint localp = IPEndPoint.Parse(local);
+            localEndpoint = IPEndPoint.Parse(local);
+            var localp = new IPEndPoint(IPAddress.Any, localEndpoint.Port);
             listener = new TcpListener(localp);
 
             this.timeout = timeout;
@@ -33,7 +35,8 @@ namespace AuremCore.Network
 
         public TCPServer(string local, string[] remotes, Logger log)
         {
-            IPEndPoint localp = IPEndPoint.Parse(local);
+            localEndpoint = IPEndPoint.Parse(local);
+            var localp = new IPEndPoint(IPAddress.Any, localEndpoint.Port);
             listener = new TcpListener(localp);
 
             listener.Start();

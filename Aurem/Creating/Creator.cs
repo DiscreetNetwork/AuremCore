@@ -133,14 +133,29 @@ namespace Aurem.Creating
             Log.Info().Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, level).Msg(Constants.UnitCreated);
 
             // FIXME remove
-            if (data != null && data.Length > 0 && Conf.Pid == 0)
+            if (Conf.IsLocal)
             {
-                await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                if (data != null && data.Length > 0 && Conf.Pid == 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                }
+                else if (Conf.Pid == 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                }
             }
-            else if (Conf.Pid == 0)
+            else
             {
-                await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                if (data != null && data.Length > 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                }
+                else
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                }
             }
+            
 
             try
             {

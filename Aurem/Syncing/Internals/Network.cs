@@ -22,6 +22,7 @@ namespace Aurem.Syncing.Internals
     public class Network
     {
         private TcpListener listener;
+        private IPEndPoint localEndpoint;
         private IPEndPoint[] remoteAddresses;
         private Connection[] connsDialed;
         private Connection[] connsListened;
@@ -35,8 +36,9 @@ namespace Aurem.Syncing.Internals
 
         public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf)
         {
-            IPEndPoint localp = IPEndPoint.Parse(local);
-            listener = new TcpListener(localp);
+            localEndpoint = IPEndPoint.Parse(local);
+            var listenp = new IPEndPoint(IPAddress.Any, localEndpoint.Port);
+            listener = new TcpListener(listenp);
 
             this.timeout = timeout;
             listener.Start();
@@ -126,8 +128,11 @@ namespace Aurem.Syncing.Internals
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
                 {
-                    await Listen();
-                    await Task.Delay(50, cancellationTokenSource.Token);
+                    var x = await Listen();
+                    if (x == null)
+                    {
+                        await Task.Delay(50, cancellationTokenSource.Token);
+                    }
                 }
             });
 

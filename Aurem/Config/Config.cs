@@ -64,6 +64,9 @@ namespace Aurem.Config
         public int FirstDecidingRound { get; set; }
         public int CommonVoteDeterministicPrefix { get; set; }
 
+        // extra
+        public bool IsLocal { get; set; } = false;
+
         public void AddCheck(UnitChecker check)
         {
             if (Checks == null) Checks = new();
