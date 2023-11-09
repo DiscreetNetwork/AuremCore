@@ -373,6 +373,8 @@ namespace AuremCore
                             errs.Add(ex);
                         return;
                     }
+
+                    listener.Stop();
                 }
                 
                 List<Task> broadcastTasks = new List<Task>();
@@ -639,6 +641,9 @@ namespace AuremCore
 
         public static async Task Main(string[] args)
         {
+            await Run(new string[] { "build", "65.109.230.210:9885", "fredsVPSmember.pk", "fredsVPScommittee.ka" });
+            await Task.Delay(3000);
+            await Run(new string[] { "run", "fredsVPSmember.pk", "fredsVPScommittee.ka" });
             await Run(args);
         }
     }
