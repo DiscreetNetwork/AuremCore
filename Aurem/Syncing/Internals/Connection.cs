@@ -31,6 +31,9 @@ namespace Aurem.Syncing.Internals
         private List<P2PPublicKey>? _theirKeys;
         private ulong _verified;
 
+        private SemaphoreSlim _readLock;
+        private SemaphoreSlim _writeLock;
+
         public Connection(TcpClient tcpClient, TimeSpan timeout, P2PSecretKey? key, List<P2PPublicKey>? theirKeys, Network network)
         {
             _tcpClient = tcpClient;
@@ -42,6 +45,9 @@ namespace Aurem.Syncing.Internals
             _packetQueue = Channel.CreateUnbounded<Packet>();
             _cts = new CancellationTokenSource();
             _verified = 0;
+
+            _readLock = new SemaphoreSlim(1, 1);
+            _writeLock = new SemaphoreSlim(1, 1);
         }
 
         /// <summary>
@@ -205,10 +211,19 @@ namespace Aurem.Syncing.Internals
 
         internal async Task SendAll(Packet? p = null)
         {
-            if (p != null) await SendAsync(p);
-            while (_packetQueue.Reader.TryRead(out var packet) && !_cts.IsCancellationRequested)
+            await _writeLock.WaitAsync();
+
+            try
             {
-                await SendAsync(packet);
+                if (p != null) await SendAsync(p);
+                while (_packetQueue.Reader.TryRead(out var packet) && !_cts.IsCancellationRequested)
+                {
+                    await SendAsync(packet);
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
             }
         }
 
@@ -312,16 +327,25 @@ namespace Aurem.Syncing.Internals
 
         public async Task ReceiveAll()
         {
-            while (DataAvailable && !_cts.IsCancellationRequested)
+            await _readLock.WaitAsync();
+
+            try
             {
-                var p = await Receive();
-                if (p != null)
+                while (DataAvailable && !_cts.IsCancellationRequested)
                 {
-                    if (_network.OnReceive != null)
+                    var p = await Receive();
+                    if (p != null)
                     {
-                        await _network.OnReceive(p);
+                        if (_network.OnReceive != null)
+                        {
+                            await _network.OnReceive(p);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                _readLock.Release();
             }
         }
     }
