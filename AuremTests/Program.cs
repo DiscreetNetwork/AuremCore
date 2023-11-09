@@ -10,6 +10,7 @@ using Microsoft.Win32;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -17,6 +18,21 @@ using System.Xml.Linq;
 
 namespace AuremCore
 {
+    public class IPAddressEqualityComparer : IEqualityComparer<IPAddress>
+    {
+        public bool Equals(IPAddress? x, IPAddress? y)
+        {
+            if (x == null && y == null) return true;
+            if (x == null) return false;
+            return x.Equals(y);
+        }
+
+        public int GetHashCode([DisallowNull] IPAddress obj)
+        {
+            return obj.GetHashCode();
+        }
+    }
+
     public class Program
     {
         public static readonly bool UseLocalServers = false;
@@ -211,9 +227,9 @@ namespace AuremCore
             }
 
             // calculate key material and send data
-            ConcurrentBag<KeyMaterialPacket> keymats = new ConcurrentBag<KeyMaterialPacket>();
+            ConcurrentDictionary<IPAddress, KeyMaterialPacket> keymats = new(new IPAddressEqualityComparer());
             var ourKeyMat = new KeyMaterialPacket();
-            keymats.Add(ourKeyMat);
+            keymats[ourAddress] = ourKeyMat;
             var ctsTot = new CancellationTokenSource();
             ctsTot.CancelAfter(TimeSpan.FromSeconds(10));
             try
@@ -324,7 +340,7 @@ namespace AuremCore
 
                                         //await Console.Out.WriteLineAsync($"ListenToConsensus (subtask): we successfully read key mat from ({listen.Client.RemoteEndPoint})...");
                                         var kmp = new KeyMaterialPacket(kmb);
-                                        keymats.Add(kmp);
+                                        keymats.TryAdd((listen.Client.RemoteEndPoint as IPEndPoint)!.Address, kmp);
 
                                         rkmcts.Dispose();
                                         Interlocked.Decrement(ref active);
@@ -389,7 +405,19 @@ namespace AuremCore
             // order everything
             try
             {
-                List<(RegisterPacket, KeyMaterialPacket)> committeeData = registry.Zip(keymats).ToList();
+                List<(RegisterPacket, KeyMaterialPacket)> committeeData = new();
+                foreach ((var kk, var vk) in keymats)
+                {
+                    foreach ((var kr, var vr) in registry.Select(x => x.Address).Zip(registry))
+                    {
+                        if (kk.Equals(kr))
+                        {
+                            committeeData.Add((vr, vk));
+                            break;
+                        }
+                    }
+                }
+
                 committeeData.Sort((x, y) =>
                 {
                     var h1 = SHA256.HashData(x.Item2.PublicKey.Serialize());
@@ -611,7 +639,7 @@ namespace AuremCore
 
         public static async Task Main(string[] args)
         {
-            await Run(new string[] {"local"});
+            await Run(args);
         }
     }
 }

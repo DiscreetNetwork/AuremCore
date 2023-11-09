@@ -1,9 +1,12 @@
 ﻿using Aurem.Config;
+using AuremCore;
 using AuremCore.Core;
 using AuremCore.Core.Extensions;
 using AuremCore.Tests;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -15,6 +18,21 @@ namespace AuremTests.Cmd
 {
     public static class RunAurem
     {
+        public class IPAddressEqualityComparer : IEqualityComparer<IPAddress>
+        {
+            public bool Equals(IPAddress? x, IPAddress? y)
+            {
+                if (x == null && y == null) return true;
+                if (x == null) return false;
+                return x.Equals(y);
+            }
+
+            public int GetHashCode([DisallowNull] IPAddress obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
+
         public static (Member, Exception?) GetMember(string filename)
         {
             if (string.IsNullOrEmpty(filename))
@@ -198,13 +216,13 @@ namespace AuremTests.Cmd
 
             if (settings.WaitForNodes)
             {
-                Dictionary<IPEndPoint, object> acknowledged = new Dictionary<IPEndPoint, object>();
-                Dictionary<IPEndPoint, object> sentAcknowledge = new Dictionary<IPEndPoint, object>();
+                ConcurrentDictionary<IPAddress, object> acknowledged = new ConcurrentDictionary<IPAddress, object>(new IPAddressEqualityComparer());
+                ConcurrentDictionary<IPAddress, object> sentAcknowledge = new ConcurrentDictionary<IPAddress, object>(new IPAddressEqualityComparer());
                 List<TcpClient> clients = new List<TcpClient>();
                 CancellationTokenSource _ctsWFN = new CancellationTokenSource();
                 // self-add
-                acknowledged[new IPEndPoint(IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address, 8367)] = new();
-                sentAcknowledge[new IPEndPoint(IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address, 8367)] = new();
+                acknowledged[IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address] = new();
+                sentAcknowledge[IPEndPoint.Parse(consensusConfig.FetchAddresses[consensusConfig.Pid]).Address] = new();
 
                 async Task ListenForAcknowledge()
                 {
@@ -213,8 +231,9 @@ namespace AuremTests.Cmd
                     while (acknowledged.Count < consensusConfig!.NProc)
                     {
                         var tclient = await listener.AcceptTcpClientAsync(_ctsWFN.Token);
-                        acknowledged[(tclient.Client.RemoteEndPoint as IPEndPoint)!] = new();
+                        acknowledged[(tclient.Client.RemoteEndPoint as IPEndPoint)!.Address] = new();
                         clients.Add(tclient);
+                        await Console.Out.WriteLineAsync($"WaitForNodes: listened to {(tclient.Client.RemoteEndPoint as IPEndPoint)}");
                     }
                 }
 
@@ -247,7 +266,7 @@ namespace AuremTests.Cmd
                         try
                         {
                             await tc.ConnectAsync(ep);
-                            await Console.Out.WriteLineAsync("WaitForNodes:");
+                            await Console.Out.WriteLineAsync($"WaitForNodes: connected with {ep}");
                         }
                         catch (Exception ex)
                         {
@@ -256,7 +275,19 @@ namespace AuremTests.Cmd
                         }
                     }
 
-                    acknowledged[ep] = new();
+                    //while (!_ctsWFN.IsCancellationRequested)
+                    //{
+                    //    try
+                    //    {
+                    //        await tc.ConnectAsync(ep);
+                    //    }
+                    //    catch
+                    //    {
+                    //        await Task.Delay(100);
+                    //    }
+                    //}
+
+                    sentAcknowledge[ep.Address] = new();
                     clients.Add(tc);
                 }
 

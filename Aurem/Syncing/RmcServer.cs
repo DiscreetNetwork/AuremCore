@@ -864,7 +864,7 @@ namespace Aurem.Syncing
         public async Task<bool> GetMemberSignature(byte[] data, ulong id, ushort recipient)
         {
             var log = Log.With().Val(Logging.Constants.PID, recipient).Val(Logging.Constants.OSID, id).Logger();
-            var delay = 1000;
+            var delay = 5000;
             while (Status(id) != AuremCore.RMC.Status.Finished)
             {
                 try

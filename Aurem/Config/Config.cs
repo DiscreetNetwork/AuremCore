@@ -114,8 +114,8 @@ namespace Aurem.Config
         private static void AddSyncConf(Config cnf, Dictionary<string, List<string>> addresses, bool setup)
         {
             cnf.Timeout = TimeSpan.FromSeconds(5);
-            cnf.FetchInterval = TimeSpan.FromSeconds(1);
-            cnf.GossipInterval = TimeSpan.FromSeconds(2);
+            cnf.FetchInterval = TimeSpan.FromSeconds(5);
+            cnf.GossipInterval = TimeSpan.FromSeconds(5);
             cnf.GossipAbove = 50;
 
             cnf.RMCNetType = "tcp";
