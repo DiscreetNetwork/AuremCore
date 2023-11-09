@@ -642,9 +642,9 @@ namespace AuremCore
         public static async Task Main(string[] args)
         {
             await Run(new string[] { "build", "65.109.230.210:9885", "fredsVPSmember.pk", "fredsVPScommittee.ka" });
-            await Task.Delay(3000);
+            await Task.Delay(10);
             await Run(new string[] { "run", "fredsVPSmember.pk", "fredsVPScommittee.ka" });
-            await Run(args);
+            //await Run(args);
         }
     }
 }
