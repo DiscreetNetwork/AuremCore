@@ -105,10 +105,6 @@ namespace AuremCore.Network
             {
                 await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
             }
-            catch (Exception)
-            {
-
-            }
             finally
             {
                 client.Close();

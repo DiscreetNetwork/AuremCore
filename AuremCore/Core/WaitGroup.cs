@@ -15,7 +15,6 @@ namespace AuremCore.Core
         CancellationTokenSource _wait;
         CancellationToken _token;
         TaskCompletionSource<bool> _waitAsync;
-        // FIXME: async!
 
         public WaitGroup()
         {

@@ -94,7 +94,6 @@ namespace Aurem.Syncing
 
             Netserv.Send(pid, p);
             SendState[GetStateKey(pid, sid)] = log;
-            //await Console.Out.WriteLineAsync($"GOSSIP pid={Pid} remotePid={pid} sid={sid} added");
         }
 
         public static ulong GetStateKey(ushort pid, uint sid)
@@ -104,7 +103,6 @@ namespace Aurem.Syncing
 
         public async Task HandleGossip(Packet p)
         {
-            //await Console.Out.WriteLineAsync($"GOSSIP GOSSIP GOSSIP: handling gossip type={(PacketID)p.Header.PacketID}");
             switch (p.Header.PacketID)
             {
                 case (byte)PacketID.GOSSIPGREET:
@@ -119,7 +117,6 @@ namespace Aurem.Syncing
                         var ps = new Packet(PacketID.GOSSIPINFO, new GossipInfoPacket(Pid, pb.Sid, dagInfo, units.ToArray()));
 
                         ReceiveState[GetStateKey(pb.Pid, pb.Sid)] = new ReceiveStateValue{ Log = log, Value = units.Count };
-                        //await Console.Out.WriteLineAsync($"GOSSIP pid={Pid} remotePid={pb.Pid} sid={pb.Sid} added");
                         Netserv.Send(pb.Pid, ps);
                     }
                     break;

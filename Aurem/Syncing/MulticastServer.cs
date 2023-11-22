@@ -71,7 +71,7 @@ namespace Aurem.Syncing
         {
             if (u.Creator() != Pid)
             {
-                throw new Exception("Attempting to multicast unit that we didn't create");
+                Log.Error().Msg("Attempting to multicast unit that we didn't create");
             }
 
             var encUnit = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.EncodeUnit, u, out var err);
@@ -88,7 +88,6 @@ namespace Aurem.Syncing
                 if (idx == Pid) continue;
                 Netserv.Send((ushort)idx, new Packet(PacketID.MCASTSEND, new MCastSendUnit(u)));
                 Log.Info().Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.PID, idx).Msg(Logging.Constants.SentUnit);
-                //await Requests[idx].Writer.WriteAsync(new MCastRequest { EncodedUnit = encUnit, Height = u.Height() }); // unlikely to block for long, if at all
             }
         }
 

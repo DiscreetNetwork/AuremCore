@@ -65,25 +65,15 @@ namespace Aurem.Syncing
                 return;
             }
 
-            //await Console.Out.WriteLineAsync($"Received fetch from pid={pid}");
-
-            try
-            {
-                var sid = Interlocked.Increment(ref SyncIDs[pid]);
-                var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(pid, sid, unitIDs));
-                Orders.Add(((ulong)sid << 16) + pid, true);
-                Netserv.Send(pid, p);
-                Log.Info().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, sid).Msg(Logging.Constants.SyncStarted);
-            }
-            catch (Exception e)
-            {
-
-            }
+            var sid = Interlocked.Increment(ref SyncIDs[pid]);
+            var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(pid, sid, unitIDs));
+            Orders.Add(((ulong)sid << 16) + pid, true);
+            Netserv.Send(pid, p);
+            Log.Info().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, sid).Msg(Logging.Constants.SyncStarted);
         }
 
         public async Task In(Packet p)
         {
-            //await Console.Out.WriteLineAsync($"FETCH FETCH FETCH: id={(PacketID)p.Header.PacketID}");
             switch (p.Header.PacketID)
             {
                 case (byte)PacketID.FETCHREQUEST:

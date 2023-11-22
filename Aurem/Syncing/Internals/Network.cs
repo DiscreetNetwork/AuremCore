@@ -1,5 +1,4 @@
 ﻿using Aurem.Syncing.Internals.Packets;
-using Aurem.Syncing.Internals.Packets.Bodies;
 using AuremCore.Core;
 using AuremCore.Core.Extensions;
 using AuremCore.Crypto.P2P;

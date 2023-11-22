@@ -15,6 +15,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscreetCoreLib", "Discreet
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AuremTests", "AuremTests\AuremTests.csproj", "{FD137004-9374-4982-9898-F8F929C0E3B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuremBlockAuthority", "AuremBlockAuthority\AuremBlockAuthority.csproj", "{94B59A8C-86FA-4734-9EDB-0713F0222724}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x64.Build.0 = Release|Any CPU
 		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x86.ActiveCfg = Release|Any CPU
 		{FD137004-9374-4982-9898-F8F929C0E3B8}.Release|x86.Build.0 = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|x64.Build.0 = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Debug|x86.Build.0 = Debug|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|Any CPU.Build.0 = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|x64.ActiveCfg = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|x64.Build.0 = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|x86.ActiveCfg = Release|Any CPU
+		{94B59A8C-86FA-4734-9EDB-0713F0222724}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

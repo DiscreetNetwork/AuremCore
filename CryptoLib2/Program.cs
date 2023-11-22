@@ -31,7 +31,7 @@ namespace CryptoLib2
             var x = new G2().ScalarBaseMult(1);
             var y = new G2();
             y.Set(x);
-            //if (x.Equals(y)) throw new Exception("look elsewhere");
+            //if (x.Equals(y)) throw new Exception("elsewhere");
 
             //Console.WriteLine(R1CSLine.BIAtoS(qap.EvaluateAs(1)));
             //Console.WriteLine(R1CSLine.BIAtoS(qap.A[1]));
@@ -85,7 +85,7 @@ namespace CryptoLib2
 
             if (verify)
             {
-                Console.WriteLine("good times");
+                Console.WriteLine("verified.");
             }
 
             var witness2 = sp.Execute(new List<BigInteger> { 900 });
@@ -94,7 +94,7 @@ namespace CryptoLib2
 
             if (verify2)
             {
-                Console.WriteLine("good times again");
+                Console.WriteLine("verified 2.");
             }*/
 
             //var xxx = GenPrime.GetPrime(256);

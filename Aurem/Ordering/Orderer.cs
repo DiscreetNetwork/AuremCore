@@ -179,15 +179,16 @@ namespace Aurem.Ordering
                         {
                             Source.Cancel();
                         }
-
-                        if (epoch >= current && timingUnit.Level() <= Conf.LastLevel)
-                        {
-                            await ToPreblock(round!);
-                            Log.Info().Val(Logging.Constants.Level, timingUnit.Level()).Val(Logging.Constants.Epoch, epoch).Msg(Logging.Constants.PreblockProduced);
-                        }
-
-                        current = epoch;
                     }
+
+                    if (epoch >= current && timingUnit.Level() <= Conf.LastLevel)
+                    {
+                        // consider data to be finalized here.
+                        await ToPreblock(round!);
+                        Log.Info().Val(Logging.Constants.Level, timingUnit.Level()).Val(Logging.Constants.Epoch, epoch).Msg(Logging.Constants.PreblockProduced);
+                    }
+
+                    current = epoch;
                 }
             }
             finally

@@ -181,20 +181,10 @@ namespace Aurem.Dag
                 hook(u);
             }
 
-            // FIXME: try removing this later
-            try
-            {
-                UpdateUnitsOnHeight(u);
-                UpdateUnitsOnLevel(u);
-                Units.Add(u);
-                UpdateMaximal(u);
-            }
-            catch (Exception e)
-            {
-                //Console.WriteLine(e.Message);
-                throw e;
-            }
-            
+            UpdateUnitsOnHeight(u);
+            UpdateUnitsOnLevel(u);
+            Units.Add(u);
+            UpdateMaximal(u);
 
             foreach (var hook in PostInsert)
             {

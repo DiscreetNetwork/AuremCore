@@ -555,7 +555,6 @@ namespace Aurem.Forking
             }
         }
 
-        // FIXME: force synchronous of HandleForkerUnit or something else?
         private void CheckCommitment(IUnit u, IDag _)
         {
             if (HandleForkerUnit(u).GetAwaiter().GetResult() && !HasCommitmentTo(u))
@@ -603,8 +602,7 @@ namespace Aurem.Forking
                     return false;
                 }
 
-                // FIXME: check if this needs to be pinned to this routine or is fine running as its own task
-                //_ = Task.Run(async () => await RaiseAlert(proof));
+                // alert raise must be pinned
                 await RaiseAlert(proof);
                 return true;
             }
