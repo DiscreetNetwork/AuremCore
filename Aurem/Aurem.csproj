@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuremCore\AuremCore.csproj" />
+    <ProjectReference Include="..\BN256Core\BN256Core.csproj" />
+    <ProjectReference Include="..\DiscreetCore\DiscreetCoreLib.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -14,20 +14,38 @@ namespace AuremCore.Network
         private IPEndPoint _remote;
         private bool _connected;
         private CancellationTokenSource _cancellationTokenSource;
+        private TimeSpan timeout = TimeSpan.FromSeconds(15);
+        private ulong _debug_RegisterPrint = 0;
 
         public override IPEndPoint RemoteEndPoint => _remote;
         public override bool IsConnected => _connected;
-        
+
+        //public override Stream NetStream => client?.GetStream();
+
         private static readonly int bufferSize = 32000;
 
         TcpClient client;
 
         public TCPConn() { }
 
+        public void Debug_RegisterPrintActivity()
+        {
+            Interlocked.Exchange(ref _debug_RegisterPrint, 1);
+        }
+
         public TCPConn(TcpClient client)
         {
             this.client = client;
-            _remote = (IPEndPoint)client.Client.RemoteEndPoint;
+            _remote = (IPEndPoint)client?.Client?.RemoteEndPoint;
+            _connected = client.Connected;
+            _cancellationTokenSource = new();
+        }
+
+        public TCPConn(TcpClient client, TimeSpan timeout)
+        {
+            this.client = client;
+            this.timeout = timeout;
+            _remote = (IPEndPoint)client?.Client?.RemoteEndPoint;
             _connected = client.Connected;
             _cancellationTokenSource = new();
         }
@@ -43,19 +61,54 @@ namespace AuremCore.Network
 
         public override async Task<int> Read(byte[] s)
         {
-            return await client.GetStream().ReadAsync(s, _cancellationTokenSource.Token);
+            //return await client.GetStream().ReadAsync(s, _cancellationTokenSource.Token);
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+            cts.CancelAfter(timeout);
+            var res = await client.GetStream().ReadAsync(s, cts.Token);
+            if (cts.IsCancellationRequested && !_cancellationTokenSource.IsCancellationRequested) throw new Exception("Timeout");
+            if (Interlocked.Read(ref _debug_RegisterPrint) > 0)
+            {
+                //await Console.Out.WriteLineAsync($"CONNECTION READ: {Convert.ToHexString(s)}");
+            }
+
+            return res;
         }
 
         public override async Task<int> Write(byte[] s)
         {
-            await client.GetStream().WriteAsync(s, _cancellationTokenSource.Token);
+            //await client.GetStream().WriteAsync(s, _cancellationTokenSource.Token);
+            //return s.Length;
+
+            //await Console.Out.WriteLineAsync($"Connection {RemoteEndPoint} writing: " + Convert.ToHexString(s));
+            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+            cts.CancelAfter(timeout);
+            await client.GetStream().WriteAsync(s, cts.Token);
+
+            if (_cancellationTokenSource.IsCancellationRequested) return 0;
+            if (cts.IsCancellationRequested)
+            {
+                // timeout
+                throw new Exception("Timeout");
+            }
+
             return s.Length;
         }
 
-        public override async Task Disconnect()
+        public override async Task Close()
         {
-            await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
-            client.Close();
+            if (Interlocked.Read(ref _debug_RegisterPrint) > 0)
+            {
+                //await Console.Out.WriteLineAsync("Connection Read: close");
+            }
+
+            try
+            {
+                await client.GetStream().FlushAsync(_cancellationTokenSource.Token);
+            }
+            finally
+            {
+                client.Close();
+            }
         }
 
         public override async Task Interrupt()

@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Models;
+﻿using BN256Core;
+using BN256Core.Models;
 using AuremCore.Crypto.Encrypt;
 using System;
 using System.Collections.Generic;
@@ -18,6 +18,8 @@ namespace AuremCore.Crypto.P2P
             this.k = k;
         }
 
+        public P2PSecretKey() { }
+
         public byte[] Marshal()
         {
             return k.Marshal();
@@ -34,9 +36,16 @@ namespace AuremCore.Crypto.P2P
             return Convert.ToBase64String(Marshal());
         }
 
-        public P2PSecretKey Decode(string enc)
+        public static P2PSecretKey Decode(string enc)
         {
-            return Unmarshal(Convert.FromBase64String(enc));
+            return new P2PSecretKey().Unmarshal(Convert.FromBase64String(enc));
+        }
+
+        // utility methods to ensure network traffic cannot be faked
+        public Signature Sign(byte[] data)
+        {
+            Signature sig = k.Sign(data);
+            return sig;
         }
     }
 }

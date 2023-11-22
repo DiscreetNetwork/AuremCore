@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Common;
+﻿using BN256Core;
+using BN256Core.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace AuremCore.Crypto.Threshold
 {
-    internal static class TUtil
+    public static class TUtil
     {
-        internal static BigInteger Lagrange(long[] points, long x)
+        public static BigInteger Lagrange(long[] points, long x)
         {
             var num = new BigInteger(1);
             var den = new BigInteger(1);
@@ -24,18 +24,18 @@ namespace AuremCore.Crypto.Threshold
                 den *= new BigInteger(x - p);
             }
 
-            den = BigInteger.ModPow(den, BN256.Constants.Order - 2, BN256.Constants.Order);
+            den = BigInteger.ModPow(den, Constants.Order - 2, Constants.Order);
 
             num *= den;
-            num %= BN256.Constants.Order;
-            while (num < 0) num += BN256.Constants.Order;
+            num %= Constants.Order;
+            while (num < 0) num += Constants.Order;
 
             return num;
         }
 
-        internal static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
+        public static BigInteger Poly(BigInteger[] coeffs, BigInteger x)
         {
-            return coeffs.Aggregate(new BigInteger(0), (ans, y) => (ans * x + y) % BN256.Constants.Order);
+            return coeffs.Aggregate(new BigInteger(0), (ans, y) => (ans * x + y) % Constants.Order);
         }
 
         public static ushort MinimalTrusted(ushort nproc)

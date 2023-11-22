@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Extensions;
+﻿using BN256Core;
+using BN256Core.Extensions;
 using AuremCore.Crypto.Encrypt;
 using System;
 using System.Collections.Generic;
@@ -24,7 +24,7 @@ namespace AuremCore.Crypto.Threshold
 
         public ushort Threshold => threshold;
 
-        public virtual Share CreateShare(byte[] msg)
+        public virtual Share? CreateShare(byte[] msg)
         {
             return new Share { owner = this.owner, sig = sk.Sign(msg) };
         }

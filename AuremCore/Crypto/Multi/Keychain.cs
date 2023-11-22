@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Extensions;
+﻿using BN256Core;
+using BN256Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +13,8 @@ namespace AuremCore.Crypto.Multi
         private VerificationKey[] pubs;
         private SecretKey secret;
         private ushort pid;
+
+        public static readonly int SignatureLength = Constants.SignatureLength;
 
         public Keychain(VerificationKey[] pubs, SecretKey secret)
         {

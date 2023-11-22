@@ -1,6 +1,6 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Extensions;
-using AuremCore.Crypto.BN256.Models;
+﻿using BN256Core;
+using BN256Core.Extensions;
+using BN256Core.Models;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -51,15 +51,15 @@ namespace AuremCore.Crypto.P2P
             return res;
         }
 
-        public P2PPublicKey Unmarshal(byte[] data)
+        public P2PPublicKey Unmarshal(ReadOnlySpan<byte> data)
         {
             if (data.Length < 4) throw new Exception("data too short");
 
             var g1len = BinaryPrimitives.ReadInt32LittleEndian(data);
             if (data.Length < g1len + 4) throw new Exception("data too short");
 
-            g1 = new G1().Unmarshal(data.AsSpan(4));
-            g2 = new G2().Unmarshal(data.AsSpan(4 + g1len));
+            g1 = new G1().Unmarshal(data.Slice(4));
+            g2 = new G2().Unmarshal(data.Slice(4 + g1len));
 
             return this;
         }
@@ -69,9 +69,15 @@ namespace AuremCore.Crypto.P2P
             return Convert.ToBase64String(Marshal());
         }
 
-        public P2PPublicKey Decode(string enc)
+        public static P2PPublicKey Decode(string enc)
         {
-            return Unmarshal(Convert.FromBase64String(enc));
+            return new P2PPublicKey().Unmarshal(Convert.FromBase64String(enc));
+        }
+
+        // utility methods to ensure network traffic cannot be faked
+        public bool Verify(byte[] data, Signature sig)
+        {
+            return new VerificationKey(g2).Verify(sig, data);
         }
     }
 }

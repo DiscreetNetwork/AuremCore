@@ -1,5 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
-using AuremCore.Crypto.BN256.Models;
+﻿using BN256Core;
+using BN256Core.Models;
 using AuremCore.Crypto.Encrypt;
 using System;
 using System.Collections.Generic;
@@ -11,8 +11,8 @@ namespace AuremCore.Crypto.P2P
 {
     public static class P2P
     {
-        public static readonly G1 GenG1 = new G1().ScalarBaseMult(new BN256.SecretKey(1));
-        public static readonly G2 GenG2 = new G2().ScalarBaseMult(new BN256.SecretKey(1));
+        public static readonly G1 GenG1 = new G1().ScalarBaseMult(new SecretKey(1));
+        public static readonly G2 GenG2 = new G2().ScalarBaseMult(new SecretKey(1));
     
         public static (P2PPublicKey, P2PSecretKey) GenerateKeys()
         {

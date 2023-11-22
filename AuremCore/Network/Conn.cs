@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -21,42 +22,80 @@ namespace AuremCore.Network
 
         public abstract bool IsConnected { get; }
 
-        public virtual async Task Interrupt()
-        {
-            throw new NotImplementedException();
-        }
+        //public abstract Stream NetStream { get; }
+
+        public abstract Task Interrupt();
 
         public virtual async Task Connect()
         {
-            throw new NotImplementedException();
+
         }
 
-        public virtual async Task Disconnect()
+        public abstract Task Close();
+
+        public abstract Task<int> Read(byte[] s);
+
+        public abstract Task<int> Write(byte[] s);
+
+        public async Task<(int, Exception?)> TryRead(byte[] s)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var x = await Read(s);
+                return (x, null);
+            }
+            catch (Exception ex)
+            {
+                return (0, ex);
+            }
         }
 
-        public virtual async Task<int> Read(byte[] s)
+        public async Task<(int, Exception?)> TryWrite(byte[] s)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var x = await Write(s);
+                return (x, null);
+            }
+            catch (Exception ex)
+            {
+                return (0, ex);
+            }
         }
 
-        public virtual async Task<int> Write(byte[] s)
+        public abstract void Flush();
+
+        public Exception? TryFlush()
         {
-            throw new NotImplementedException();
+            try
+            {
+                Flush();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
         }
 
         public virtual async Task Greet(ushort pid, ulong sid)
         {
-            throw new NotImplementedException();
+            var data = new byte[10];
+            BinaryPrimitives.WriteUInt16LittleEndian(data, pid);
+            BinaryPrimitives.WriteUInt64LittleEndian(data.AsSpan(2), sid);
+            await Write(data);
         }
 
 
         public virtual async Task<(ushort Pid, ulong Sid)> AcceptGreeting()
         {
-            throw new NotImplementedException();
-        }
+            var data = new byte[10];
+            var tot = await Read(data);
+            if (tot != 10) throw new Exception($"Conn.AcceptGreeting: expected 10 bytes; got {tot}");
 
-        public abstract void Flush();
+            var pid = BinaryPrimitives.ReadUInt16LittleEndian(data);
+            var sid = BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(2));
+            return (pid, sid);
+        }
     }
 }

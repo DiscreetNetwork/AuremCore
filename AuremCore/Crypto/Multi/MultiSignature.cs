@@ -1,4 +1,4 @@
-﻿using AuremCore.Crypto.BN256;
+﻿using BN256Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +32,8 @@ namespace AuremCore.Crypto.Multi
 
             mutex.Wait();
 
-            if (collected[pid])
+            var success = collected.TryGetValue(pid, out var isCollected);
+            if (success && isCollected)
             {
                 return (Complete(), new Exception("second copy of signature"));
             }

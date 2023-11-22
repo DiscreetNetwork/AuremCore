@@ -1,4 +1,5 @@
-﻿using AuremCore.Crypto.BN256;
+﻿using BN256Core;
+using BN256Core.Models;
 using AuremCore.Crypto.P2P;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,8 @@ namespace AuremCore.Crypto.Threshold
 
         public override Share? CreateShare(byte[] msg)
         {
-            if (!shareProviders[owner]) return null;
+            shareProviders.TryGetValue(owner, out var can);
+            if (!can) return null;
 
             return new Share { owner = this.owner, sig = this.sk.Sign(msg) };
         }
@@ -31,20 +33,20 @@ namespace AuremCore.Crypto.Threshold
         {
             int n = tks[0].vks.Length;
 
-            WeakThresholdKey key = new WeakThresholdKey { globalVK = new BN256.VerificationKey(), sk = new BN256.SecretKey(), owner = tks[0].owner, threshold = tks[0].threshold, vks = new BN256.VerificationKey[n], shareProviders = shareProviders };
+            WeakThresholdKey key = new WeakThresholdKey { globalVK = new VerificationKey(), sk = new SecretKey(), owner = tks[0].owner, threshold = tks[0].threshold, vks = new VerificationKey[n], shareProviders = shareProviders };
 
             for (int i = 0; i < n; i++)
             {
-                key.vks[i] = new BN256.VerificationKey();
+                key.vks[i] = new VerificationKey();
             }
 
             foreach (var tk in tks)
             {
                 key.sk.Add(tk.sk);
-                key.globalVK = BN256.VerificationKey.Add(key.globalVK, tk.globalVK);
+                key.globalVK = VerificationKey.Add(key.globalVK, tk.globalVK);
                 for (int i = 0; i < tk.vks.Length; i++)
                 {
-                    key.vks[i] = BN256.VerificationKey.Add(key.vks[i], tk.vks[i]);
+                    key.vks[i] = VerificationKey.Add(key.vks[i], tk.vks[i]);
                 }
             }
 
@@ -59,7 +61,7 @@ namespace AuremCore.Crypto.Threshold
             var coeffs = new BigInteger[threshold];
             for (int i = 0; i < threshold; i++)
             {
-                coeffs[i] = SecretKey.RandomScalar();
+                coeffs[i] = SecretKey.RandomScalar(rnd);
             }
 
             var skeys = new P2PSecretKey[nproc];
