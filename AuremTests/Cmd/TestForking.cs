@@ -11,6 +11,7 @@ using Aurem.Syncing.Internals;
 using Aurem.Units;
 using AuremCore.Core;
 using AuremCore.Core.Extensions;
+using AuremCore.Crypto.P2P;
 using AuremCore.FastLogger;
 using AuremCore.Network;
 using BN256Core;
@@ -18,6 +19,7 @@ using BN256Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -272,12 +274,14 @@ namespace AuremTests.Cmd
             Orderer[] orderers = Array.Empty<Orderer>();
             IDag[] dags = Array.Empty<IDag>();
             IRandomSource[] rss = Array.Empty<IRandomSource>();
-            Server[] netservs = Array.Empty<Server>();
+            Network[] netservs = Array.Empty<Network>();
             IPublicKey[] pubKeys = Array.Empty<IPublicKey>();
             IPrivateKey[] privKeys = Array.Empty<IPrivateKey>();
             VerificationKey[] verKeys = Array.Empty<VerificationKey>();
             SecretKey[] secKeys = Array.Empty<SecretKey>();
             WaitGroup wg = new WaitGroup();
+            P2PSecretKey[] p2ppriv = Array.Empty<P2PSecretKey>();
+            P2PPublicKey[] p2ppub = Array.Empty<P2PPublicKey>();
             ulong stop = 0;
 
             var timeout = TimeSpan.FromSeconds(2);
@@ -289,18 +293,24 @@ namespace AuremTests.Cmd
                 privKeys = new IPrivateKey[nProc];
                 verKeys = new VerificationKey[nProc];
                 secKeys = new SecretKey[nProc];
+                p2ppriv = new P2PSecretKey[nProc];
+                p2ppub = new P2PPublicKey[nProc];
                 wg = new WaitGroup();
 
                 for (int i = 0; i < nProc; i++)
                 {
                     (pubKeys[i], privKeys[i]) = Keys.GenerateKeys();
                     (verKeys[i], secKeys[i]) = VerificationKey.GenerateKeys();
+                    (p2ppub[i], p2ppriv[i]) = P2P.GenerateKeys();
                 }
 
                 alerters = new IAlerter[nProc];
                 dags = new IDag[nProc];
                 rss = new IRandomSource[nProc];
-                netservs = AuremCore.Tests.LocalServer.NewNetwork(nProc, timeout);
+                // we no longer need local network, so instead use actual (local) conns
+                //netservs = AuremCore.Tests.LocalServer.NewNetwork(nProc, timeout);
+                netservs = new Network[nProc];
+                var addrs = Enumerable.Range(0, nProc).Select(x => $"127.0.0.1:{25000 + x}").ToArray();
                 orderers = new Orderer[nProc];
                 Interlocked.Exchange(ref stop, 0);
 
@@ -312,8 +322,11 @@ namespace AuremTests.Cmd
                     cnf.RMCPublicKeys = verKeys.ToList();
                     cnf.RMCPrivateKey = secKeys[i];
                     cnf.PublicKeys = pubKeys.ToList();
+                    cnf.P2PSecretKey = p2ppriv[i];
+                    cnf.P2PPublicKeys = p2ppub.ToList();
 
                     orderers[i] = new Orderer(null);
+                    netservs[i] = new Network(addrs[i], addrs, Logger.Nop(), TimeSpan.FromSeconds(5), cnf);
 
                     Exception? err = null;
                     alerters[i] = new AlertService(cnf, orderers[i], netservs[i], Logger.Nop());
@@ -334,75 +347,77 @@ namespace AuremTests.Cmd
 
             async Task KeepHandling(ushort pid)
             {
-                try
-                {
-                    while (Interlocked.Read(ref stop) == 0)
-                    {
-                        Conn? conn = null;
-                        try
-                        {
-                            conn = await netservs[pid].Listen();
-                        }
-                        catch
-                        {
-                            continue;
-                        }
+                alerters[pid].Start();
+                //try
+                //{
+                //    while (Interlocked.Read(ref stop) == 0)
+                //    {
+                //        Conn? conn = null;
+                //        try
+                //        {
+                //            conn = await netservs[pid].Listen();
+                //        }
+                //        catch
+                //        {
+                //            continue;
+                //        }
 
-                        wg.Add(1);
-                        _ = Task.Run(async () => 
-                        {
-                            try
-                            {
-                                //await Console.Out.WriteLineAsync($"pid={pid} received handle incoming");
-                                _ = Task.Run(async () => await alerters[pid].HandleIncoming(conn!));
-                            }
-                            finally
-                            {
-                                wg.Done();
-                            }
-                        });
-                    }
+                //        wg.Add(1);
+                //        _ = Task.Run(async () => 
+                //        {
+                //            try
+                //            {
+                //                //await Console.Out.WriteLineAsync($"pid={pid} received handle incoming");
+                //                _ = Task.Run(async () => await alerters[pid].HandleIncoming(conn!));
+                //            }
+                //            finally
+                //            {
+                //                wg.Done();
+                //            }
+                //        });
+                //    }
 
-                    // clean up pending alerts;
-                    for (int i = 0; i < alerters.Length; i++)
-                    {
-                        Conn? conn = null;
-                        try
-                        {
-                            conn = await netservs[pid].Listen();
-                        }
-                        catch
-                        {
-                            return;
-                        }
+                //    // clean up pending alerts;
+                //    for (int i = 0; i < alerters.Length; i++)
+                //    {
+                //        Conn? conn = null;
+                //        try
+                //        {
+                //            conn = await netservs[pid].Listen();
+                //        }
+                //        catch
+                //        {
+                //            return;
+                //        }
 
-                        wg.Add(1);
-                        _ = Task.Run(() =>
-                        {
-                            try
-                            {
-                                Task.Run(async () => await alerters[pid].HandleIncoming(conn!));
-                            }
-                            finally
-                            {
-                                wg.Done();
-                            }
-                        });
-                    }
-                }
-                finally
-                {
-                    wg.Done();
-                }
+                //        wg.Add(1);
+                //        _ = Task.Run(() =>
+                //        {
+                //            try
+                //            {
+                //                Task.Run(async () => await alerters[pid].HandleIncoming(conn!));
+                //            }
+                //            finally
+                //            {
+                //                wg.Done();
+                //            }
+                //        });
+                //    }
+                //}
+                //finally
+                //{
+                //    wg.Done();
+                //}
             };
 
             async Task StopHandling()
             {
                 Interlocked.Increment(ref stop);
                 await wg.WaitAsync();
+                await Task.WhenAll(alerters.Select(x => x.Stop()));
                 // close network
                 //await Console.Out.WriteLineAsync("StopHandling completed");
-                AuremCore.Tests.LocalServer.CloseNetwork(netservs);
+                //AuremCore.Tests.LocalServer.CloseNetwork(netservs);
             };
 
             Console.WriteLine("When the dags are empty...");

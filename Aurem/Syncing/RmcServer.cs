@@ -26,7 +26,7 @@ namespace Aurem.Syncing
 {
     public class RmcServer : IService
     {
-        protected class RmcInstance
+        public class RmcInstance
         {
             protected SemaphoreSlim Mutex = new SemaphoreSlim(1, 1);
 
@@ -239,7 +239,7 @@ namespace Aurem.Syncing
             }
         }
 
-        protected class RmcIncoming : RmcInstance
+        public class RmcIncoming : RmcInstance
         {
             public ushort Pid;
 
@@ -327,7 +327,7 @@ namespace Aurem.Syncing
             }
         }
 
-        protected struct SigKey
+        public struct SigKey
         {
             public ulong Id;
             public ushort Recipient;
@@ -356,7 +356,7 @@ namespace Aurem.Syncing
             }
         }
 
-        protected class SigKeyEqualityComparer : IEqualityComparer<SigKey>
+        public class SigKeyEqualityComparer : IEqualityComparer<SigKey>
         {
             public bool Equals(SigKey x, SigKey y)
             {

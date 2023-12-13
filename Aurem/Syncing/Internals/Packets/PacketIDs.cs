@@ -39,5 +39,9 @@ namespace Aurem.Syncing.Internals.Packets
         //RMCProof = 52,
         //RMCBroadcastSignature = 53,
         //RMCBroadcastMultisignature = 54
+
+        // Alert
+        RequestComm = 64,
+        CommResp = 65,
     }
 }

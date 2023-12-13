@@ -29,7 +29,7 @@ namespace Aurem.Dag
 
         /// <summary>
         /// Returns the units at the provided ID. 
-        /// WARNING: modifying the returned valie directly results in undefined behavior!
+        /// WARNING: modifying the returned value directly results in undefined behavior!
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>

@@ -78,6 +78,8 @@ namespace Aurem.Syncing.Internals.Packets
                 PacketID.RmcSendFinished => new RmcSendFinished(s),
                 PacketID.RmcGreet => new RmcGreet(s),
                 PacketID.RmcSignature => new RmcSignature(s),
+                PacketID.RequestComm => new RequestComm(s),
+                PacketID.CommResp => new AlertRequestCommitment(s),
                 PacketID.NONE => throw new Exception("decoding packet body revealed packet of NONE type"),
                 _ => throw new Exception($"unimplemented or unknown packet type {t}")
             };
@@ -101,6 +103,8 @@ namespace Aurem.Syncing.Internals.Packets
                 PacketID.RmcSendFinished => new RmcSendFinished(s),
                 PacketID.RmcGreet => new RmcGreet(s),
                 PacketID.RmcSignature => new RmcSignature(s),
+                PacketID.RequestComm => new RequestComm(s),
+                PacketID.CommResp => new AlertRequestCommitment(s),
                 PacketID.NONE => throw new Exception("decoding packet body revealed packet of NONE type"),
                 _ => throw new Exception($"unimplemented or unknown packet type {t}")
             };

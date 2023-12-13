@@ -22,10 +22,10 @@ namespace Aurem.Model
         public Task NewFork(IPreunit a, IPreunit b);
 
         /// <summary>
-        /// Handles an incoming connection.
+        /// Handles an incoming connection. DEPRECATED
         /// </summary>
         /// <param name="conn"></param>
-        public Task HandleIncoming(Conn conn);
+        //public Task HandleIncoming(Conn conn);
 
         /// <summary>
         /// Disambiguates between which of the provided (forked) units is the right one to be the parent of the given preunit.

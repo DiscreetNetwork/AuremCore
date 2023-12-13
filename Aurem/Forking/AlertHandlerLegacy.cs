@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Aurem.Config;
+﻿using Aurem.Config;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
 using Aurem.Serialize;
@@ -13,425 +11,77 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Aurem.Syncing.Internals;
-using System.Collections.Concurrent;
-using Aurem.Syncing;
-using Aurem.Syncing.Internals.Packets.Bodies;
-using AuremCore.Crypto.Multi;
-using Aurem.Syncing.Internals.Packets;
-using static Aurem.Syncing.RmcServer;
-using System.Security.Cryptography;
-using Aurem.Random;
-using System.Diagnostics.CodeAnalysis;
-using System.Buffers.Binary;
 
 namespace Aurem.Forking
 {
-    public class AlertHandler
+    public class AlertHandlerLegacy
     {
-        public struct ReqKey
-        {
-            public Hash Hash;
-            public ushort Pid;
-
-            public ReqKey(Hash hash, ushort pid)
-            {
-                Hash = hash;
-                Pid = pid;
-            }
-
-            public override bool Equals([NotNullWhen(true)] object? obj)
-            {
-                if (obj is ReqKey other)
-                {
-                    return other.Pid == Pid && other.Hash == Hash;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            public override int GetHashCode()
-            {
-                return (int)(((Pid << 16) | (~Pid)) ^ (BinaryPrimitives.ReadUInt32LittleEndian(Hash.Data[0..4])));
-            }
-        }
-
-        public class ReqKeyEqualityComparer : IEqualityComparer<ReqKey>
-        {
-            public bool Equals(ReqKey x, ReqKey y) => x.Equals(y);
-
-            public int GetHashCode([DisallowNull] ReqKey obj) => obj.GetHashCode();
-        }
-
         public ushort MyPid;
         public ushort NProc;
         public IOrderer Orderer;
         public IPublicKey[] Keys;
-        //public ReliableMulticast Rmc;
-        public Network Network;
+        public ReliableMulticast Rmc;
+        public Server Netserv;
         public CommitBase Commitments;
         public AuremCore.Utils.IObservable<ForkData> Observable; // FIXME: what type is our observable?
 
         private Logger Log;
         public readonly SemaphoreSlim[] locks;
 
-        protected ConcurrentDictionary<ulong, RmcServer.RmcInstance> Out;
-        protected ConcurrentDictionary<ulong, RmcServer.RmcIncoming> In;
-        protected ConcurrentDictionary<ReqKey, TaskCompletionSource<AlertRequestCommitment>> Requests;
-        protected ConcurrentDictionary<RmcServer.SigKey, TaskCompletionSource<RmcSignature>> MemberSigTasks;
-        protected Keychain Kchain;
-
-        public AlertHandler(Config.Config conf, IOrderer orderer, ReliableMulticast rmc, Network netserv, Logger log)
+        public AlertHandlerLegacy(Config.Config conf, IOrderer orderer, ReliableMulticast rmc, Server netserv, Logger log)
         {
             MyPid = conf.Pid;
             NProc = conf.NProc;
             Keys = conf.PublicKeys.ToArray();
             Orderer = orderer;
-            Out = new();
-            In = new();
-            Requests = new(new ReqKeyEqualityComparer());
-            MemberSigTasks = new(new RmcServer.SigKeyEqualityComparer());
-            Kchain = new(conf.RMCPublicKeys, conf.RMCPrivateKey);
-            Network = netserv;
+            Rmc = rmc;
+            Netserv = netserv;
             Commitments = new CommitBase();
             locks = Enumerable.Range(0, NProc).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
             Observable = new SafeObservable<ForkData>();
             Log = log;
 
-            Network.AddHandle(PersistentIn);
-
             conf.AddCheck(CheckCommitment);
-        }
-
-        private (RmcIncoming, Exception?) GetIn(ulong id)
-        {
-            var success = In.TryGetValue(id, out var result);
-            if (success) return (result!, null);
-
-            return (null!, new Exception("unknown incoming"));
-        }
-
-        private (RmcInstance, Exception?) GetOut(ulong id)
-        {
-            var success = Out.TryGetValue(id, out var result);
-            if (success) return (result!, null);
-
-            return (null!, new Exception("unknown outgoing"));
-        }
-
-        private (RmcInstance, Exception?) Get(ulong id)
-        {
-            (var incoming, var err) = GetIn(id);
-            if (err == null)
-            {
-                return (incoming, null);
-            }
-
-            (var outgoing, err) = GetOut(id);
-            if (err == null)
-            {
-                return (outgoing, null);
-            }
-
-            return (null!, new Exception("unknown instance"));
-        }
-
-        public Status Status(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null) return AuremCore.RMC.Status.Unknown;
-            return ins.GetStatus();
-        }
-
-        private RmcInstance NewOutgoingInstance(ulong id, byte[] data)
-        {
-            var res = RmcInstance.NewOutgoing(id, data, Kchain, MyPid);
-
-            return Out.AddOrUpdate(id, res, (a, x) => x);
-        }
-
-        private (RmcIncoming, Exception?) NewIncomingInstance(ulong id, ushort pid)
-        {
-            var res = new RmcIncoming(id, pid, Kchain, MyPid);
-
-            var success = In.AddOrUpdate(id, res, (a, x) => x);
-            return (success, success != res ? new Exception("duplicate incoming") : null);
-        }
-
-        public MultiSignature? Proof(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null) return null;
-
-            return ins.Proof;
-        }
-
-        public byte[] Data(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null) return Array.Empty<byte>();
-
-            return ins.Data();
-        }
-
-        public async Task<(byte[], Exception?)> RmcAcceptFinished(ulong id, ushort pid, RmcSendFinished fin)
-        {
-            (var ins, var err) = GetIn(id);
-            if (err != null)
-            {
-                (ins, _) = NewIncomingInstance(id, pid);
-            }
-
-            return await ins.AcceptFinished(fin);
-        }
-
-        public async Task<(Packet, Exception?)> RmcSendFinished(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null)
-            {
-                return (null!, err);
-            }
-
-            return (await ins.SendFinished(), null);
-        }
-
-        public async Task<(Packet, Exception?)> RmcSendProof(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null)
-            {
-                return (null!, err);
-            }
-
-            return (await ins.SendProof(), null);
-        }
-
-        public async Task<(bool, Exception?)> RmcAcceptSignature(ulong id, ushort pid, RmcSignature s)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null)
-            {
-                return (false, err);
-            }
-
-            return await ins.AcceptSignature(pid, s.Sig);
-        }
-
-        public async Task<(Packet, Exception?)> RmcSendData(ulong id, byte[] data)
-        {
-            if (Status(id) != AuremCore.RMC.Status.Unknown)
-            {
-                (var outs, var err) = GetOut(id);
-                if (err != null)
-                {
-                    return (null!, err);
-                }
-
-                return (await outs.SendData(), null);
-            }
-            else
-            {
-                var outs = NewOutgoingInstance(id, data);
-                return (await outs.SendData(), null);
-            }
-        }
-
-        public async Task<Exception?> RmcAcceptProof(ulong id, RmcProof prf)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null)
-            {
-                return err;
-            }
-
-            return await ins.AcceptProof(prf);
-        }
-
-        public async Task<(Packet, Exception?)> RmcSendSignature(ulong id)
-        {
-            (var ins, var err) = Get(id);
-            if (err != null)
-            {
-                return (null!, err);
-            }
-
-            return await ins.SendSignature();
-        }
-
-        public async Task<(byte[], Exception?)> RmcAcceptData(ulong id, ushort pid, RmcSendData d)
-        {
-            (var ins, var err) = GetIn(id);
-            if (err != null)
-            {
-                (ins, err) = NewIncomingInstance(id, pid);
-            }
-
-            if (err != null)
-            {
-                return (Array.Empty<byte>(), err);
-            }
-
-            return await ins.AcceptData(d);
-        }
-
-        public static long HashToInt64(Hash h)
-        {
-            long result = 0;
-            for (int p = 0; p < h.Length; p++)
-            {
-                result += h.Data[p] * (1L << p);
-            }
-
-            return result;
-        }
-
-        public static int HashToInt32(Hash h)
-        {
-            var result = HashToInt64(h);
-            return (int)(result >> 32) + ((int)result & 0x7FFFFFFF);
         }
 
         public async Task Lock(ushort pid) => await locks[pid].WaitAsync();
 
         public void Unlock(ushort pid) => locks[pid].Release();
 
-        public async Task PersistentIn(Packet packet)
+        public async Task HandleIncoming(Conn conn)
         {
             try
             {
-                switch ((PacketID)packet.Header.PacketID)
+                (var pid, var id, var msgType) = await Greetings.AcceptGreeting(conn);
+
+                var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
+                log.Info().Msg(Logging.Constants.SyncStarted);
+
+                switch ((AlertState)msgType)
                 {
-                    case PacketID.RmcSendData:
-                        {
-                            var p = (packet.Body as RmcSendData)!;
-
-                            var pid = p.Greet.Pid;
-                            var id = p.Greet.Id;
-
-                            var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
-                            log.Info().Msg(Logging.Constants.SyncStarted);
-
-                            await AcceptAlert(id, pid, log, p);
-                        }
+                    case AlertState.Alert:
+                        await AcceptAlert(id, pid, conn, log);
                         break;
-                    case PacketID.RmcSignature:
-                        {
-                            var p = (packet.Body as RmcSignature)!;
-
-                            var pid = p.Pid;
-                            var id = p.Id;
-                            var key = new SigKey(id, pid);
-
-                            var success = MemberSigTasks.TryGetValue(key, out var val);
-                            if (!MemberSigTasks.ContainsKey(key) || !success)
-                            {
-                                Log.Error().Str("where", "AlertHandler.In.RmcSignature").Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, id).Msg("received unsolicited signature");
-                                return;
-                            }
-
-                            val!.SetResult(p);
-                        }
+                    case AlertState.Proving:
+                        await AcceptProof(id, conn, log);
                         break;
-                    case PacketID.RmcSendProof:
-                        {
-                            var p = (packet.Body as RmcSendProof)!;
-
-                            var pid = p.Greet.Pid;
-                            var id = p.Greet.Id;
-
-                            var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
-                            log.Info().Msg(Logging.Constants.SyncStarted);
-
-                            await AcceptProof(id, log, p);
-                        }
+                    case AlertState.Finished:
+                        await AcceptFinished(id, pid, conn, log);
                         break;
-                    case PacketID.RmcSendFinished:
-                        {
-                            var p = (packet.Body as RmcSendFinished)!;
-
-                            var pid = p.SendData.Greet.Pid;
-                            var id = p.SendData.Greet.Id;
-
-                            var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
-                            log.Info().Msg(Logging.Constants.SyncStarted);
-
-                            await AcceptFinished(id, pid, p, log);
-                        }
-                        break;
-                    case PacketID.RequestComm:
-                        {
-                            var p = (packet.Body as RequestComm)!;
-
-                            var pid = p.Greet.Pid;
-                            var id = p.Greet.Id;
-
-                            var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
-                            log.Info().Msg(Logging.Constants.SyncStarted);
-
-                            await HandleCommitmentRequest(pid, p, log);
-                        }
-                        break;
-                    case PacketID.CommResp:
-                        {
-                            var p = (packet.Body as AlertRequestCommitment)!;
-
-                            var key = new ReqKey(p.Hash, p.Pid);
-
-                            var success = Requests.TryGetValue(key, out var val);
-                            if (!Requests.ContainsKey(key) || !success)
-                            {
-                                Log.Error().Str("where", "AlertHandler.In.CommResp").Val(Logging.Constants.PID, p.Pid).Val(Logging.Constants.OSID, 0).Msg("received unsolicited commitment");
-                                return;
-                            }
-
-                            val!.SetResult(p);
-                        }
+                    case AlertState.Request:
+                        await HandleCommitmentRequest(conn, log);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error().Str("where", "AlertHandler.In").Msg(ex.Message);
+                Log.Error().Str("where", "AlertHandler.HandleIncoming.AcceptGreeting").Msg(ex.Message);
+            }
+            finally
+            {
+                await conn.Close();
             }
         }
-
-        //public async Task HandleIncoming(Conn conn)
-        //{
-        //    try
-        //    {
-        //        (var pid, var id, var msgType) = await Greetings.AcceptGreeting(conn);
-
-        //        var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.ISID, id).Logger();
-        //        log.Info().Msg(Logging.Constants.SyncStarted);
-
-        //        switch ((AlertState)msgType)
-        //        {
-        //            case AlertState.Alert:
-        //                await AcceptAlert(id, pid, conn, log);
-        //                break;
-        //            case AlertState.Proving:
-        //                await AcceptProof(id, conn, log);
-        //                break;
-        //            case AlertState.Finished:
-        //                await AcceptFinished(id, pid, conn, log);
-        //                break;
-        //            case AlertState.Request:
-        //                await HandleCommitmentRequest(conn, log);
-        //                break;
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.Error().Str("where", "AlertHandler.HandleIncoming.AcceptGreeting").Msg(ex.Message);
-        //    }
-        //    finally
-        //    {
-        //        await conn.Close();
-        //    }
-        //}
 
         public (ushort, ushort, uint, Exception?) DecodeAlertID(ulong id, ushort pid)
         {
@@ -454,7 +104,7 @@ namespace Aurem.Forking
             return (forker, raiser, epochID, err);
         }
 
-        public async Task AcceptFinished(ulong id, ushort pid, RmcSendFinished p, Logger log)
+        public async Task AcceptFinished(ulong id, ushort pid, Conn conn, Logger log)
         {
             (var forker, _, var epochID, var err) = DecodeAlertID(id, pid);
             if (err != null)
@@ -463,7 +113,7 @@ namespace Aurem.Forking
                 return;
             }
 
-            (var data, err) = await RmcAcceptFinished(id, pid, p);
+            (var data, err) = await Rmc.AcceptFinished(id, pid, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptFinished.AcceptData").Msg(err.Message);
@@ -521,9 +171,31 @@ namespace Aurem.Forking
             var id = comm.RmcID();
             var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, id).Logger();
 
+            Conn conn;
             try
             {
-                (var p, var err) = await RmcSendFinished(id);
+                conn = (await Netserv.Dial(pid))!;
+            }
+            catch
+            {
+                return;
+            }
+
+            try
+            {
+                log.Info().Msg(Logging.Constants.SyncStarted);
+
+                try
+                {
+                    await Greetings.Greet(conn!, pid, id, (byte)AlertState.Finished);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error().Str("where", "AlertHandler.SendFinished.Greet").Msg(ex.Message);
+                    return;
+                }
+
+                var err = await Rmc.SendFinished(id, conn!);
                 if (err != null)
                 {
                     log.Error().Str("where", "AlertHandler.SendFinished.SendFinished").Msg(err.Message);
@@ -532,7 +204,7 @@ namespace Aurem.Forking
 
                 try
                 {
-                    Network.Send(pid, p);
+                    conn.Flush();
                 }
                 catch (Exception ex)
                 {
@@ -541,6 +213,7 @@ namespace Aurem.Forking
             }
             finally
             {
+                await conn.Close();
             }
         }
 
@@ -607,9 +280,19 @@ namespace Aurem.Forking
             return (comm, null);
         }
 
-        public async Task HandleCommitmentRequest(ushort requester, RequestComm req, Logger log)
+        public async Task HandleCommitmentRequest(Conn conn, Logger log)
         {
-            Hash requested = req.Hash;
+            Hash requested = new Hash(new byte[32]);
+            
+            try
+            {
+                await conn.Read(requested);
+            }
+            catch (Exception ex)
+            {
+                log.Error().Str("where", "AlertHandler.HandleCommitmentRequest.Read").Msg(ex.Message);
+                return;
+            }
 
             var unit = (await Orderer.UnitsByHash(requested))[0];
             if (unit == null)
@@ -636,7 +319,9 @@ namespace Aurem.Forking
                     string worf = "Write";
                     try
                     {
-                        Network.Send(requester, new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 1)));
+                        await conn.Write(new byte[] { 1 });
+                        worf = "Flush";
+                        conn.Flush();
                     }
                     catch (Exception ex)
                     {
@@ -657,13 +342,17 @@ namespace Aurem.Forking
             string f = "Write";
             try
             {
+                await conn.Write(new byte[] { 0 });
+                await conn.Write(comm.Marshal());
+                f = "WriteUnit";
+                await conn.Write(EncodeUtil.EncodeUnit(null!));
+                f = "Flush";
+                conn.Flush();
                 f = "SendFinished";
-                (var pf, var exc) = await RmcSendFinished(comm.RmcID());
+                var exc = await Rmc.SendFinished(comm.RmcID(), conn);
                 if (exc != null) throw exc;
-
-                f = "Write";
-                var p = new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 0, comm, (pf.Body as RmcSendFinished)!));
-                Network.Send(requester, p);
+                f = "Flush`2";
+                conn.Flush();
             }
             catch (Exception ex)
             {
@@ -677,28 +366,56 @@ namespace Aurem.Forking
         public async Task<Exception?> RequestCommitment(IPreunit pu, ushort pid)
         {
             var log = Log.With().Val(Logging.Constants.PID, pid).Logger();
+
+            (var conn, var err) = await Netserv.TryDial(pid);
+            if (err != null)
+            {
+                return err;
+            }
+
             log.Info().Msg(Logging.Constants.SyncStarted);
 
             try
             {
-                var p = new Packet(PacketID.RequestComm, new RequestComm(0, MyPid, (byte)AlertState.Request, pu.Hash()));
+                try
+                {
+                    await Greetings.Greet(conn, MyPid, 0, (byte)AlertState.Request);
+                }
+                catch (Exception ex)
+                {
+                    log.Error().Str("where", "AlertHandler.RequestCommitment.Greet").Msg(ex.Message);
+                    return ex;
+                }
 
-                var t = Requests.GetOrAdd(new ReqKey(pu.Hash(), pid), _ => new TaskCompletionSource<AlertRequestCommitment>());
-                
-                CancellationTokenSource cts = new CancellationTokenSource();
-                cts.CancelAfter(5000);
-                Network.Send(pid, p);
+                (_, err) = await conn.TryWrite(pu.Hash());
+                if (err != null)
+                {
+                    log.Error().Str("where", "AlertHandler.RequestCommitment.Write").Msg(err.Message);
+                    return err;
+                }
 
-                var res = await t.Task.WaitAsync(cts.Token);
-                cts.Dispose();
+                err = conn.TryFlush();
+                if (err != null)
+                {
+                    log.Error().Str("where", "AlertHandler.RequestCommitment.Flush").Msg(err.Message);
+                    return err;
+                }
 
-                if (res.Unknown == 1)
+                var buf = new byte[1];
+                (_, err) = await conn.TryRead(buf);
+                if (err != null)
+                {
+                    log.Error().Str("where", "alertHandler.RequestCommitment.Read").Msg(err.Message);
+                    return err;
+                }
+
+                if (buf[0] == 1)
                 {
                     await SendFinished(pu.Creator(), pid);
                     return new Exception("peer was unaware of forker");
                 }
 
-                (var comms, var err) = (res.DecodedComms, res.DecodeException);
+                (var comms, err) = await ForkingUtil.AcquireCommitments(conn);
                 if (err != null)
                 {
                     log.Error().Str("where", "alertHandler.RequestCommitment.AcquireCommitments").Msg(err.Message);
@@ -706,7 +423,7 @@ namespace Aurem.Forking
                 }
 
                 (_, var raiser, _, _) = DecodeAlertID(comms[0].RmcID(), 0);
-                (var data, err) = await RmcAcceptFinished(comms[0].RmcID(), raiser, res.Finished!);
+                (var data, err) = await Rmc.AcceptFinished(comms[0].RmcID(), raiser, conn);
                 if (err != null)
                 {
                     log.Error().Str("where", "alertHandler.RequestCommitment.AcceptFinished").Msg(err.Message);
@@ -733,17 +450,13 @@ namespace Aurem.Forking
                 log.Info().Msg(Logging.Constants.SyncCompleted);
                 return null;
             }
-            catch (OperationCanceledException e)
-            {
-                log.Error().Msg("receive timed out");
-                return e;
-            }
             finally
             {
+                await conn.Close();
             }
         }
 
-        public async Task AcceptAlert(ulong id, ushort pid, Logger log, RmcSendData p)
+        public async Task AcceptAlert(ulong id, ushort pid, Conn conn, Logger log)
         {
             (var forker, _, var epochID, var err) = DecodeAlertID(id, pid);
             if (err != null)
@@ -752,7 +465,7 @@ namespace Aurem.Forking
                 return;
             }
 
-            (var data, err) = await RmcAcceptData(id, pid, p);
+            (var data, err) = await Rmc.AcceptData(id, pid, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptAlert.AcceptData").Msg(err.Message);
@@ -779,7 +492,7 @@ namespace Aurem.Forking
 
             var comm = proof.ExtractCommitment(id);
             Commitments.Add(comm, pid, forker);
-            err = await MaybeSign(id, pid);
+            err = await MaybeSign(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptAlert.MaybeSign").Msg(err.Message);
@@ -814,9 +527,9 @@ namespace Aurem.Forking
             }
         }
 
-        public async Task<Exception?> MaybeSign(ulong id, ushort pid)
+        public async Task<Exception?> MaybeSign(ulong id, Conn conn)
         {
-            (var p, var err) = await RmcSendSignature(id);
+            var err = await Rmc.SendSignature(id, conn);
             if (err != null)
             {
                 return err;
@@ -824,7 +537,7 @@ namespace Aurem.Forking
 
             try
             {
-                Network.Send(pid, p);
+                conn.Flush();
                 return null;
             }
             catch (Exception e)
@@ -833,9 +546,9 @@ namespace Aurem.Forking
             }
         }
 
-        public async Task AcceptProof(ulong id, Logger log, RmcSendProof p)
+        public async Task AcceptProof(ulong id, Conn conn, Logger log)
         {
-            var err = await RmcAcceptProof(id, p.Proof);
+            var err = await Rmc.AcceptProof(id, conn);
             if (err != null)
             {
                 log.Error().Str("where", "AlertHandler.AcceptProof.AcceptProof").Msg(err.Message);
@@ -932,14 +645,19 @@ namespace Aurem.Forking
             Commitments.Add(comm, MyPid, proof.ForkerID());
         }
 
-        public async Task<Exception?> AttemptProve(ushort recipient, ulong id)
+        public async Task<Exception?> AttemptGather(Conn conn, byte[] data, ulong id, ushort pid)
         {
             try
             {
-                (var p, var err) = await RmcSendProof(id);
+                await Greetings.Greet(conn, MyPid, id, (byte)AlertState.Alert);
+
+                var err = await Rmc.SendData(id, data, conn);
+                if (err != null) return err;
+                
+                conn.Flush();
+                (_, err) = await Rmc.AcceptSignature(id, pid, conn);
                 if (err != null) return err;
 
-                Network.Send(recipient, p);
                 return null;
             }
             catch (Exception ex)
@@ -948,7 +666,29 @@ namespace Aurem.Forking
             }
             finally
             {
+                await conn.Close();
+            }
+        }
 
+        public async Task<Exception?> AttemptProve(Conn conn, ulong id)
+        {
+            try
+            {
+                await Greetings.Greet(conn, MyPid, id, (byte)AlertState.Proving);
+
+                var err = await Rmc.SendProof(id, conn);
+                if (err != null) return err;
+
+                conn.Flush();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+            finally
+            {
+                await conn.Close();
             }
         }
 
@@ -1034,54 +774,30 @@ namespace Aurem.Forking
             {
                 var success = false;
                 var log = Log.With().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, id).Logger();
-                var delay = 5000;
 
-                while (Status(id) != AuremCore.RMC.Status.Finished)
+                while (Rmc.Status(id) != Status.Finished)
                 {
-                    log.Info().Msg(Logging.Constants.SyncStarted);
-
+                    Conn conn;
                     try
                     {
-                        // create packet
-                        (var p, var err) = await RmcSendData(id, data);
-                        if (err != null)
-                        {
-                            log.Error().Str("where", "AlertHandler.SendAlert.SendData").Msg(err.Message);
-                            await Task.Delay(50);
-                            continue;
-                        }
-
-                        // register awaiter
-                        var t = MemberSigTasks.GetOrAdd(new SigKey(id, pid), _ => new TaskCompletionSource<RmcSignature>());
-
-                        // send
-                        CancellationTokenSource cts = new CancellationTokenSource();
-                        cts.CancelAfter(delay);
-                        Network.Send(pid, p);
-
-                        // wait for result or timeout
-                        var res = await t.Task.WaitAsync(cts.Token);
-                        cts.Dispose();
-
-                        (_, err) = await RmcAcceptSignature(id, pid, res);
-                        if (err != null)
-                        {
-                            log.Error().Str("where", "AlertHandler.SendAlert.AttemptGather").Msg(err.Message);
-                            //await Task.Delay(50);
-                            //continue;
-                        }
-                        else
-                        {
-                            log.Info().Msg(Logging.Constants.SyncCompleted);
-                            success = true;
-                            break;
-                        }
+                        conn = await Netserv.Dial(pid);
                     }
-                    catch (OperationCanceledException e)
+                    catch
                     {
-                        log.Error().Str("where", "AlertHandler.SendAlert.AttemptGather").Msg("timed out; doubling delay");
-                        delay *= 2;
                         continue;
+                    }
+
+                    log.Info().Msg(Logging.Constants.SyncStarted);
+                    var err = await AttemptGather(conn, data, id, pid);
+                    if (err != null)
+                    {
+                        log.Error().Str("where", "AlertHandler.SendAlert.AttemptGather").Msg(err.Message);
+                    }
+                    else
+                    {
+                        log.Info().Msg(Logging.Constants.SyncCompleted);
+                        success = true;
+                        break;
                     }
                 }
 
@@ -1090,7 +806,17 @@ namespace Aurem.Forking
 
                 if (success)
                 {
-                    var err = await AttemptProve(pid, id);
+                    Conn conn;
+                    try
+                    {
+                        conn = await Netserv.Dial(pid);
+                    }
+                    catch
+                    {
+                        return;
+                    }
+
+                    var err = await AttemptProve(conn, id);
                     if (err != null)
                     {
                         log.Error().Str("where", "AlertHandler.SendAlert.AttemptProve").Msg(err.Message);

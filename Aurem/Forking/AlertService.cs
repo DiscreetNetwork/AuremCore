@@ -1,4 +1,5 @@
 ﻿using Aurem.Model;
+using Aurem.Syncing.Internals;
 using AuremCore.Core;
 using AuremCore.FastLogger;
 using AuremCore.Network;
@@ -20,7 +21,7 @@ namespace Aurem.Forking
 
         public Task<(IUnit, Exception?)> Disambiguate(IUnit[] units, IPreunit preunit) => Handler.Disambiguate(units, preunit);
 
-        public Task HandleIncoming(Conn conn) => Handler.HandleIncoming(conn);
+        //public Task HandleIncoming(Conn conn) => Handler.PersistentIn(conn);
 
         public bool IsForker(ushort proc) => Handler.IsForker(proc);
 
@@ -34,12 +35,12 @@ namespace Aurem.Forking
 
         public void Unlock(ushort proc) => Handler.Unlock(proc);
 
-        public Server Netserv;
+        public Network Netserv;
         public WaitGroup Listens;
         public ulong Quit;
         public Logger Log;
 
-        public AlertService(Config.Config conf, IOrderer orderer, Server netserv, Logger log)
+        public AlertService(Config.Config conf, IOrderer orderer, Network netserv, Logger log)
         {
             var rmc = new ReliableMulticast(conf.RMCPublicKeys, conf.RMCPrivateKey);
             Handler = new AlertHandler(conf, orderer, rmc, netserv, log);
@@ -60,43 +61,13 @@ namespace Aurem.Forking
         {
             Interlocked.Exchange(ref Quit, 1);
             await Listens.WaitAsync();
+            await Netserv.StopAsync();
             Log.Log().Msg(Logging.Constants.ServiceStopped);
         }
 
         public async Task HandleConns()
         {
-            try
-            {
-                while (Interlocked.Read(ref Quit) == 0)
-                {
-                    Conn conn;
-                    try
-                    {
-                        conn = await Netserv.Listen();
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    Listens.Add(1);
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await Handler.HandleIncoming(conn);
-                        }
-                        finally
-                        {
-                            Listens.Done();
-                        }
-                    });
-                }
-            }
-            finally
-            {
-                Listens.Done();
-            }
+            await Netserv.Start();
         }
     }
 }
