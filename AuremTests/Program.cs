@@ -633,6 +633,11 @@ namespace AuremCore
             {
                 await TestForking.TestAlert();
             }
+            else if (args[0] == "testcurve")
+            {
+                TestingClass.TestSpeed();
+                TestingClass.TestSpeedMulti();
+            }
             else
             {
                 PrintHelp();

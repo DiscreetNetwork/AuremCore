@@ -52,32 +52,32 @@ namespace BN256Core
             Scalar scalar = new();
             int ops = 10000;
 
-            G1 tg1 = new();
-            Scalar testscalar = new Scalar();
-            testscalar.n.array[0] = 3;
-            Native.Native.Instance.ScalarBaseMultG1(ref tg1, ref testscalar);
+            //G1 tg1 = new();
+            //Scalar testscalar = new Scalar();
+            //testscalar.n.array[0] = 3;
+            //Native.Native.Instance.ScalarBaseMultG1(ref tg1, ref testscalar);
             //Console.WriteLine(tg1.p.ToString());
-            G1Enc enc = new G1Enc();
-            Native.Native.Instance.MarshalG1(ref enc, ref tg1);
-            Console.WriteLine(PrintUtil.Hexify(enc.bytes));
+            //G1Enc enc = new G1Enc();
+            //Native.Native.Instance.MarshalG1(ref enc, ref tg1);
+            //Console.WriteLine(PrintUtil.Hexify(enc.bytes));
             // b = 3, a = -2
-            ulong[] c = new ulong[4];
+            //ulong[] c = new ulong[4];
             //ulong[] a = new ulong[4] { 0x6172b1b17822599c, 0xb96e234482d6d678, 0xa9bfb2e186137087, 0x3ed4078d2a8e1fe6 };
             //ulong[] b = new ulong[4] { 0x8630a1e229d50ffd, 0x583653ea5c7373e9, 0xabd060661867b356, 0x3176f68f8ace581f };
             //ulong[] b2 = new ulong[4] { 0x922c0a8a3433866a, 0x962534e6c44241b4, 0xfe9f8c52491d28cb, 0x5e3e0b53bfd52fd9 };
-            ulong[] a = new ulong[4];
-            ulong[] b = new ulong[4];
-            ulong[] b2 = new ulong[4];
-            Native.Native.Instance.NewGFp(a, -9312390178231111);
+            //ulong[] a = new ulong[4];
+            //ulong[] b = new ulong[4];
+            //ulong[] b2 = new ulong[4];
+            //Native.Native.Instance.NewGFp(a, -9312390178231111);
             //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(a), true));
-            Native.Native.Instance.NewGFp(b, -9123810239812222);
-            Native.Native.Instance.GFpMul(c, b, a);
+            //Native.Native.Instance.NewGFp(b, -9123810239812222);
+            //Native.Native.Instance.GFpMul(c, b, a);
             //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(a), true));
-            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
-            Native.Native.Instance.NewGFp(b2, -301283109231);
-            Native.Native.Instance.GFpAdd(c, a, b2);
-            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
-            Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(b2), true));
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
+            //Native.Native.Instance.NewGFp(b2, -301283109231);
+            //Native.Native.Instance.GFpAdd(c, a, b2);
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(c), true));
+            //Console.WriteLine(PrintUtil.Hexify(Util.FpToBytes(b2), true));
             //Native.Instance.RandomG1(ref g1, ref scalar);
             //Console.WriteLine(PrintUtil.Hexify(BN.FromBN(scalar.n).ToByteArray()));
             //Native.Instance.HashG1(ref g1, Encoding.ASCII.GetBytes("poooop"), (ulong)Encoding.ASCII.GetBytes("poooop").Length, Encoding.ASCII.GetBytes("poooop"), (ulong)Encoding.ASCII.GetBytes("poooop").Length);
@@ -87,6 +87,7 @@ namespace BN256Core
             G2[] g2s = new G2[ops];
             GT[] gts = new GT[ops];
             Scalar[] scalars = new Scalar[ops];
+            Console.WriteLine("Testing Pair:");
             for (int i = 0; i < ops; i++)
             {
                 g1s[i] = new G1();
@@ -112,9 +113,53 @@ namespace BN256Core
                 //Native.Instance.ScalarBaseMultGT(ref stop, ref scalars[i]);
                 //Native.Instance.Pair(ref stop, ref scalars[i]);
             }
+
             sw.Stop();
             Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
             Console.WriteLine($"Time per op: {(double)sw.ElapsedMilliseconds / (double)ops}ms");
+
+            Console.WriteLine("Testing G1:");
+
+            Stopwatch sw2 = Stopwatch.StartNew();
+
+            for (int i = 0; i < ops; i++)
+            {
+                Native.Native.Instance.ScalarBaseMultG1(ref stop1, ref scalars[i]);
+            }
+
+            sw2.Stop();
+
+            Console.WriteLine($"Total time: {sw2.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw2.ElapsedMilliseconds / (double)ops}ms");
+
+
+            Console.WriteLine("Testing G2:");
+
+            Stopwatch sw3 = Stopwatch.StartNew();
+
+            for (int i = 0; i < ops; i++)
+            {
+                Native.Native.Instance.ScalarBaseMultG2(ref stop2, ref scalars[i]);
+            }
+
+            sw3.Stop();
+
+            Console.WriteLine($"Total time: {sw3.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw3.ElapsedMilliseconds / (double)ops}ms");
+
+            Console.WriteLine("Testing GT:");
+
+            Stopwatch sw4 = Stopwatch.StartNew();
+
+            for (int i = 0; i < ops; i++)
+            {
+                Native.Native.Instance.ScalarBaseMultGT(ref stop, ref scalars[i]);
+            }
+
+            sw4.Stop();
+
+            Console.WriteLine($"Total time: {sw4.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw4.ElapsedMilliseconds / (double)ops}ms");
         }
 
         public static void TestLineFuncAdd()
@@ -184,6 +229,85 @@ namespace BN256Core
             //GTEnc enc = new GTEnc();
             //Native.Instance.MarshalGT(ref enc, ref gt);
             //Console.WriteLine(PrintUtil.Hexify(enc.bytes));
+        }
+
+        public static void TestSpeedMulti()
+        {
+            Scalar scalar = new();
+            int ops = 100000;
+
+            G1[] g1s = new G1[ops];
+            G2[] g2s = new G2[ops];
+            GT[] gts = new GT[ops];
+            G1[] stop1 = new G1[ops];
+            G2[] stop2 = new G2[ops];
+            GT[] stop = new GT[ops];
+            Scalar[] scalars = new Scalar[ops];
+            Console.WriteLine("Testing Pair:");
+            for (int i = 0; i < ops; i++)
+            {
+                g1s[i] = new G1();
+                g2s[i] = new G2();
+                gts[i] = new GT();
+                scalars[i] = new Scalar();
+                //g2s[i] = new G2();
+                //gts[i] = new GT();
+                Native.Native.Instance.RandomG1(ref g1s[i], ref scalars[i]);
+                Native.Native.Instance.RandomG2(ref g2s[i], ref scalars[i]);
+            }
+
+            Stopwatch sw = Stopwatch.StartNew();
+            Enumerable.Range(0, ops).AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).ForAll(x =>
+            {
+                Native.Native.Instance.Pair(ref stop[x], ref g1s[x], ref g2s[x]);
+            });
+
+            sw.Stop();
+            Console.WriteLine($"Total time: {sw.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw.ElapsedMilliseconds / (double)ops}ms");
+
+            Console.WriteLine("Testing G1:");
+
+            Stopwatch sw2 = Stopwatch.StartNew();
+
+            Enumerable.Range(0, ops).AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).ForAll(x =>
+            {
+                Native.Native.Instance.ScalarBaseMultG1(ref stop1[x], ref scalars[x]);
+            });
+
+            sw2.Stop();
+
+            Console.WriteLine($"Total time: {sw2.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw2.ElapsedMilliseconds / (double)ops}ms");
+
+
+            Console.WriteLine("Testing G2:");
+
+            Stopwatch sw3 = Stopwatch.StartNew();
+
+            Enumerable.Range(0, ops).AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).ForAll(x =>
+            {
+                Native.Native.Instance.ScalarBaseMultG2(ref stop2[x], ref scalars[x]);
+            });
+
+            sw3.Stop();
+
+            Console.WriteLine($"Total time: {sw3.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw3.ElapsedMilliseconds / (double)ops}ms");
+
+            Console.WriteLine("Testing GT:");
+
+            Stopwatch sw4 = Stopwatch.StartNew();
+
+            Enumerable.Range(0, ops).AsParallel().WithExecutionMode(ParallelExecutionMode.ForceParallelism).ForAll(x =>
+            {
+                Native.Native.Instance.ScalarBaseMultGT(ref stop[x], ref scalars[x]);
+            });
+
+            sw4.Stop();
+
+            Console.WriteLine($"Total time: {sw4.ElapsedMilliseconds}ms");
+            Console.WriteLine($"Time per op: {(double)sw4.ElapsedMilliseconds / (double)ops}ms");
         }
 
         public static void TestingClassMain(string[] args)
