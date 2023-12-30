@@ -175,14 +175,22 @@ namespace Aurem.Persistence
                     (var u, var f) = new UnitInDag().Deserialize(iter.Value());
                     l.Add(u);
                     finalizeConstruction.Add(f);
-                    dag.Units.Add(u);
+
+                    if (dag.Units.GetOne(u.Hash()) == null)
+                    {
+                        dag.Units.Add(u);
+                    }
                 }
                 else if (l != null)
                 {
                     (var u, var f) = new UnitInDag().Deserialize(iter.Value());
                     l[idx.Index] = u;
                     finalizeConstruction.Add(f);
-                    dag.Units.Add(u);
+
+                    if (dag.Units.GetOne(u.Hash()) == null)
+                    {
+                        dag.Units.Add(u);
+                    }
                 }
 
                 iter = iter.Next();
