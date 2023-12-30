@@ -79,5 +79,16 @@ namespace Aurem.Dag
                 }
             }
         }
+
+        public void Iterate(Func<ushort, List<IUnit>, bool> work)
+        {
+            foreach (var k in Contents.Keys)
+            {
+                lock (locks[k])
+                {
+                    if (!work(k, Contents[k] ?? Empty)) return;
+                }
+            }
+        }
     }
 }

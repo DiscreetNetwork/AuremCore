@@ -1,8 +1,9 @@
-﻿using Aurem.Model;
+﻿using Aurem.Dag;
+using Aurem.Model;
+using Aurem.Serialize;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Aurem.Units
@@ -33,6 +34,139 @@ namespace Aurem.Units
             _level = level;
 
             ComputeFloor();
+        }
+
+        public byte[] Serialize()
+        {
+            using var ms = new MemoryStream();
+            ms.Write(EncodeUtil.EncodeUnit(this));
+            // encode extra data
+            
+            using var bw = new BinaryWriter(ms);
+            bw.Write(_parents.Count);
+            for (int i = 0; i < _parents.Count; i++)
+            {
+                if (_parents[i] == null)
+                {
+                    bw.Write(Model.Hash.ZeroHash.Data);
+                }
+                else
+                {
+                    bw.Write(_parents[i].Hash().Data);
+                }
+            }
+
+            bw.Write(_level);
+
+            // encode dict
+            bw.Write(_floor?.Count ?? 0);
+
+            if (_floor != null)
+            {
+                foreach ((var k, var v) in _floor)
+                {
+                    bw.Write(k);
+                    bw.Write(v?.Count ?? 0);
+                    for (int i = 0; i < (v?.Count ?? 0); i++)
+                    {
+                        if (v[i] == null)
+                        {
+                            bw.Write(Model.Hash.ZeroHash.Data);
+                        }
+                        else
+                        {
+                            bw.Write(v[i].Hash().Data);
+                        }
+                    }
+                }
+            }
+
+            bw.Flush();
+            return ms.ToArray();
+        }
+
+        public Func<DAG, IUnit> Deserialize(byte[] data)
+        {
+            using var ms = new MemoryStream(data);
+            return Deserialize(ms);
+        }
+
+        public Func<DAG, IUnit> Deserialize(Stream s)
+        {
+            var dec = new Decoder(s);
+            _preunit = dec.DecodePreunit();
+
+            using var br = new BinaryReader(s);
+            var plen = br.ReadInt32();
+            List<Hash> parentHashes = new List<Hash>();
+            for (int i = 0; i < plen; i++)
+            {
+                byte[] hashData = new byte[32];
+                br.Read(hashData);
+                parentHashes.Add(new Hash(hashData));
+            }
+
+            _level = br.ReadInt32();
+
+            var fcount = br.ReadInt32();
+            Dictionary<ushort, List<Hash>> floorTable = new Dictionary<ushort, List<Hash>>();
+
+            if (fcount > 0)
+            {
+                for (int i = 0; i < fcount; i++)
+                {
+                    var k = br.ReadUInt16();
+                    var l = br.ReadInt32();
+                    var v = new List<Hash>();
+                    for (int j = 0; j < l; j++)
+                    {
+                        byte[] hashData = new byte[32];
+                        br.Read(hashData);
+                        v.Add(new Hash(hashData));
+                    }
+
+                    floorTable[k] = v;
+                }
+            }
+
+            return x => 
+            {
+                _parents = new List<IUnit>();
+
+                for (int i = 0; i < plen; i++)
+                {
+                    if (parentHashes[i] == Model.Hash.ZeroHash)
+                    {
+                        _parents.Add(null!);
+                    }
+                    else
+                    {
+                        _parents.Add(x.GetUnit(parentHashes[i]));
+                    }
+                }
+                
+                _floor = new Dictionary<ushort, List<IUnit>>();
+
+                foreach ((var k, var v) in floorTable)
+                {
+                    var l = new List<IUnit>();
+                    foreach (var h in v)
+                    {
+                        if (h == Model.Hash.ZeroHash)
+                        {
+                            l.Add(null!);
+                        }
+                        else
+                        {
+                            l.Add(x.GetUnit(h));
+                        }
+                    }
+
+                    _floor[k] = l;
+                }
+
+                return this;
+            };
         }
 
         public FreeUnit(IPreunit pu, IList<IUnit> parents)

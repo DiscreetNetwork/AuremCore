@@ -102,5 +102,16 @@ namespace Aurem.Dag
                 return result;
             }
         }
+
+        public void Iterate(Func<int, ISlottedUnits, bool> predicate)
+        {
+            lock (_accessLock)
+            {
+                foreach ((var k, var su) in Content)
+                {
+                    if (!predicate(k, su)) break;
+                }
+            }
+        }
     }
 }
