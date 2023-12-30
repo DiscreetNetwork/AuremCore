@@ -1,5 +1,7 @@
-﻿using Aurem.Model;
+﻿using Aurem.Dag;
+using Aurem.Model;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,6 +21,10 @@ namespace Aurem.Units
         {
             _unit = unit;
             _forkingHeight = forkingHeight;
+        }
+
+        public UnitInDag()
+        {
         }
 
         /// <summary>
@@ -162,6 +168,50 @@ namespace Aurem.Units
         public Crown View()
         {
             return _unit.View();
+        }
+
+        public byte[] Serialize()
+        {
+            using var ms = new MemoryStream();
+            if (_unit is FreeUnit)
+            {
+                ms.Write((_unit as FreeUnit)!.Serialize());
+            }
+            else
+            {
+                // unit must be UnitInDag, which means something terrible has happened. Nonetheless, let's unwrap it.
+                IUnit unit = _unit;
+                while (unit is not FreeUnit)
+                {
+                    var punit = (unit as UnitInDag)!._unit;
+                    if (punit == unit) throw new Exception("INFINITE LOOP.");
+                    unit = punit;
+                }
+
+                ms.Write((unit as FreeUnit)!.Serialize());
+            }
+
+            byte[] forkHeight = new byte[4];
+            BinaryPrimitives.WriteInt32LittleEndian(forkHeight, _forkingHeight);
+
+            return ms.ToArray();
+        }
+
+        public (IUnit, Func<DAG, IUnit>) Deserialize(byte[] data)
+        {
+            using var ms = new MemoryStream(data);
+            var unit = new FreeUnit();
+            var finalizeDecode = unit.Deserialize(ms);
+
+            byte[] forkHeight = new byte[4];
+            ms.Read(forkHeight);
+            _forkingHeight = BinaryPrimitives.ReadInt32LittleEndian(forkHeight);
+
+            return (this, x =>
+            {
+                _unit = finalizeDecode(x);
+                return this;
+            });
         }
     }
 }

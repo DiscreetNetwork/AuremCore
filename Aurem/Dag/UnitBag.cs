@@ -1,6 +1,7 @@
 ﻿using Aurem.Common;
 using Aurem.Model;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,5 +46,7 @@ namespace Aurem.Dag
         {
             return Contents.Values.ToList();
         }
+
+        public IEnumerator<KeyValuePair<Hash, IUnit>> GetEnumerator() => Contents.GetEnumerator();
     }
 }

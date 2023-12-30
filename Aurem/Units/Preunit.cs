@@ -1,4 +1,5 @@
 ﻿using Aurem.Model;
+using Aurem.Serialize;
 using DiscreetCoreLib.Mnemonics.Wordlist;
 using System;
 using System.Collections.Generic;
@@ -83,6 +84,17 @@ namespace Aurem.Units
             bw.Write(crown.ControlHash.Data);
 
             return new Hash(SHA256.HashData(ms.ToArray()));
+        }
+
+        public byte[] Serialize()
+        {
+            return EncodeUtil.EncodeUnit(this);
+        }
+
+        public static IPreunit Deserialize(byte[] data)
+        {
+            var pre = EncodeUtil.DecodeUnit(data);
+            return pre;
         }
     }
 }

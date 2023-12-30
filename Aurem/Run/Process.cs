@@ -4,6 +4,7 @@ using Aurem.Model;
 using Aurem.Ordering;
 using Aurem.Random;
 using Aurem.Syncing;
+using Aurem.Syncing.Internals;
 using AuremCore.Core;
 using AuremCore.Crypto.Threshold;
 using AuremCore.FastLogger;
@@ -89,7 +90,7 @@ namespace Aurem.Run
                 (var sync, var err) = Syncer.New(conf, ord, log, false);
                 if (err != null) throw err;
 
-                var netserv = new TCPServer(conf.RMCAddresses[conf.Pid], conf.RMCAddresses.ToArray(), log);
+                var netserv = new Network(conf.RMCAddresses[conf.Pid], conf.RMCAddresses.ToArray(), log, conf.Timeout, conf);
                 var alert = new AlertService(conf, ord, netserv, log);
 
                 var started = new TaskCompletionSource();
@@ -119,7 +120,7 @@ namespace Aurem.Run
                 var stop = async () =>
                 {
                     await started.Task;
-                    netserv.Stop();
+                    await netserv.StopAsync();
                     await ord.Stop();
                     log.Stop();
                 };

@@ -31,5 +31,7 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="iteration"></param>
         public void Iterate(Func<List<IUnit>, bool> iteration);
+
+        public void Iterate(Func<ushort, List<IUnit>, bool> iteration);
     }
 }
