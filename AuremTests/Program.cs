@@ -612,6 +612,7 @@ namespace AuremCore
                 conf.UseLocalServer = UseLocalServers;
                 conf.Output = 3;
                 conf.UseBlockScheduler = true;
+                conf.Sessions = 3;
                 conf.WaitForNodes = true;
                 conf.Local = false;
 

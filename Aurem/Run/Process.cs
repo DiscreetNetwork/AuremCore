@@ -76,7 +76,7 @@ namespace Aurem.Run
 
             Network setupFetch = new Network(setupConf.FetchAddresses[setupConf.Pid], setupConf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
             Network setupGossip = new Network(setupConf.GossipAddresses[setupConf.Pid], setupConf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
-            Network setupMcast = new Network(setupConf.MCastAddresses[setupConf.Pid], setupConf.MCastAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
+            Network setupMcast = new Network(setupConf.RMCAddresses[setupConf.Pid], setupConf.RMCAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
 
             Network fetch = new Network(conf.FetchAddresses[conf.Pid], conf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, conf);
             Network gossip = new Network(conf.GossipAddresses[conf.Pid], conf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, conf);
