@@ -122,13 +122,16 @@ namespace Aurem.Ordering
                             break;
                         }
 
-                        var pidToCall = (ushort)rng.Next(Conf.NProc - 1);
-                        if (pidToCall >= Conf.Pid)
+                        var res = false;
+                        while (!res)
                         {
-                            pidToCall++;
+                            var pidToCall = (ushort)rng.Next(Conf.NProc - 1);
+                            if (pidToCall >= Conf.Pid)
+                            {
+                                pidToCall++;
+                            }
+                            res = await Syncer.RequestGossip(pidToCall);
                         }
-
-                        await Syncer.RequestGossip(pidToCall);
                     }
                 }
                 catch (OperationCanceledException)

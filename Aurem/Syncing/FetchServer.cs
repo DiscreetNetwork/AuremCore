@@ -20,6 +20,7 @@ namespace Aurem.Syncing
     public class FetchServer : IService
     {
         protected ushort Pid;
+        protected int Session;
         protected IOrderer Orderer;
         protected Network Netserv;
         protected uint[] SyncIDs;
@@ -31,6 +32,7 @@ namespace Aurem.Syncing
         protected FetchServer(Config.Config conf, IOrderer orderer, Network netserv, Logger log)
         {
             Pid = conf.Pid;
+            Session = conf.Session;
             Orderer = orderer;
             Netserv = netserv;
             SyncIDs = new uint[conf.NProc];
@@ -38,6 +40,8 @@ namespace Aurem.Syncing
             StopOut = new CancellationTokenSource();
             Orders = new();
             Log = log;
+
+            Netserv.AddHandle(In, Session);
         }
 
         public static (IService, Requests.Fetch) NewServer(Config.Config conf, IOrderer orderer, Network netserv, Logger log)
@@ -66,7 +70,7 @@ namespace Aurem.Syncing
             }
 
             var sid = Interlocked.Increment(ref SyncIDs[pid]);
-            var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(pid, sid, unitIDs));
+            var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(pid, sid, unitIDs), Session);
             Orders.Add(((ulong)sid << 16) + pid, true);
             Netserv.Send(pid, p);
             Log.Info().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, sid).Msg(Logging.Constants.SyncStarted);
@@ -99,7 +103,7 @@ namespace Aurem.Syncing
 
                             log.Debug().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SendUnits);
 
-                            var resp = new Packet(PacketID.FETCHRESPONSE, new FetchSendUnits(pb.Pid, pb.Sid, units));
+                            var resp = new Packet(PacketID.FETCHRESPONSE, new FetchSendUnits(pb.Pid, pb.Sid, units), Session);
                             Netserv.Send(pb.Pid, resp);
 
                             log.Info().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SyncCompleted);

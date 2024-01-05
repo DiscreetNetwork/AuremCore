@@ -70,6 +70,203 @@ namespace Aurem.Run
             }
         }
 
+        public static (Func<(Func<Task>? Start, Func<Task>? Stop, Exception?)>, Exception?) CreateSessioned(Config.Config setupConf, Config.Config conf, IDataSource ds, ChannelWriter<Preblock> ps)
+        {
+            var netlog = LoggingUtil.NewLogger(conf, 0, true);
+
+            Network setupFetch = new Network(setupConf.FetchAddresses[setupConf.Pid], setupConf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
+            Network setupGossip = new Network(setupConf.GossipAddresses[setupConf.Pid], setupConf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
+            Network setupMcast = new Network(setupConf.MCastAddresses[setupConf.Pid], setupConf.MCastAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
+
+            Network fetch = new Network(conf.FetchAddresses[conf.Pid], conf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, conf);
+            Network gossip = new Network(conf.GossipAddresses[conf.Pid], conf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, conf);
+            Network mcast = new Network(conf.MCastAddresses[conf.Pid], conf.MCastAddresses.ToArray(), netlog, setupConf.Timeout, conf);
+            Network netserv = new Network(conf.RMCAddresses[conf.Pid], conf.RMCAddresses.ToArray(), netlog, conf.Timeout, conf);
+
+            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeSetup(int session, CancellationTokenSource? t, Channel<WeakThresholdKey> wtk)
+            {
+                try
+                {
+                    setupConf.Session = session;
+
+                    var log = LoggingUtil.NewLogger(setupConf, setupConf.Session);
+                    var rsf = new Beacon(setupConf);
+
+                    async Task extractHead(IList<IUnit> units)
+                    {
+                        var head = units[^1];
+                        if (head.Level() == setupConf.OrderStartLevel)
+                        {
+                            long i = 0;
+                            if (t != null)
+                            {
+                                while (!t.IsCancellationRequested)
+                                {
+                                    await Task.Delay(100);
+                                    i++;
+                                    if (i % 50 == 0)
+                                    {
+                                        log.Info().Msg("waiting for signal to proceed...");
+                                    }
+                                }
+                            }
+
+                            await wtk.Writer.WriteAsync(rsf.GetWTK(head.Creator()));
+                            log.Info().Msg("Setup phase has completed successfully");
+                            return;
+                        }
+
+                        throw new Exception("Setup phase: wrong level");
+                    }
+
+                    var ord = new Orderer(setupConf, null!, extractHead, log);
+                    (var sync, var err) = Syncer.NewSessioned(setupConf, ord, log, setupFetch, setupGossip, setupMcast, true);
+                    if (err != null) throw err;
+
+                    var start = () => ord.Start(rsf, sync, NopAlerter.Instance);
+                    var stop = () => ord.Stop().ContinueWith(x =>
+                    {
+                        log.Stop();
+                        wtk.Writer.Complete();
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+                    // update networks
+                    setupFetch.Update(setupConf);
+                    setupGossip.Update(setupConf);
+                    setupMcast.Update(setupConf);
+
+                    return (start, stop, null);
+                }
+                catch (Exception e)
+                {
+                    return (null, null, e);
+                }
+            }
+
+            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeConsensus(int sess, CancellationTokenSource t, Channel<WeakThresholdKey> wtk)
+            {
+                try
+                {
+                    conf.Session = sess;
+                    var log = LoggingUtil.NewLogger(conf);
+
+                    async Task makePreblock(IList<IUnit> units)
+                    {
+                        await ps.WriteAsync(ModelUtils.ToPreblock(units));
+                        var timingUnit = units[^1];
+                        if (timingUnit.Level() == conf.LastLevel && timingUnit.EpochID() == conf.NumberOfEpochs - 1)
+                        {
+                            // we no longer need to close the channel
+                            //ps.Complete();
+                        }
+                    }
+
+                    var ord = new Orderer(conf, ds, makePreblock, log);
+                    (var sync, var err) = Syncer.NewSessioned(conf, ord, log, fetch, gossip, mcast, false);
+                    if (err != null) throw err;
+
+                    var alert = new AlertService(conf, ord, netserv, log);
+
+                    var started = new TaskCompletionSource();
+                    var start = () =>
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                if (wtk.Reader.Completion.IsCompleted) return;
+                                var wtkey = await wtk.Reader.ReadAsync();
+                                if (wtkey == null) return;
+
+                                LogWTK(log, wtkey);
+
+                                conf.WTKey = wtkey;
+                                await ord.Start(new CoinFactory(conf.Pid, wtkey), sync, alert);
+                            }
+                            finally
+                            {
+                                started.SetResult();
+                            }
+                        });
+
+                        return Task.CompletedTask;
+                    };
+                    var stop = async () =>
+                    {
+                        await started.Task;
+                        await netserv.SoftStopAsync();
+                        await ord.Stop();
+                        log.Stop();
+                        t.Cancel();
+                    };
+
+                    gossip.Update(conf);
+                    fetch.Update(conf);
+                    mcast.Update(conf);
+                    netserv.Update(conf);
+
+                    return (start, stop, null);
+                }
+                catch (Exception e)
+                {
+                    return (null, null, e);
+                }
+            }
+
+            int session = 0;
+            var prevWTK = Channel.CreateBounded<WeakThresholdKey>(1);
+            var prevSetup = MakeSetup(session, null!, prevWTK);
+
+            Func<(Func<Task>?, Func<Task>?, Exception?)> iterate = () =>
+            {
+                var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
+                var cts = new CancellationTokenSource();
+                (var startSetup, var stopSetup, var setupErr) = MakeSetup(session + 1, cts, wtkchan);
+                if (setupErr != null)
+                {
+                    return (null, null, setupErr);
+                }
+
+                (var startConsensus, var stopConsensus, var consensusErr) = MakeConsensus(session, cts, prevWTK);
+                if (consensusErr != null)
+                {
+                    return (null, null, consensusErr);
+                }
+
+                Func<Task>? start;
+                Func<Task>? stop;
+
+                if (session == 0)
+                {
+                    if (prevSetup.Err != null)
+                    {
+                        return (null, null, prevSetup.Err);
+                    }
+                }
+
+                start = async () =>
+                {
+                    if (session == 0) await prevSetup.Start!();
+                    await Task.WhenAll(startSetup!(), startConsensus!());
+                };
+
+                stop = async () =>
+                {
+                    if (session == 0) await prevSetup.Stop!();
+                    await stopSetup!();
+                    await stopConsensus!();
+                };
+
+                prevSetup = (startSetup, stopSetup, setupErr);
+                prevWTK = wtkchan;
+                session++;
+
+                return (start, stop, null);
+            };
+
+            return (iterate, null);
+        }
+
         private static (Func<Task>?, Func<Task>?, Exception?) Consensus(Config.Config conf, Channel<WeakThresholdKey> wtkchan, IDataSource ds, ChannelWriter<Preblock> sink)
         {
             try

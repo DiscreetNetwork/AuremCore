@@ -19,6 +19,10 @@ namespace Aurem.Config
         public ushort Pid { get; set; }
         public ushort NProc { get; set; }
 
+        // session
+        public int Session { get; set; } = 0;
+        public bool Sessioned { get; set; } = false;
+
         // epoch
         public int EpochLength { get; set; }
         public int NumberOfEpochs { get; set; }
@@ -67,6 +71,8 @@ namespace Aurem.Config
         // extra
         public bool IsLocal { get; set; } = false;
 
+        public bool Setup { get; set; } = false;
+
         public void AddCheck(UnitChecker check)
         {
             if (Checks == null) Checks = new();
@@ -91,6 +97,7 @@ namespace Aurem.Config
             cnf.EpochLength = 30;
             cnf.NumberOfEpochs = 3;
             cnf.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            cnf.Setup = false;
         }
 
         private static void AddSetupConf(Config cnf)
@@ -101,6 +108,7 @@ namespace Aurem.Config
             cnf.EpochLength = 1;
             cnf.NumberOfEpochs = 1;
             cnf.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            cnf.Setup = true;
         }
 
         private static void AddLogConf(Config cnf, string logFile)
@@ -115,7 +123,7 @@ namespace Aurem.Config
         {
             cnf.Timeout = TimeSpan.FromSeconds(5);
             cnf.FetchInterval = TimeSpan.FromSeconds(1);
-            cnf.GossipInterval = TimeSpan.FromMilliseconds(500);
+            cnf.GossipInterval = TimeSpan.FromMilliseconds(1000);
             cnf.GossipAbove = 50;
 
             cnf.RMCNetType = "tcp";

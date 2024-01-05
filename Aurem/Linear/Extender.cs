@@ -115,7 +115,6 @@ namespace Aurem.Linear
 
             if (!decided) return null;
             var tr = new TimingRound(CurrentTU, LastTUs);
-            //if (Pid == 0) Console.WriteLine($"New timing round: creator={tr.CurrentTU.Creator()}, level={tr.CurrentTU.Level()}");
             return tr;
         }
     }

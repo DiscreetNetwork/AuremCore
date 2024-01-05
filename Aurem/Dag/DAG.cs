@@ -1,6 +1,7 @@
 ﻿using Aurem.Common;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
+using Aurem.Persistence;
 using Aurem.Units;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,8 @@ namespace Aurem.Dag
     {
         public ushort nProc;
         public uint Epoch;
+        public int Session;
+        public bool Setup;
         
         // structures to hold units in DAG.
         public UnitBag Units;
@@ -37,6 +40,7 @@ namespace Aurem.Dag
         public DAG(Config.Config conf, uint epochID)
         {
             nProc = conf.NProc;
+            Session = conf.Session;
             Epoch = epochID;
             Units = new UnitBag();
             LevelUnits = new FiberMap(conf.NProc, conf.EpochLength);
@@ -45,6 +49,7 @@ namespace Aurem.Dag
             Checks = new List<UnitChecker>(conf.Checks ?? Enumerable.Empty<UnitChecker>());
             PreInsert = new List<InsertHook>();
             PostInsert = new List<InsertHook>();
+            Setup = conf.Setup;
         }
 
         public void AddCheck(UnitChecker check) => Checks.Add(check);
@@ -238,6 +243,11 @@ namespace Aurem.Dag
             var unitsOnHeightByCreator = new List<IUnit>(oldUnitsOnHeightByCreator);
             unitsOnHeightByCreator.Add(u);
             su.Set(creator, unitsOnHeightByCreator);
+        }
+
+        public void Close()
+        {
+            DagDB.Instance.SaveDAG(this);
         }
     }
 }

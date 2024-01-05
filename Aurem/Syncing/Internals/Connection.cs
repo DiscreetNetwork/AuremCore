@@ -50,6 +50,12 @@ namespace Aurem.Syncing.Internals
             _writeLock = new SemaphoreSlim(1, 1);
         }
 
+        public void Restart()
+        {
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+        }
+
         /// <summary>
         /// Attempts to make a handshake with the connection given our node's PID. Returns true if the handshake was successful.
         /// </summary>
@@ -234,7 +240,6 @@ namespace Aurem.Syncing.Internals
 
         internal async Task SendAsync(Packet p)
         {
-            //await Console.Out.WriteLineAsync($"sending packet {(PacketID)p.Header.PacketID}");
             if (p != null)
             {
                 var dataStream = new MemoryStream();
@@ -325,7 +330,7 @@ namespace Aurem.Syncing.Internals
             return p;
         }
 
-        public async Task ReceiveAll()
+        public async Task<Exception?> ReceiveAll()
         {
             await _readLock.WaitAsync();
 
@@ -336,12 +341,18 @@ namespace Aurem.Syncing.Internals
                     var p = await Receive();
                     if (p != null)
                     {
-                        if (_network.OnReceive != null)
+                        if (_network.OnReceive.ContainsKey((int)p!.Header.Session) && _network.OnReceive[(int)p!.Header.Session] != null)
                         {
-                            await _network.OnReceive(p);
+                            await _network.OnReceive[(int)p!.Header.Session]!.Invoke(p);
                         }
                     }
                 }
+
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
             }
             finally
             {

@@ -535,7 +535,7 @@ namespace AuremCore
             if (args[0] == "hr")
             {
                 var fs = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.hr.txt");
-                Console.WriteLine();
+
                 foreach (var f in fs)
                 {
                     if (File.Exists(f)) File.Delete(f);

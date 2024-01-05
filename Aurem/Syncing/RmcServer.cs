@@ -35,13 +35,14 @@ namespace Aurem.Syncing
             public MultiSignature Proof;
 
             protected ushort MyPid;
+            protected int Session;
             protected uint RawLen;
             protected byte[] SignedData;
             protected Status Stat;
 
             public RmcInstance() { }
 
-            public static RmcInstance NewOutgoing(ulong id, byte[] data, Keychain keys, ushort myPid)
+            public static RmcInstance NewOutgoing(ulong id, byte[] data, Keychain keys, ushort myPid, int session)
             {
                 var rawLen = (uint)data.Length;
                 var buf = new byte[8 + rawLen];
@@ -60,6 +61,7 @@ namespace Aurem.Syncing
                     RawLen = rawLen,
                     SignedData = signedData,
                     Proof = proof,
+                    Session = session,
                     Stat = AuremCore.RMC.Status.Data,
                     MyPid = myPid,
                 };
@@ -82,7 +84,7 @@ namespace Aurem.Syncing
             public byte[] Data()
             {
                 if (RawLen == SignedData.Length) return SignedData;
-                
+
                 return SignedData[8..(int)(8 + RawLen)];
             }
 
@@ -92,7 +94,7 @@ namespace Aurem.Syncing
 
                 try
                 {
-                    Packet p = new Packet(PacketID.RmcSendData, new RmcSendData(MyPid, Id, MsgSendData, SignedData));
+                    Packet p = new Packet(PacketID.RmcSendData, new RmcSendData(MyPid, Id, MsgSendData, SignedData), Session);
                     return p;
                 }
                 finally
@@ -107,7 +109,7 @@ namespace Aurem.Syncing
 
                 try
                 {
-                    Packet p = new Packet(PacketID.RmcSendProof, new RmcSendProof(MyPid, Id, MsgSendProof, Proof.Marshal()));
+                    Packet p = new Packet(PacketID.RmcSendProof, new RmcSendProof(MyPid, Id, MsgSendProof, Proof.Marshal()), Session);
                     return p;
                 }
                 finally
@@ -122,7 +124,7 @@ namespace Aurem.Syncing
                 var db = d.Body as RmcSendData;
                 var _p = await SendProof();
                 var _pb = _p.Body as RmcSendProof;
-                Packet p = new Packet(PacketID.RmcSendFinished, new RmcSendFinished(db!, _pb!.Proof));
+                Packet p = new Packet(PacketID.RmcSendFinished, new RmcSendFinished(db!, _pb!.Proof), Session);
                 return p;
             }
 
@@ -174,13 +176,13 @@ namespace Aurem.Syncing
                     }
 
                     var sig = Keys.Sign(SignedData);
-                    
+
                     if (Stat == AuremCore.RMC.Status.Data)
                     {
                         Stat = AuremCore.RMC.Status.Signed;
                     }
 
-                    Packet p = new Packet(PacketID.RmcSignature, new RmcSignature(MyPid, Id, sig));
+                    Packet p = new Packet(PacketID.RmcSignature, new RmcSignature(MyPid, Id, sig), Session);
                     return (p, null);
                 }
                 catch (Exception e)
@@ -243,12 +245,13 @@ namespace Aurem.Syncing
         {
             public ushort Pid;
 
-            public RmcIncoming(ulong id, ushort pid, Keychain keys, ushort mypid)
+            public RmcIncoming(ulong id, ushort pid, Keychain keys, ushort mypid, int session)
             {
                 Id = id;
                 Keys = keys;
                 Pid = pid;
                 MyPid = mypid;
+                Session = session;
             }
 
             public async Task<(byte[], Exception?)> AcceptData(RmcSendData _sendData)
@@ -279,7 +282,7 @@ namespace Aurem.Syncing
                     var proof = new MultiSignature(IDag.MinimalQuorum(nproc), signedData);
 
                     await Mutex.WaitAsync();
-                    
+
                     try
                     {
                         if (Stat == AuremCore.RMC.Status.Unknown)
@@ -375,6 +378,7 @@ namespace Aurem.Syncing
         public const byte MsgRequestFinished = 2;
 
         protected ushort Pid;
+        protected int Session;
         protected ushort NProc;
         protected IOrderer Orderer;
         protected Network Netserv;
@@ -398,6 +402,7 @@ namespace Aurem.Syncing
             Orderer = orderer;
             Netserv = netserv;
             Log = log;
+            Session = conf.Session;
 
             Out = new ConcurrentDictionary<ulong, RmcInstance>();
             In = new ConcurrentDictionary<ulong, RmcIncoming>();
@@ -405,9 +410,9 @@ namespace Aurem.Syncing
             MemberSigTasks = new ConcurrentDictionary<SigKey, TaskCompletionSource<RmcSignature>>(new SigKeyEqualityComparer());
             Keys = new Keychain(conf.RMCPublicKeys, conf.RMCPrivateKey);
 
-            Netserv.OnReceive += PersistentIn;
+            Netserv.AddHandle(PersistentIn, Session);
             conf.AddCheck((u, d) => FinishedRMC(u, d).GetAwaiter().GetResult());
-            
+
             multicastInProgress = new SemaphoreSlim(1, 1);
             Quit = false;
             Mx = new AsyncReaderWriterLock();
@@ -456,14 +461,14 @@ namespace Aurem.Syncing
 
         private RmcInstance NewOutgoingInstance(ulong id, byte[] data)
         {
-            var res = RmcInstance.NewOutgoing(id, data, Keys, Pid);
+            var res = RmcInstance.NewOutgoing(id, data, Keys, Pid, Session);
 
             return Out.AddOrUpdate(id, res, (a, x) => x);
         }
 
         private (RmcIncoming, Exception?) NewIncomingInstance(ulong id, ushort pid)
         {
-            var res = new RmcIncoming(id, pid, Keys, Pid);
+            var res = new RmcIncoming(id, pid, Keys, Pid, Session);
 
             var success = In.AddOrUpdate(id, res, (a, x) => x);
             return (success, success != res ? new Exception("duplicate incoming") : null);
@@ -623,7 +628,7 @@ namespace Aurem.Syncing
             {
                 Quit = true;
                 await Wg.WaitAsync();
-                Netserv.OnReceive -= PersistentIn;
+                Netserv.RemoveHandle(PersistentIn, Session);
             }
             finally
             {
@@ -666,6 +671,8 @@ namespace Aurem.Syncing
             if (Status(id) != AuremCore.RMC.Status.Finished)
             {
                 log.Error().Str("where", "Rmc.In.SendFinished").Msg("requested to send finished before RMC reached the finished state");
+
+                Netserv.Send(recipient, new Packet(PacketID.RmcFinishedUnavailable, new RmcFinishedUnavailable(Pid, id, 0), Session));
                 return;
             }
 
@@ -680,54 +687,88 @@ namespace Aurem.Syncing
         }
 
         // TODO: use delay scheduler? figure out later.
-        public async Task<(IPreunit, Exception?)> FetchFinished(IUnit u, ushort pid)
+        public async Task<(IPreunit, Exception?)> FetchFinished(IUnit u, ushort pid, int delay, int tries)
         {
-            try
+            var numTried = 0;
+            while (numTried < tries)
             {
-                var id = u.UnitID();
-
-                // register
-                var t = Finished.GetOrAdd(new SigKey(id, pid), _ => new TaskCompletionSource<RmcSendFinished>());
-
-                // send greeting
-                var greet = new Packet(PacketID.RmcGreet, new RmcGreet(pid, id, MsgRequestFinished));
-                Netserv.Send(pid, greet);
-
-                // wait for finished
-                var res = await t.Task;
-
-                // clean up
-                Finished.TryRemove(new SigKey(id, pid), out _);
-
-                (var data, var err) = await RmcAcceptFinished(id, pid, res);
-                if (err != null)
+                try
                 {
-                    return (null!, new Exception($"Rmc.FetchFinished.AcceptFinished for PID={pid}: {err.Message}"));
-                }
+                    var id = u.UnitID();
 
-                var pu = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.DecodeUnit, data, out err);
-                if (err != null)
+                    // register
+                    var t = Finished.GetOrAdd(new SigKey(id, pid), _ => new TaskCompletionSource<RmcSendFinished>());
+
+                    // send greeting
+                    var greet = new Packet(PacketID.RmcGreet, new RmcGreet(pid, id, MsgRequestFinished), Session);
+                    Netserv.Send(pid, greet);
+
+                    // wait for finished
+                    CancellationTokenSource cts = new CancellationTokenSource();
+                    cts.CancelAfter(TimeSpan.FromMilliseconds(delay));
+                    var res = await t.Task.WaitAsync(cts.Token);
+
+                    cts.Dispose();
+
+                    // clean up
+                    Finished.TryRemove(new SigKey(id, pid), out _);
+
+                    if (res == null)
+                    {
+                        return (null!, new Exception($"Rmc.FetchFinished.Receive for PID={pid}: finished was unavailable"));
+                    }
+
+                    (var data, var err) = await RmcAcceptFinished(id, pid, res);
+                    if (err != null)
+                    {
+                        return (null!, new Exception($"Rmc.FetchFinished.AcceptFinished for PID={pid}: {err.Message}"));
+                    }
+
+                    var pu = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.DecodeUnit, data, out err);
+                    if (err != null)
+                    {
+                        return (null!, new Exception($"Rmc.FetchFinished.DecodeUnit for PID={pid}: {err.Message}"));
+                    }
+
+                    return (pu, null);
+                }
+                catch (OperationCanceledException e)
                 {
-                    return (null!, new Exception($"Rmc.FetchFinished.DecodeUnit for PID={pid}: {err.Message}"));
+                    if (Status(u.UnitID()) == AuremCore.RMC.Status.Finished)
+                    {
+                        var pu = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.DecodeUnit, Data(u.UnitID()), out var err);
+                        return (pu, err);
+                    }
+                    else
+                    {
+                        Log.Error().Str("where", "Rmc.FetchFinished").Msg("currently dialed peer timeout, doubling delay");
+                        delay *= 2;
+                        numTried++;
+                    }
                 }
+                catch (Exception e)
+                {
+                    return (null!, e);
+                }
+            }
 
-                return (pu, null);
-            }
-            catch (Exception e)
-            {
-                return (null!, e);
-            }
+            Log.Error().Str("where", "Rmc.FetchFinished").Msg("unable to get data from peer");
+            return (null!, new Exception("exceeded number of tries"));
         }
 
         public async Task<(IPreunit, Exception?)> FetchFinishedFromAll(IUnit u)
         {
             // call the creator first
-            (var pu, var err) = await FetchFinished(u, u.Creator());
+            int delay = 200;
+            int tries = 5;
+            (var pu, var err) = await FetchFinished(u, u.Creator(), delay, tries);
             if (err != null)
             {
                 Log.Error().Str("where", "Rmc.FetchFinishedFromAll.CallForPid").Msg(err.Message);
             }
 
+            delay = 1000;
+            tries = 1;
             // call all other nodes in random order
             var indices = MulticastServer.ShuffleOrder(NProc, HashToInt32(u.Hash()));
             foreach (var pidi in indices)
@@ -737,7 +778,7 @@ namespace Aurem.Syncing
                 var pid = (ushort)pidi;
                 if (pid == Pid || pid == u.Creator()) continue;
 
-                (pu, err) = await FetchFinished(u, pid);
+                (pu, err) = await FetchFinished(u, pid, delay, tries);
                 if (err != null)
                 {
                     Log.Error().Str("where", "Rmc.FetchFinishedFromAll.CallForPid").Msg(err.Message);
@@ -1046,6 +1087,46 @@ namespace Aurem.Syncing
                             }
 
                             val!.SetResult(p);
+                        }
+                        break;
+                    case PacketID.RmcSendFinished:
+                        {
+                            var p = (packet.Body as RmcSendFinished)!;
+
+                            var pid = p.SendData.Greet.Pid;
+                            var id = p.SendData.Greet.Id;
+                            var key = new SigKey(id, pid);
+
+                            var success = Finished.TryGetValue(key, out var val);
+                            if (!Finished.ContainsKey(key) || !success)
+                            {
+                                await RmcAcceptFinished(id, pid, p);
+                            }
+                            else
+                            {
+                                val!.SetResult(p);
+                            }
+                        }
+                        break;
+                    case PacketID.RmcFinishedUnavailable:
+                        {
+                            var p = (packet.Body as RmcFinishedUnavailable)!;
+
+                            var pid = p.Greet.Pid;
+                            var id = p.Greet.Id;
+
+                            var key = new SigKey(id, pid);
+
+                            var success = Finished.TryGetValue(key, out var val);
+                            if (!Finished.ContainsKey(key) || !success)
+                            {
+                                Log.Error().Str("where", "Rmc.In.RmcFinishedUnavailable").Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, id).Msg("received unsolicited finished unavailable");
+                                return;
+                            }
+                            else
+                            {
+                                val!.SetResult(null!);
+                            }
                         }
                         break;
                     default:

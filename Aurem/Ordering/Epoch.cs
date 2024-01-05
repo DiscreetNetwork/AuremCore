@@ -53,6 +53,7 @@ namespace Aurem.Ordering
         {
             await Adder.Close();
             await Extender.Close();
+            Dag.Close(); 
             Log.Log().Msg(Logging.Constants.EpochEnd);
         }
 

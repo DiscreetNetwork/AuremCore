@@ -78,8 +78,6 @@ namespace AuremCore.Network
 
         public override async Task<Conn?> Dial(ushort pid)
         {
-            // parse the connection
-            //await Console.Out.WriteLineAsync($"Dial pid={pid}, total addresses={remoteAddresses?.Length}");
             if (pid >= remoteAddresses.Length) throw new ArgumentOutOfRangeException();
             var addr = IPEndPoint.Parse(remoteAddresses[pid]);
 

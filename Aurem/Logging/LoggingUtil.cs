@@ -88,17 +88,22 @@ namespace Aurem.Logging
         /// </summary>
         /// <param name="conf"></param>
         /// <returns></returns>
-        public static Logger NewLogger(Config.Config conf)
+        public static Logger NewLogger(Config.Config conf, int session = 0, bool net = false)
         {
             string filename;
 
             if (conf.LogHuman)
             {
-                filename = conf.LogFile + ".log";
+                filename = conf.LogFile + $"s{session}.log";
             }
             else
             {
-                filename = conf.LogFile + ".json";
+                filename = conf.LogFile + $"s{session}.json";
+            }
+
+            if (net)
+            {
+                filename = conf.LogFile + $"net." + (conf.LogHuman ? "log" : "json");
             }
 
             Stream output;

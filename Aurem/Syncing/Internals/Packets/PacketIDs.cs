@@ -31,6 +31,7 @@ namespace Aurem.Syncing.Internals.Packets
         RmcSendFinished = 53,
         RmcGreet = 54,
         RmcSignature = 55,
+        RmcFinishedUnavailable = 56,
 
         //RMCSignature = 48,
         //RMCSendData = 49,

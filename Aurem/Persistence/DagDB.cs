@@ -15,7 +15,19 @@ namespace Aurem.Persistence
 {
     public class DagDB
     {
-        // unit keys: sessionID|epochID|mapID|level|creator|index (4 + 4 + 1 + 2 + 2 + 4 = 17 bytes)
+        private static DagDB _instance;
+
+        public static DagDB Instance { get { return _instance; } }
+
+        static DagDB()
+        {
+            var home = (Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX) ? Environment.GetEnvironmentVariable("HOME") : Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%");
+
+            var dagpath = Path.Combine($"{home}", "aurem");
+            _instance = new DagDB(dagpath);
+        }
+
+        // unit keys: sessionID|setup|epochID|mapID|level|creator|index (4 + 1 + 4 + 1 + 2 + 2 + 4 = 17 bytes)
         public ColumnFamilyHandle Units;
         public ColumnFamilyHandle Commitments;
 
@@ -40,7 +52,7 @@ namespace Aurem.Persistence
 
         private RocksDb rdb;
         
-        public DagDB(string path, int session)
+        public DagDB(string path)
         {
             try
             {
@@ -51,7 +63,7 @@ namespace Aurem.Persistence
                     Directory.CreateDirectory(path);
                 }
 
-                folder = Path.Combine(path, $"sess{session}");
+                folder = Path.Combine(path, $"persistence");
 
                 if (!Directory.Exists(folder))
                 {
@@ -72,7 +84,6 @@ namespace Aurem.Persistence
                 Units = rdb.GetColumnFamily(UNITS);
                 UnitsByHash = rdb.GetColumnFamily(UNITS_BY_HASH);
                 Commitments = rdb.GetColumnFamily(COMMITMENTS);
-                sessionID = session;
             }
             catch (Exception ex)
             {
@@ -80,43 +91,47 @@ namespace Aurem.Persistence
             }
         }
 
-        private static byte[] DataToIndex(int sessionID, uint epochID, int mapID, int level, int creator, int index)
+        private static byte[] DataToIndex(int sessionID, byte setup, uint epochID, int mapID, int level, int creator, int index)
         {
             var rv = new byte[17];
             BinaryPrimitives.WriteUInt32LittleEndian(rv, (uint)sessionID);
-            BinaryPrimitives.WriteUInt32LittleEndian(rv.AsSpan(4), epochID);
-            rv[8] = (byte)mapID;
-            BinaryPrimitives.WriteUInt16LittleEndian(rv.AsSpan(9), (ushort)level);
-            BinaryPrimitives.WriteUInt16LittleEndian(rv.AsSpan(11), (ushort)creator);
-            BinaryPrimitives.WriteUInt32LittleEndian(rv.AsSpan(13), (uint)index);
+            rv[4] = setup;
+            BinaryPrimitives.WriteUInt32LittleEndian(rv.AsSpan(5), epochID);
+            rv[9] = (byte)mapID;
+            BinaryPrimitives.WriteUInt16LittleEndian(rv.AsSpan(10), (ushort)level);
+            BinaryPrimitives.WriteUInt16LittleEndian(rv.AsSpan(12), (ushort)creator);
+            BinaryPrimitives.WriteUInt32LittleEndian(rv.AsSpan(14), (uint)index);
 
             return rv;
         }
 
-        private static byte[] DataToUnitIDIndex(int sessionID, ulong unitID)
+        private static byte[] DataToUnitIDIndex(int sessionID, byte setup, ulong unitID)
         {
-            byte[] rv = new byte[12];
+            byte[] rv = new byte[13];
             BinaryPrimitives.WriteUInt32LittleEndian(rv, (uint)sessionID);
-            BinaryPrimitives.WriteUInt64LittleEndian(rv.AsSpan(4), unitID);
+            rv[4] = setup;
+            BinaryPrimitives.WriteUInt64LittleEndian(rv.AsSpan(5), unitID);
             return rv;
         }
 
-        private static (int SessionID, uint EpochID, byte MapID, ushort Level, ushort Creator, int Index) IndexToData(byte[] data)
+        private static (int SessionID, byte Setup, uint EpochID, byte MapID, ushort Level, ushort Creator, int Index) IndexToData(byte[] data)
         {
             var sessionID = BinaryPrimitives.ReadUInt32LittleEndian(data);
-            var epochID = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(4));
-            var mapID = data[8];
-            var level = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(9));
-            var creator = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(11));
-            var index = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(13));
+            var setup = data[4];
+            var epochID = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(5));
+            var mapID = data[9];
+            var level = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(10));
+            var creator = BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(12));
+            var index = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(14));
 
-            return ((int)sessionID, epochID, mapID, level, creator, (int)index);
+            return ((int)sessionID, setup, epochID, mapID, level, creator, (int)index);
         }
 
         public DAG ReconstructDag(DAG dag)
         {
-            var lower = DataToIndex(sessionID, dag.EpochID(), MaxUnitsID, 0, 0, 0);
-            var upper = DataToIndex(sessionID, dag.EpochID(), HeightUnitsID, ushort.MaxValue, ushort.MaxValue, int.MaxValue);
+            byte setup = (byte)(dag.Setup ? 1 : 0);
+            var lower = DataToIndex(sessionID, setup, dag.EpochID(), MaxUnitsID, 0, 0, 0);
+            var upper = DataToIndex(sessionID, setup, dag.EpochID(), HeightUnitsID, ushort.MaxValue, ushort.MaxValue, int.MaxValue);
             var iter = rdb.NewIterator(cf: Units, new ReadOptions().SetIterateLowerBound(lower).SetIterateUpperBound(upper));
             iter.SeekToFirst();
 
@@ -128,7 +143,7 @@ namespace Aurem.Persistence
             while (iter.Valid())
             {
                 var idx = IndexToData(iter.Key());
-                if (idx.SessionID != sessionID || idx.EpochID != dag.EpochID()) break;
+                if (idx.SessionID != sessionID || idx.EpochID != dag.EpochID() || idx.Setup != setup) break;
 
                 Dictionary<ushort, List<IUnit>> d;
 
@@ -276,7 +291,7 @@ namespace Aurem.Persistence
             return EncodeUtil.DecodeUnit(res);
         }
 
-        public List<IPreunit> GetByID(ulong id)
+        public List<IPreunit> GetByID(int session, ulong id)
         {
             (var height, var creator, var epoch) = IPreunit.DecodeID(id);
 
@@ -285,7 +300,8 @@ namespace Aurem.Persistence
             var i = 0;
             do
             {
-                var idx = DataToIndex(sessionID, epoch, HeightUnitsID, height, creator, i);
+                // TODO: setup vs consensus unit checks
+                var idx = DataToIndex(session, 0, epoch, HeightUnitsID, height, creator, i);
                 res = GetUnit(idx);
                 if (res == null) break;
                 units.Add(res);
@@ -300,6 +316,8 @@ namespace Aurem.Persistence
         {
             WriteBatch batch = new WriteBatch();
             Dictionary<Hash, byte[]> hashesToIndices = new Dictionary<Hash, byte[]>(new Hash.HashEqualityComparer());
+            byte setup = (byte)(dag.Setup ? 1 : 0);
+
 
             bool SUIterate(int k, List<IUnit> v, byte mapID, int lvl)
             {
@@ -309,7 +327,7 @@ namespace Aurem.Persistence
                     if (v[i] is not UnitInDag) continue;
                     var u = (UnitInDag)v[i];
 
-                    var idx = DataToIndex(sessionID, dag.EpochID(), mapID, lvl, k, i);
+                    var idx = DataToIndex(sessionID, setup, dag.EpochID(), mapID, lvl, k, i);
                     batch.Put(idx, u.Serialize(), cf: Units);
                     hashesToIndices[u.Hash()] = idx;
                 }

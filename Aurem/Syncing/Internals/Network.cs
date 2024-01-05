@@ -30,8 +30,9 @@ namespace Aurem.Syncing.Internals
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
         private Config.Config Conf;
         private WaitGroup taskWg;
+        private bool started;
 
-        internal Func<Packet, Task> OnReceive = (_) => Task.CompletedTask; 
+        internal Dictionary<int, Func<Packet, Task>> OnReceive { get; private set; }
 
         public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf)
         {
@@ -49,11 +50,42 @@ namespace Aurem.Syncing.Internals
             connsDialed = new Connection[remoteAddresses.Length];
             connsListened = new Connection[remoteAddresses.Length];
             taskWg = new WaitGroup();
+            OnReceive = new();
         }
 
-        public void AddHandle(Func<Packet, Task> handle)
+        public void Update(Config.Config conf)
         {
-            OnReceive += handle;
+            if (conf.Session == 0 || OnReceive.Keys.Count == 0) return;
+
+            for (int i = OnReceive.Keys.Min(); i < Conf.Session - 1; i++)
+            {
+                if (OnReceive.ContainsKey(i))
+                {
+                    OnReceive.Remove(i);
+                }
+            }
+
+            Conf = conf;
+        }
+
+        public void AddHandle(Func<Packet, Task> handle, int session)
+        {
+            if (OnReceive.ContainsKey(session))
+            {
+                OnReceive[session] += handle;
+            }
+            else
+            {
+                OnReceive[session] = handle;
+            }
+        }
+
+        public void RemoveHandle(Func<Packet, Task> handle, int session)
+        {
+            if (OnReceive.ContainsKey(session))
+            {
+                OnReceive[session] -= handle;
+            }
         }
 
         // TODO: make more efficient
@@ -64,7 +96,6 @@ namespace Aurem.Syncing.Internals
             if (connsDialed[pid] != null) return connsDialed[pid];
 
             // parse the connection
-            //await Console.Out.WriteLineAsync($"Dial pid={pid}, total addresses={remoteAddresses?.Length}");
             if (pid >= remoteAddresses.Length) throw new ArgumentOutOfRangeException(nameof(pid));
             var addr = remoteAddresses[pid];
 
@@ -123,6 +154,8 @@ namespace Aurem.Syncing.Internals
         public async Task Start()
         {
             // listen
+            if (started) return;
+
             _ = Task.Run(async () =>
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
@@ -150,7 +183,7 @@ namespace Aurem.Syncing.Internals
             }
 
             await swg.WaitAsync();
-            //await Console.Out.WriteLineAsync($"Server started for pid={Conf.Pid}");
+
             _ = Task.Run(async () =>
             {
                 try
@@ -162,6 +195,8 @@ namespace Aurem.Syncing.Internals
 
                 }
             });
+
+            started = true;
         }
 
         public void Send(ushort pid, Packet p)
@@ -188,6 +223,12 @@ namespace Aurem.Syncing.Internals
             {
                 conn?.Stop();
             }
+        }
+
+        public async Task SoftStopAsync()
+        {
+            await taskWg.WaitAsync();
+            // cts continues and conns continue
         }
 
         private async Task HandleNetworkActivity()

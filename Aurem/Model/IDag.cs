@@ -129,6 +129,11 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="nProcesses"></param>
         /// <returns></returns>
-        public static ushort MinimalTrusted(ushort nProcesses) => TUtil.MinimalTrusted(nProcesses); 
+        public static ushort MinimalTrusted(ushort nProcesses) => TUtil.MinimalTrusted(nProcesses);
+
+        /// <summary>
+        /// Flushes the Dag to disk.
+        /// </summary>
+        public void Close();
     }
 }

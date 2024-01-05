@@ -95,7 +95,10 @@ namespace Aurem.Dag
                     var su = Content[height];
                     for (ushort i = 0; i < Width; i++)
                     {
-                        result.AddRange(su.Get(i));
+                        if (height > heights[i])
+                        {
+                            result.AddRange(su.Get(i));
+                        }
                     }
                 }
 
