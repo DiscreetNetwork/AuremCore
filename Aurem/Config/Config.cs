@@ -79,6 +79,58 @@ namespace Aurem.Config
             Checks.Add(check);
         }
 
+        public Config Clone()
+        {
+            var c = new Config();
+            c.Pid = Pid;
+            c.NProc = NProc;
+            c.Session = Session;
+            c.Sessioned = Sessioned;
+            c.EpochLength = EpochLength;
+            c.NumberOfEpochs = NumberOfEpochs;
+            c.LastLevel = LastLevel;
+            c.CanSkipLevel = CanSkipLevel;
+            c.Checks = Checks;
+
+            c.LogFile = LogFile;
+            c.LogHuman = LogHuman;
+            c.LogLevel = LogLevel;
+            c.LogBuffer = LogBuffer;
+            c.WTKey = WTKey;
+            c.PrivateKey = PrivateKey;
+            c.PublicKeys = PublicKeys;
+            c.P2PPublicKeys = P2PPublicKeys;
+            c.P2PSecretKey = P2PSecretKey;
+            c.RMCPrivateKey = RMCPrivateKey;
+            c.RMCPublicKeys = RMCPublicKeys;
+
+            c.GossipAbove = GossipAbove;
+            c.FetchInterval = FetchInterval;
+            c.GossipInterval = GossipInterval;
+            c.Timeout = Timeout;
+            c.RMCAddresses = RMCAddresses;
+            c.RMCNetType = RMCNetType;
+            c.GossipAddresses = GossipAddresses;
+            c.GossipNetType = GossipNetType;
+            c.FetchAddresses = FetchAddresses;
+            c.FetchNetType = FetchNetType;
+            c.MCastAddresses = MCastAddresses;
+            c.MCastNetType = MCastNetType;
+            c.GossipWorkers = GossipWorkers;
+            c.FetchWorkers = FetchWorkers;
+
+            c.OrderStartLevel = OrderStartLevel;
+            c.CRPFixedPrefix = CRPFixedPrefix;
+            c.ZeroVoteRoundForCommonVote = ZeroVoteRoundForCommonVote;
+            c.FirstDecidingRound = FirstDecidingRound;
+            c.CommonVoteDeterministicPrefix = CommonVoteDeterministicPrefix;
+
+            c.IsLocal = IsLocal;
+            c.Setup = Setup;
+
+            return c;
+        }
+
         private static Config RequiredByLinear()
         {
             return new Config { FirstDecidingRound = 3, CommonVoteDeterministicPrefix = 10, ZeroVoteRoundForCommonVote = 3 };

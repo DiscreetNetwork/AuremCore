@@ -28,13 +28,15 @@ namespace Aurem.Syncing.Internals
         private CancellationTokenSource cancellationTokenSource;
         private Logger Log;
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
-        private Config.Config Conf;
         private WaitGroup taskWg;
+        private SemaphoreSlim StartSemaphore;
         private bool started;
 
         internal Dictionary<int, Func<Packet, Task>> OnReceive { get; private set; }
+        internal string prefix;
+        internal Config.Config Conf;
 
-        public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf)
+        public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf, string prefix = "")
         {
             localEndpoint = IPEndPoint.Parse(local);
             var listenp = new IPEndPoint(IPAddress.Any, localEndpoint.Port);
@@ -51,6 +53,10 @@ namespace Aurem.Syncing.Internals
             connsListened = new Connection[remoteAddresses.Length];
             taskWg = new WaitGroup();
             OnReceive = new();
+
+            started = false;
+            StartSemaphore = new SemaphoreSlim(1, 1);
+            this.prefix = prefix;
         }
 
         public void Update(Config.Config conf)
@@ -154,16 +160,44 @@ namespace Aurem.Syncing.Internals
         public async Task Start()
         {
             // listen
-            if (started) return;
+            try
+            {
+                await StartSemaphore.WaitAsync();
+                if (started)
+                {
+                    return;
+                }
+                else
+                {
+                    started = true;
+                }
+            }
+            finally
+            {
+                StartSemaphore.Release();
+            }
 
+            var rwg = new WaitGroup();
+            rwg.Add(connsListened.Length - 1);
             _ = Task.Run(async () =>
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
                 {
-                    var x = await Listen();
-                    if (x == null)
+                    try
                     {
-                        await Task.Delay(50, cancellationTokenSource.Token);
+                        var x = await Listen();
+                        if (x == null)
+                        {
+                            await Task.Delay(50, cancellationTokenSource.Token);
+                        }
+                        else
+                        {
+                            rwg.Done();
+                        }
+                    }
+                    catch
+                    {
+                        continue;
                     }
                 }
             });
@@ -177,12 +211,23 @@ namespace Aurem.Syncing.Internals
                 ushort pid = (ushort)i;
                 _ = Task.Run(async () =>
                 {
-                    await Dial(pid);
-                    swg.Done();
+                    while (true)
+                    {
+                        try
+                        {
+                            var x = await Dial(pid);
+                            swg.Done();
+                            return;
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                    }
                 });
             }
 
-            await swg.WaitAsync();
+            await Task.WhenAll(swg.WaitAsync(), rwg.WaitAsync());
 
             _ = Task.Run(async () =>
             {
@@ -195,8 +240,6 @@ namespace Aurem.Syncing.Internals
 
                 }
             });
-
-            started = true;
         }
 
         public void Send(ushort pid, Packet p)

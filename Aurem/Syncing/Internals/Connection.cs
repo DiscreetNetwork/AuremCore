@@ -72,6 +72,7 @@ namespace Aurem.Syncing.Internals
 
             // 1. Accept challenge
             var challenge = new byte[ChallengeLength];
+            await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: accept challenge from {_tcpClient.Client.RemoteEndPoint}");
             await _tcpClient.GetStream().ReadAsync(challenge, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
@@ -105,6 +106,7 @@ namespace Aurem.Syncing.Internals
 
             if (ack[0] == 0x01)
             {
+                await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: acknowledge {_tcpClient.Client.RemoteEndPoint}");
                 Acknowledge();
                 cts.Dispose();
 
@@ -133,6 +135,7 @@ namespace Aurem.Syncing.Internals
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
             // 1. Send challenge
+            await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: send challenge to {_tcpClient.Client.RemoteEndPoint}");
             await _tcpClient.GetStream().WriteAsync(challenge, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
@@ -167,6 +170,8 @@ namespace Aurem.Syncing.Internals
             {
                 throw new Exception("connection verification failed");
             }
+
+            await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: verified response {_tcpClient.Client.RemoteEndPoint}");
 
             cts.Dispose();
             return pid;

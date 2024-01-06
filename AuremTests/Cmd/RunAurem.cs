@@ -337,6 +337,7 @@ namespace AuremTests.Cmd
             }
             else
             {
+                var signaler = Channel.CreateBounded<bool>(1);
                 var setupConfig = Config.NewSetup(member, committee);
                 DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
                 if (err != null)
@@ -345,7 +346,7 @@ namespace AuremTests.Cmd
                     await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
                     return;
                 }
-                (var iterate, err) = Aurem.Run.Process.CreateSessioned(setupConfig, consensusConfig, ds, preblockSink.Writer);
+                (var iterate, err) = Aurem.Run.Process.CreateSessioned(setupConfig, consensusConfig, ds, preblockSink.Writer, signaler.Writer);
 
                 if (err != null)
                 {
@@ -366,6 +367,10 @@ namespace AuremTests.Cmd
                         return;
                     }
                     await start!.Invoke();
+
+                    // wait for the end of the session
+                    await signaler.Reader.ReadAsync();
+
                     await stop!.Invoke();
                 }
             }

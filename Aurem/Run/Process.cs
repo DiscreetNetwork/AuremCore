@@ -61,7 +61,7 @@ namespace Aurem.Run
                     log.Stop();
                     wtkchan.Writer.Complete();
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            
+
                 return (start, stop, null);
             }
             catch (Exception e)
@@ -70,32 +70,33 @@ namespace Aurem.Run
             }
         }
 
-        public static (Func<(Func<Task>? Start, Func<Task>? Stop, Exception?)>, Exception?) CreateSessioned(Config.Config setupConf, Config.Config conf, IDataSource ds, ChannelWriter<Preblock> ps)
+        public static (Func<(Func<Task>? Start, Func<Task>? Stop, Exception?)>, Exception?) CreateSessioned(Config.Config setupConf, Config.Config consensusConf, IDataSource ds, ChannelWriter<Preblock> ps, ChannelWriter<bool> ss)
         {
-            var netlog = LoggingUtil.NewLogger(conf, 0, true);
+            var netlog = LoggingUtil.NewLogger(consensusConf, 0, true);
 
-            Network setupFetch = new Network(setupConf.FetchAddresses[setupConf.Pid], setupConf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
-            Network setupGossip = new Network(setupConf.GossipAddresses[setupConf.Pid], setupConf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
-            Network setupMcast = new Network(setupConf.RMCAddresses[setupConf.Pid], setupConf.RMCAddresses.ToArray(), netlog, setupConf.Timeout, setupConf);
+            Network setupFetch = new Network(setupConf.FetchAddresses[setupConf.Pid], setupConf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, setupConf, "f");
+            Network setupGossip = new Network(setupConf.GossipAddresses[setupConf.Pid], setupConf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, setupConf, "g");
+            Network setupMcast = new Network(setupConf.RMCAddresses[setupConf.Pid], setupConf.RMCAddresses.ToArray(), netlog, setupConf.Timeout, setupConf, "r");
 
-            Network fetch = new Network(conf.FetchAddresses[conf.Pid], conf.FetchAddresses.ToArray(), netlog, setupConf.Timeout, conf);
-            Network gossip = new Network(conf.GossipAddresses[conf.Pid], conf.GossipAddresses.ToArray(), netlog, setupConf.Timeout, conf);
-            Network mcast = new Network(conf.MCastAddresses[conf.Pid], conf.MCastAddresses.ToArray(), netlog, setupConf.Timeout, conf);
-            Network netserv = new Network(conf.RMCAddresses[conf.Pid], conf.RMCAddresses.ToArray(), netlog, conf.Timeout, conf);
+            Network fetch = new Network(consensusConf.FetchAddresses[consensusConf.Pid], consensusConf.FetchAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "f");
+            Network gossip = new Network(consensusConf.GossipAddresses[consensusConf.Pid], consensusConf.GossipAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "g");
+            Network mcast = new Network(consensusConf.MCastAddresses[consensusConf.Pid], consensusConf.MCastAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "m");
+            Network netserv = new Network(consensusConf.RMCAddresses[consensusConf.Pid], consensusConf.RMCAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "r");
 
-            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeSetup(int session, CancellationTokenSource? t, Channel<WeakThresholdKey> wtk)
+            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeSetup(Config.Config c, int session, CancellationTokenSource? t, Channel<WeakThresholdKey> wtk)
             {
                 try
                 {
-                    setupConf.Session = session;
+                    var conf = c.Clone();
+                    conf.Session = session;
 
-                    var log = LoggingUtil.NewLogger(setupConf, setupConf.Session);
-                    var rsf = new Beacon(setupConf);
+                    var log = LoggingUtil.NewLogger(conf, conf.Session);
+                    var rsf = new Beacon(conf);
 
                     async Task extractHead(IList<IUnit> units)
                     {
                         var head = units[^1];
-                        if (head.Level() == setupConf.OrderStartLevel)
+                        if (head.Level() == conf.OrderStartLevel)
                         {
                             long i = 0;
                             if (t != null)
@@ -119,11 +120,14 @@ namespace Aurem.Run
                         throw new Exception("Setup phase: wrong level");
                     }
 
-                    var ord = new Orderer(setupConf, null!, extractHead, log);
-                    (var sync, var err) = Syncer.NewSessioned(setupConf, ord, log, setupFetch, setupGossip, setupMcast, true);
+                    var ord = new Orderer(conf, null!, extractHead, log);
+                    (var sync, var err) = Syncer.NewSessioned(conf, ord, log, setupFetch, setupGossip, setupMcast, true);
                     if (err != null) throw err;
 
-                    var start = () => ord.Start(rsf, sync, NopAlerter.Instance);
+                    var start = async () =>
+                    {
+                        await ord.Start(rsf, sync, NopAlerter.Instance);
+                    };
                     var stop = () => ord.Stop().ContinueWith(x =>
                     {
                         log.Stop();
@@ -131,9 +135,9 @@ namespace Aurem.Run
                     }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
                     // update networks
-                    setupFetch.Update(setupConf);
-                    setupGossip.Update(setupConf);
-                    setupMcast.Update(setupConf);
+                    setupFetch.Update(conf);
+                    setupGossip.Update(conf);
+                    setupMcast.Update(conf);
 
                     return (start, stop, null);
                 }
@@ -143,11 +147,11 @@ namespace Aurem.Run
                 }
             }
 
-            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeConsensus(int sess, CancellationTokenSource t, Channel<WeakThresholdKey> wtk)
+            (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeConsensus(Config.Config c, int sess, CancellationTokenSource t, Channel<WeakThresholdKey> wtk)
             {
                 try
                 {
-                    conf.Session = sess;
+                    var conf = c.Clone();
                     var log = LoggingUtil.NewLogger(conf);
 
                     async Task makePreblock(IList<IUnit> units)
@@ -157,6 +161,7 @@ namespace Aurem.Run
                         if (timingUnit.Level() == conf.LastLevel && timingUnit.EpochID() == conf.NumberOfEpochs - 1)
                         {
                             // we no longer need to close the channel
+                            await ss.WriteAsync(true);
                             //ps.Complete();
                         }
                     }
@@ -215,19 +220,21 @@ namespace Aurem.Run
 
             int session = 0;
             var prevWTK = Channel.CreateBounded<WeakThresholdKey>(1);
-            var prevSetup = MakeSetup(session, null!, prevWTK);
+            var prevSetup = MakeSetup(setupConf, session, null!, prevWTK);
 
             Func<(Func<Task>?, Func<Task>?, Exception?)> iterate = () =>
             {
                 var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
                 var cts = new CancellationTokenSource();
-                (var startSetup, var stopSetup, var setupErr) = MakeSetup(session + 1, cts, wtkchan);
+                var _prevSetup = prevSetup;
+                var _prevWTK = prevWTK;
+                (var startSetup, var stopSetup, var setupErr) = MakeSetup(setupConf, session + 1, cts, wtkchan);
                 if (setupErr != null)
                 {
                     return (null, null, setupErr);
                 }
 
-                (var startConsensus, var stopConsensus, var consensusErr) = MakeConsensus(session, cts, prevWTK);
+                (var startConsensus, var stopConsensus, var consensusErr) = MakeConsensus(consensusConf, session, cts, _prevWTK);
                 if (consensusErr != null)
                 {
                     return (null, null, consensusErr);
@@ -238,21 +245,26 @@ namespace Aurem.Run
 
                 if (session == 0)
                 {
-                    if (prevSetup.Err != null)
+                    if (_prevSetup.Err != null)
                     {
                         return (null, null, prevSetup.Err);
                     }
                 }
 
+                var startSess = session;
                 start = async () =>
                 {
-                    if (session == 0) await prevSetup.Start!();
+                    if (startSess == 0)
+                    {
+                        await _prevSetup.Start!();
+                    }
                     await Task.WhenAll(startSetup!(), startConsensus!());
                 };
 
+                var stopSess = session;
                 stop = async () =>
                 {
-                    if (session == 0) await prevSetup.Stop!();
+                    if (stopSess == 0) await _prevSetup.Stop!();
                     await stopSetup!();
                     await stopConsensus!();
                 };
@@ -335,7 +347,7 @@ namespace Aurem.Run
             var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
             wtkchan.Writer.TryWrite(WeakThresholdKey.Seeded(conf.NProc, conf.Pid, 2137, null));
             (var start, var stop, var err) = Consensus(conf, wtkchan, ds, ps);
-            
+
             return (start, stop, err);
         }
         /// <summary>

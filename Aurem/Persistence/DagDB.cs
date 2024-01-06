@@ -93,7 +93,7 @@ namespace Aurem.Persistence
 
         private static byte[] DataToIndex(int sessionID, byte setup, uint epochID, int mapID, int level, int creator, int index)
         {
-            var rv = new byte[17];
+            var rv = new byte[18];
             BinaryPrimitives.WriteUInt32LittleEndian(rv, (uint)sessionID);
             rv[4] = setup;
             BinaryPrimitives.WriteUInt32LittleEndian(rv.AsSpan(5), epochID);
