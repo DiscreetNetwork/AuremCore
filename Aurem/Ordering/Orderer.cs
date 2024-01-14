@@ -151,15 +151,16 @@ namespace Aurem.Ordering
             await Alerter.Stop();
             await Syncer.Stop();
 
-            if (Previous != null) await Previous.Close();
-            if (Current != null) await Current.Close();
-
             TokenSourceOrdered.Cancel();
             TokenSourceBelt.Cancel();
             Source.Cancel();
             OrderedUnits.Writer.Complete();
             UnitBelt.Writer.Complete();
             await Wg.WaitAsync();
+
+            if (Previous != null) await Previous.Close();
+            if (Current != null) await Current.Close();
+            
 
             Log.Log().Msg(Logging.Constants.ServiceStopped);
         }

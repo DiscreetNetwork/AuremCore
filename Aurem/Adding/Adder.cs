@@ -2,6 +2,7 @@
 using Aurem.Logging;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
+using AuremCore.Core;
 using AuremCore.FastLogger;
 using System;
 using System.Collections.Concurrent;
@@ -37,7 +38,7 @@ namespace Aurem.Adding
         public bool Finished;
         private readonly object _finishedLock = new object();
         public Logger Log;
-        public ulong WaitGroup;
+        public WaitGroup Wg;
         public SemaphoreSlim Mx;
         
         public Adder(IDag dag, Config.Config conf, ISyncer syncer, IAlerter alert, Logger log)
@@ -51,7 +52,7 @@ namespace Aurem.Adding
             WaitingByID = new();
             Missing = new();
             Finished = false;
-            WaitGroup = 0;
+            Wg = new();
             Mx = new(1, 1);
             Log = log.With().Val(Constants.Service, Constants.AdderService).Logger();
             for (int i = 0; i < Ready.Length; i++)
@@ -59,10 +60,9 @@ namespace Aurem.Adding
                 if (i == conf.Pid) continue;
                 Ready[i] = new();
                 var ch = Ready[i];
+                Wg.Add(1);
                 _ = Task.Run(async () =>
                 {
-                    Interlocked.Increment(ref WaitGroup);
-
                     try
                     {
                         while (true)
@@ -80,7 +80,7 @@ namespace Aurem.Adding
                     }
                     finally
                     {
-                        Interlocked.Decrement(ref WaitGroup);
+                        Wg.Done();
                     }
                 });
             }
@@ -91,10 +91,7 @@ namespace Aurem.Adding
         public async Task Close()
         {
             lock (_finishedLock) Finished = true;
-            while (Interlocked.Read(ref WaitGroup) > 0)
-            {
-                await Task.Delay(100);
-            }
+            await Wg.WaitAsync();
 
             Log.Info().Msg(Constants.ServiceStopped);
         }

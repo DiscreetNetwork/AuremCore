@@ -87,6 +87,7 @@ namespace Aurem.Persistence
             }
             catch (Exception ex)
             {
+                Console.WriteLine("Failed to create the DagDB");
                 throw new Exception($"DagDB failed to create or open the database: {ex.Message}");
             }
         }
@@ -366,6 +367,7 @@ namespace Aurem.Persistence
             }
 
             rdb.Write(batch);
+            Console.WriteLine("Saved the DAG.");
         }
     }
 }

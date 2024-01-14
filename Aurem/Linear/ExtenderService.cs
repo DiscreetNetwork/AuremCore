@@ -74,7 +74,11 @@ namespace Aurem.Linear
             {
                 while (true)
                 {
-                    if (Interlocked.Read(ref Trigger) > 0)
+                    if (Interlocked.Read(ref Finished) > 0)
+                    {
+                        return;
+                    }
+                    else if (Interlocked.Read(ref Trigger) > 0)
                     {
                         Interlocked.Decrement(ref Trigger);
                         var round = Ordering.NextRound();
@@ -84,10 +88,7 @@ namespace Aurem.Linear
                             round = Ordering.NextRound();
                         }
                     }
-                    else if (Interlocked.Read(ref Finished) > 0)
-                    {
-                        return;
-                    }
+                    
 
                     await Task.Delay(10);
                 }

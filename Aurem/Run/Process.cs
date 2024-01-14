@@ -83,6 +83,10 @@ namespace Aurem.Run
             Network mcast = new Network(consensusConf.MCastAddresses[consensusConf.Pid], consensusConf.MCastAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "m");
             Network netserv = new Network(consensusConf.RMCAddresses[consensusConf.Pid], consensusConf.RMCAddresses.ToArray(), netlog, consensusConf.Timeout, consensusConf, "r");
 
+            // enable sessioned
+            setupConf.Sessioned = true;
+            consensusConf.Sessioned = true;
+
             (Func<Task>? Start, Func<Task>? Stop, Exception? Err) MakeSetup(Config.Config c, int session, CancellationTokenSource? t, Channel<WeakThresholdKey> wtk)
             {
                 try
@@ -126,6 +130,7 @@ namespace Aurem.Run
 
                     var start = async () =>
                     {
+                        await Console.Out.WriteLineAsync($"started setup for session {session}");
                         await ord.Start(rsf, sync, NopAlerter.Instance);
                     };
                     var stop = () => ord.Stop().ContinueWith(x =>
@@ -152,7 +157,8 @@ namespace Aurem.Run
                 try
                 {
                     var conf = c.Clone();
-                    var log = LoggingUtil.NewLogger(conf);
+                    conf.Session = sess;
+                    var log = LoggingUtil.NewLogger(conf, conf.Session);
 
                     async Task makePreblock(IList<IUnit> units)
                     {
@@ -256,6 +262,7 @@ namespace Aurem.Run
                 {
                     if (startSess == 0)
                     {
+                        await Console.Out.WriteLineAsync($"starting prevSetup");
                         await _prevSetup.Start!();
                     }
                     await Task.WhenAll(startSetup!(), startConsensus!());
@@ -265,8 +272,8 @@ namespace Aurem.Run
                 stop = async () =>
                 {
                     if (stopSess == 0) await _prevSetup.Stop!();
-                    await stopSetup!();
-                    await stopConsensus!();
+                    // these need to be cancelled in parallel
+                    await Task.WhenAll(stopSetup!(), stopConsensus!());
                 };
 
                 prevSetup = (startSetup, stopSetup, setupErr);
