@@ -70,7 +70,7 @@ namespace Aurem.Run
             }
         }
 
-        public static (Func<(Func<Task>? Start, Func<Task>? Stop, Exception?)>, Exception?) CreateSessioned(Config.Config setupConf, Config.Config consensusConf, IDataSource ds, ChannelWriter<Preblock> ps, ChannelWriter<bool> ss)
+        public static (Func<(Func<Task>? Start, Func<bool, Task>? Stop, Exception?)>, Exception?) CreateSessioned(Config.Config setupConf, Config.Config consensusConf, IDataSource ds, ChannelWriter<Preblock> ps, ChannelWriter<bool> ss)
         {
             var netlog = LoggingUtil.NewLogger(consensusConf, 0, true);
 
@@ -130,7 +130,6 @@ namespace Aurem.Run
 
                     var start = async () =>
                     {
-                        await Console.Out.WriteLineAsync($"started setup for session {session}");
                         await ord.Start(rsf, sync, NopAlerter.Instance);
                     };
                     var stop = () => ord.Stop().ContinueWith(x =>
@@ -228,7 +227,7 @@ namespace Aurem.Run
             var prevWTK = Channel.CreateBounded<WeakThresholdKey>(1);
             var prevSetup = MakeSetup(setupConf, session, null!, prevWTK);
 
-            Func<(Func<Task>?, Func<Task>?, Exception?)> iterate = () =>
+            Func<(Func<Task>?, Func<bool, Task>?, Exception?)> iterate = () =>
             {
                 var wtkchan = Channel.CreateBounded<WeakThresholdKey>(1);
                 var cts = new CancellationTokenSource();
@@ -247,7 +246,7 @@ namespace Aurem.Run
                 }
 
                 Func<Task>? start;
-                Func<Task>? stop;
+                Func<bool, Task>? stop;
 
                 if (session == 0)
                 {
@@ -262,18 +261,29 @@ namespace Aurem.Run
                 {
                     if (startSess == 0)
                     {
-                        await Console.Out.WriteLineAsync($"starting prevSetup");
                         await _prevSetup.Start!();
                     }
+
                     await Task.WhenAll(startSetup!(), startConsensus!());
                 };
 
                 var stopSess = session;
-                stop = async () =>
+                stop = async (bool x) =>
                 {
-                    if (stopSess == 0) await _prevSetup.Stop!();
+                    var t1 = _prevSetup.Stop!();
                     // these need to be cancelled in parallel
-                    await Task.WhenAll(stopSetup!(), stopConsensus!());
+                    //var t1 = stopSetup!();
+                    Task t3;
+                    if (x)
+                    {
+                        t3 = stopSetup!();
+                    }
+                    else
+                    {
+                        t3 = Task.CompletedTask;
+                    }
+                    var t2 = stopConsensus!();
+                    await Task.WhenAll(t1, t2, t3);
                 };
 
                 prevSetup = (startSetup, stopSetup, setupErr);

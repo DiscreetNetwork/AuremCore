@@ -25,7 +25,7 @@ namespace Aurem.Dag.Checks
         /// <param name="u"></param>
         /// <param name="dag"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void BasicCorrectness(IUnit u, IDag dag)
+        public static Task BasicCorrectness(IUnit u, IDag dag)
         {
             var parents = u.Parents().ToArray();
             var nProc = dag.NProc();
@@ -55,6 +55,8 @@ namespace Aurem.Dag.Checks
             {
                 throw new ComplianceException("non-prime unit");
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -63,12 +65,14 @@ namespace Aurem.Dag.Checks
         /// <param name="u"></param>
         /// <param name="_"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void NoLevelSkipping(IUnit u, IDag _)
+        public static Task NoLevelSkipping(IUnit u, IDag _)
         {
             if (u.Level() != u.Height())
             {
                 throw new ComplianceException("the level of the unit is different than its height");
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -77,12 +81,12 @@ namespace Aurem.Dag.Checks
         /// <param name="u"></param>
         /// <param name="dag"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void NoForks(IUnit u, IDag dag)
+        public static Task NoForks(IUnit u, IDag dag)
         {
             var maxes = dag.MaximalUnitsPerProcess().Get(u.Creator());
             if (maxes.Count == 0)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             var max = maxes[0];
@@ -90,6 +94,8 @@ namespace Aurem.Dag.Checks
             {
                 throw new ComplianceException("the unit is a fork");
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -112,7 +118,7 @@ namespace Aurem.Dag.Checks
         /// <param name="unit"></param>
         /// <param name="dag"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void ParentConsistency(IUnit unit, IDag dag)
+        public static Task ParentConsistency(IUnit unit, IDag dag)
         {
             var parents = unit.Parents().ToList();
             var nProc = dag.NProc();
@@ -129,6 +135,8 @@ namespace Aurem.Dag.Checks
                     }
                 }
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -137,12 +145,14 @@ namespace Aurem.Dag.Checks
         /// <param name="u"></param>
         /// <param name="dag"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void NoSelfForkingEvidence(IUnit u, IDag dag)
+        public static Task NoSelfForkingEvidence(IUnit u, IDag dag)
         {
             if (HasForkingEvidence(u, u.Creator()))
             {
                 throw new ComplianceException("A unit has evidence of self forking");
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -155,7 +165,7 @@ namespace Aurem.Dag.Checks
         /// <param name="u"></param>
         /// <param name="dag"></param>
         /// <exception cref="ComplianceException"></exception>
-        public static void ForkerMuting(IUnit u, IDag dag)
+        public static Task ForkerMuting(IUnit u, IDag dag)
         {
             foreach (var parent1 in u.Parents())
             {
@@ -171,6 +181,8 @@ namespace Aurem.Dag.Checks
                     }
                 }
             }
+
+            return Task.CompletedTask;
         }
     }
 }

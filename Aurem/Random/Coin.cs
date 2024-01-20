@@ -35,6 +35,8 @@ namespace Aurem.Random
             {
                 var exc = CheckCompliance(u, dag);
                 if (exc != null) throw exc;
+
+                return Task.CompletedTask;
             });
             dag.BeforeInsert(Update);
         }

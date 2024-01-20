@@ -88,7 +88,7 @@ namespace Aurem.Syncing.Internals
             var px = new byte[2];
             BinaryPrimitives.WriteUInt16LittleEndian(px, pid);
             var response = challengeSig.Concat(px);
-            
+
             // 3. Send signed challenge (response) and our PID
             await _tcpClient.GetStream().WriteAsync(response, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
@@ -157,7 +157,7 @@ namespace Aurem.Syncing.Internals
             {
                 throw new Exception("connection has been cancelled");
             }
-            
+
             // 3. Verify the response
             var challengeSig = new Signature().Unmarshal(response.AsSpan(0));
             var pid = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(Constants.SignatureLength));
@@ -196,10 +196,12 @@ namespace Aurem.Syncing.Internals
             Acknowledge();
         }
 
-        public bool Acknowledged { get
+        public bool Acknowledged
+        {
+            get
             {
                 return Interlocked.Read(ref _verified) > 0;
-            } 
+            }
         }
 
         public void Acknowledge()
@@ -226,7 +228,10 @@ namespace Aurem.Syncing.Internals
 
             try
             {
-                if (p != null) await SendAsync(p);
+                if (p != null)
+                {
+                    await SendAsync(p);
+                }
                 while (_packetQueue.Reader.TryRead(out var packet) && !_cts.IsCancellationRequested)
                 {
                     await SendAsync(packet);
@@ -305,7 +310,7 @@ namespace Aurem.Syncing.Internals
                 numBytesRead += await _tcpClient.GetStream().ReadAsync(data.AsMemory(numBytesRead, data.Length - numBytesRead), cts.Token);
             }
 
-            
+
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
                 throw new Exception("Receive operation on connection timed out.");
@@ -315,11 +320,11 @@ namespace Aurem.Syncing.Internals
                 // Stop() was called
                 return null;
             }
-            else if(numBytesRead != header.Length)
+            else if (numBytesRead != header.Length)
             {
                 throw new Exception("Did not read entire header; invalid data");
             }
-            
+
             cts.Dispose();
 
             var pb = Packet.DecodePacketBody((PacketID)header.PacketID, data);

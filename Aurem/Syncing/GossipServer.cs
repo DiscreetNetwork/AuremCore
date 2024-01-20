@@ -26,7 +26,7 @@ namespace Aurem.Syncing
         protected int Session;
         protected IOrderer Orderer;
         protected Network Netserv;
-        protected ConcurrentDictionary<ushort, bool> Requests;
+        protected ConcurrentDictionary<ushort, (bool Active, DateTime When)> Requests;
         protected uint[] SyncIDs;
         protected CancellationTokenSource StopOut;
         protected Logger Log;
@@ -47,8 +47,8 @@ namespace Aurem.Syncing
             Session = conf.Session;
             Orderer = orderer;
             Netserv = netserv;
-            Requests = new ConcurrentDictionary<ushort, bool>(Enumerable.Range(0, conf.NProc).Select(x => new KeyValuePair<ushort, bool>((ushort)x, false)));
-            Requests[Pid] = true;
+            Requests = new ConcurrentDictionary<ushort, (bool, DateTime)>(Enumerable.Range(0, conf.NProc).Select(x => new KeyValuePair<ushort, (bool, DateTime)>((ushort)x, (false, DateTime.MaxValue))));
+            Requests[Pid] = (true, DateTime.MaxValue);
             SyncIDs = new uint[conf.NProc];
             StopOut = new CancellationTokenSource();
             Log = log;
@@ -68,6 +68,7 @@ namespace Aurem.Syncing
         public async Task<Exception?> Start()
         {
             await Netserv.Start();
+            _ = Task.Run(async () => await Timeout());
             return null;
         }
 
@@ -80,7 +81,7 @@ namespace Aurem.Syncing
 
         public async Task<bool> Request(ushort pid)
         {
-            if (Requests.Values.All(x => x))
+            if (Requests.Values.All(x => x.Active))
             {
                 Log.Warn().Msg(Logging.Constants.RequestOverload);
                 return true;
@@ -92,7 +93,7 @@ namespace Aurem.Syncing
                 return true;
             }
 
-            if (Requests[pid])
+            if (Requests[pid].Active)
             {
                 return false;
             }
@@ -108,7 +109,7 @@ namespace Aurem.Syncing
             log.Debug().Msg(Logging.Constants.SendInfo);
             var p = new Packet(PacketID.GOSSIPGREET, new GossipGreetPacket(Pid, sid, dagInfo), Session);
 
-            Requests[pid] = true;
+            Requests[pid] = (true, DateTime.Now);
             Netserv.Send(pid, p);
             SendState[GetStateKey(pid, sid)] = (log, DateTime.Now);
 
@@ -124,7 +125,6 @@ namespace Aurem.Syncing
                     if (DateTime.Now.Subtract(v.Item2) > TimeOut)
                     {
                         SendState.TryRemove(k, out _);
-                        Requests[FromStateKey(k).Pid] = false;
                     }
                 }
 
@@ -133,6 +133,14 @@ namespace Aurem.Syncing
                     if (DateTime.Now.Subtract(v.Item2) > TimeOut)
                     {
                         ReceiveState.TryRemove(k, out _);
+                    }
+                }
+
+                foreach ((var k, var v) in Requests)
+                {
+                    if (DateTime.Now.Subtract(v.When) > TimeOut)
+                    {
+                        Requests[FromStateKey(k).Pid] = (false, DateTime.MaxValue);
                     }
                 }
 
@@ -215,7 +223,7 @@ namespace Aurem.Syncing
                         LoggingUtil.AddingErrors(errs, pb.Units.Length, log);
                         log.Info().Val(Logging.Constants.Recv, pb.Units.Length).Val(Logging.Constants.Sent, len).Msg(Logging.Constants.SyncCompleted);
 
-                        Requests[pb.Pid] = false;
+                        Requests[pb.Pid] = (false, DateTime.MaxValue);
                         ReceiveState.Remove(GetStateKey(pb.Pid, pb.Sid), out _);
                     }
                     break;

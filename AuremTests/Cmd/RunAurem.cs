@@ -371,7 +371,7 @@ namespace AuremTests.Cmd
                     // wait for the end of the session
                     await signaler.Reader.ReadAsync();
 
-                    await stop!.Invoke();
+                    await stop!.Invoke(i == settings.Sessions - 1);
                 }
             }
         }

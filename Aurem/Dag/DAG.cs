@@ -161,13 +161,13 @@ namespace Aurem.Dag
             return new FreeUnit(pu, parents);
         }
 
-        public Exception? Check(IUnit u)
+        public async Task<Exception?> Check(IUnit u)
         {
             foreach (var check in Checks)
             {
                 try
                 {
-                    check(u, this);
+                    await check(u, this);
                 }
                 catch (Exception ex)
                 {

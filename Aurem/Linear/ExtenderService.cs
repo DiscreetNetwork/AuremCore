@@ -37,7 +37,7 @@ namespace Aurem.Linear
             Output = output;
             Trigger = 0;
             Finished = 0;
-            TimingRounds = Channel.CreateBounded<TimingRound>(conf.EpochLength);
+            TimingRounds = Channel.CreateBounded<TimingRound>(Math.Max(conf.EpochLength, 10));
             Wg = new WaitGroup();
 
             Wg.Add(2);

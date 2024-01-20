@@ -224,7 +224,7 @@ namespace Aurem.Adding
                 await Alerter.Lock(freeUnit.Creator());
                 try
                 {
-                    var err = Dag.Check(freeUnit);
+                    var err = await Dag.Check(freeUnit);
                     err = await Alerter.ResolveMissingCommitment(err, freeUnit, wp.Source);
                     if (err != null)
                     {

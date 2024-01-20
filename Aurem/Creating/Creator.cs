@@ -133,6 +133,7 @@ namespace Aurem.Creating
             Log.Info().Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, level).Msg(Constants.UnitCreated);
 
             // FIXME remove
+            // Brandon 01/20/2024 1:30AM -- I think I'll keep this here for now
             if (Conf.IsLocal)
             {
                 if (data != null && data.Length > 0 && Conf.Pid == 0)

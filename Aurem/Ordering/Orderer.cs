@@ -1,5 +1,6 @@
 ﻿using Aurem.Adding;
 using Aurem.Creating;
+using Aurem.Dag;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
 using Aurem.Random;
@@ -38,15 +39,16 @@ namespace Aurem.Ordering
         private CancellationTokenSource TokenSourceOrdered;
         private CancellationTokenSource TokenSourceBelt;
         private CancellationTokenSource Source;
+        private ulong Started;
 
         public Orderer(Config.Config conf, IDataSource ds, PreblockMaker toPreblock, Logger log)
         {
             Conf = conf;
             ToPreblock = toPreblock;
             Ds = ds;
-            UnitBelt = Channel.CreateBounded<IUnit>(conf.EpochLength*conf.NProc);
+            UnitBelt = Channel.CreateBounded<IUnit>(conf.EpochLength * conf.NProc);
             LastTiming = Channel.CreateBounded<IUnit>(conf.NumberOfEpochs);
-            OrderedUnits = Channel.CreateBounded<List<IUnit>>(conf.EpochLength);
+            OrderedUnits = Channel.CreateBounded<List<IUnit>>(Math.Max(conf.EpochLength, 10));
             Log = log.With().Val(Logging.Constants.Service, Logging.Constants.OrderService).Logger();
             Mx = new AsyncReaderWriterLock();
             Wg = new WaitGroup();
@@ -54,6 +56,7 @@ namespace Aurem.Ordering
             TokenSourceOrdered = new();
             TokenSourceBelt = new();
             Source = new();
+            Started = 0;
         }
 
         public async Task Start(IRandomSourceFactory rsf, ISyncer syncer, IAlerter alerter)
@@ -143,6 +146,8 @@ namespace Aurem.Ordering
                 }
             });
 
+            Interlocked.Increment(ref Started);
+
             Log.Log().Msg(Logging.Constants.ServiceStarted);
         }
 
@@ -154,13 +159,13 @@ namespace Aurem.Ordering
             TokenSourceOrdered.Cancel();
             TokenSourceBelt.Cancel();
             Source.Cancel();
-            OrderedUnits.Writer.Complete();
-            UnitBelt.Writer.Complete();
-            await Wg.WaitAsync();
 
             if (Previous != null) await Previous.Close();
             if (Current != null) await Current.Close();
-            
+            OrderedUnits.Writer.Complete();
+            UnitBelt.Writer.Complete();
+
+            await Wg.WaitAsync();
 
             Log.Log().Msg(Logging.Constants.ServiceStopped);
         }
@@ -204,10 +209,11 @@ namespace Aurem.Ordering
 
         public async Task<List<Exception>?> AddPreunits(ushort source, params IPreunit[] preunits)
         {
-            if (preunits.Length > 1)
+            if (Interlocked.Read(ref Started) < 1)
             {
-
+                return null;
             }
+
             var errorsSize = preunits.Length;
             Exception[] errors = null!;
             var getErrors = () =>
@@ -307,6 +313,11 @@ namespace Aurem.Ordering
 
         public async Task<ISlottedUnits> MaxUnits(uint epoch)
         {
+            if (Interlocked.Read(ref Started) < 1)
+            {
+                return SlottedUnits.None;
+            }
+
             (var ep, _) = await GetEpoch(epoch);
             if (ep != null) return ep.Dag.MaximalUnitsPerProcess();
 
@@ -461,7 +472,7 @@ namespace Aurem.Ordering
         public async Task<(Epoch?, bool)> GetEpoch(uint epoch)
         {
             var locker = await Mx.ReaderLockAsync();
-            
+
             try
             {
                 if (Current == null || epoch > Current.EpochID)

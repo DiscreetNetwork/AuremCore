@@ -83,7 +83,6 @@ namespace Aurem.Syncing
                 return;
             }
 
-
             var indices = ShuffleOrder(NProc);
             foreach (var idx in indices)
             {

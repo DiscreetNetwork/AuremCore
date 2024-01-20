@@ -11,7 +11,7 @@ namespace Aurem.Model
     /// </summary>
     /// <param name="unit"></param>
     /// <param name="dag"></param>
-    public delegate void UnitChecker(IUnit unit, IDag dag);
+    public delegate Task UnitChecker(IUnit unit, IDag dag);
 
     /// <summary>
     /// InsertHook is a function that performs some additional action on an <see cref="IUnit"/> before or after Insert (<see cref="IDag.BeforeInsert(InsertHook)"/>, <see cref="IDag.AfterInsert(InsertHook)"/>).

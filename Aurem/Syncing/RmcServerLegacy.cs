@@ -46,7 +46,7 @@ namespace Aurem.Syncing
             State = new ReliableMulticast(conf.RMCPublicKeys, conf.RMCPrivateKey);
             Log = log;
             InPool = new WorkerPool(InPoolSize * conf.NProc, In);
-            conf.AddCheck((u, d) => FinishedRMC(u, d).GetAwaiter().GetResult());
+            conf.AddCheck((u, d) => FinishedRMC(u, d));
             
             multicastInProgress = new SemaphoreSlim(1, 1);
             Quit = false;

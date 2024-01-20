@@ -606,7 +606,7 @@ namespace AuremCore
 
                 var conf = new RunAurem.AuremSettings();
 
-                conf.RandomBytesPerUnit = 1048576;
+                conf.RandomBytesPerUnit = 1024 * 10;
                 conf.KeysAddrsFilename = args[2];
                 conf.PrivFilename = args[1];
                 conf.UseLocalServer = UseLocalServers;

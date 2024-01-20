@@ -38,7 +38,7 @@ namespace Aurem.Model
         /// </summary>
         /// <param name="unit"></param>
         /// <returns></returns>
-        public Exception? Check(IUnit unit);
+        public Task<Exception?> Check(IUnit u);
 
         /// <summary>
         /// Puts a unit into the DAG.

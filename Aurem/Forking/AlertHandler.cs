@@ -847,9 +847,9 @@ namespace Aurem.Forking
             }
         }
 
-        private void CheckCommitment(IUnit u, IDag _)
+        private async Task CheckCommitment(IUnit u, IDag _)
         {
-            if (HandleForkerUnit(u).GetAwaiter().GetResult() && !HasCommitmentTo(u))
+            if (await HandleForkerUnit(u) && !HasCommitmentTo(u))
             {
                 throw new NoCommitmentException("missing commitment to fork");
             }
@@ -872,7 +872,7 @@ namespace Aurem.Forking
             }
 
             var _mm = await Orderer.MaxUnits(u.EpochID());
-            var maxes = _mm.Get(creator);
+            var maxes = _mm?.Get(creator);
             if (maxes == null || maxes.Count == 0)
             {
                 return false;

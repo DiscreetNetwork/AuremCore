@@ -411,7 +411,7 @@ namespace Aurem.Syncing
             Keys = new Keychain(conf.RMCPublicKeys, conf.RMCPrivateKey);
 
             Netserv.AddHandle(PersistentIn, Session);
-            conf.AddCheck((u, d) => FinishedRMC(u, d).GetAwaiter().GetResult());
+            conf.AddCheck((u, d) => RMCCheck(u, d));
 
             multicastInProgress = new SemaphoreSlim(1, 1);
             Quit = false;
@@ -792,6 +792,15 @@ namespace Aurem.Syncing
             }
 
             return (pu, null);
+        }
+
+        public async Task RMCCheck(IUnit u, IDag d)
+        {
+            var err = await FinishedRMC(u, d);
+            if (err != null)
+            {
+                throw err;
+            }
         }
 
         public async Task<Exception?> FinishedRMC(IUnit u, IDag d)
