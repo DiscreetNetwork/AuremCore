@@ -194,6 +194,7 @@ namespace Aurem.Ordering
                     {
                         // consider data to be finalized here.
                         await ToPreblock(round!);
+
                         Log.Info().Val(Logging.Constants.Level, timingUnit.Level()).Val(Logging.Constants.Epoch, epoch).Msg(Logging.Constants.PreblockProduced);
                     }
 

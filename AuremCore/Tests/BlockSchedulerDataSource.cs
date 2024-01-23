@@ -18,8 +18,10 @@ namespace AuremCore.Tests
         private DateTime lastProduced;
         private DateTime currentBeginning;
         private DateTime currentEnd;
+        private bool sessionBarrier;
+        private bool preventData;
 
-        public BlockSchedulerDataSource(int size, TimeSpan interval, int nproc, int pid)
+        public BlockSchedulerDataSource(int size, TimeSpan interval, int nproc, int pid, bool preventData)
         {
             this.size = size;
             random = new Random();
@@ -31,12 +33,19 @@ namespace AuremCore.Tests
             var ts = DateTime.UtcNow.Ticks;
             currentBeginning = new DateTime(ts - (ts % interval.Ticks));
             currentEnd = currentBeginning.Add(interval);
+            sessionBarrier = false;
+            this.preventData = preventData;
+        }
+
+        public void SetSessionBarrier()
+        {
+            sessionBarrier = true;
         }
 
         public async Task<byte[]> Get()
         {
             // 0 goes first, then 1, then 2, etc...
-            if (lastProduced == DateTime.MinValue)
+            if (lastProduced == DateTime.MinValue || sessionBarrier)
             {
                 // update the beginning
                 while (currentEnd < DateTime.UtcNow)
@@ -44,12 +53,14 @@ namespace AuremCore.Tests
                     currentBeginning += interval;
                     currentEnd += interval;
                 }
+
+                if (sessionBarrier) sessionBarrier = false;
             }
 
             try
             {
                 while (DateTime.UtcNow < currentBeginning) await Task.Delay(10);
-                if (numProduced % nproc == pid)
+                if (!preventData && numProduced % nproc == pid)
                 {
                     var b = new byte[size];
                     random.NextBytes(b);

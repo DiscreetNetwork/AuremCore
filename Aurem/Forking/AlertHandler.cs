@@ -880,6 +880,13 @@ namespace Aurem.Forking
 
             // we can only have one max because the creator is not a forker yet.
             var max = maxes.First();
+
+            // one final check to make sure the max unit is from the same epoch
+            if (max.EpochID() != u.EpochID())
+            {
+                return false;
+            }
+
             if (max.Height() >= u.Height())
             {
                 var v = max;

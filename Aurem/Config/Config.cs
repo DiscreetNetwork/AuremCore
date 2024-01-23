@@ -53,7 +53,7 @@ namespace Aurem.Config
         public List<string> RMCAddresses { get; set; }
         public string RMCNetType { get; set; }
         public List<string> GossipAddresses { get; set; }
-        public string GossipNetType { get; set; }   
+        public string GossipNetType { get; set; }
         public List<string> FetchAddresses { get; set; }
         public string FetchNetType { get; set; }
         public List<string> MCastAddresses { get; set; }
@@ -128,6 +128,16 @@ namespace Aurem.Config
             c.IsLocal = IsLocal;
             c.Setup = Setup;
 
+            // reset checks
+            if (c.Setup)
+            {
+                c.Checks = Aurem.Config.Checks.SetupChecks.ToList();
+            }
+            else
+            {
+                c.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            }
+
             return c;
         }
 
@@ -159,7 +169,7 @@ namespace Aurem.Config
             cnf.CRPFixedPrefix = 0;
             cnf.EpochLength = 1;
             cnf.NumberOfEpochs = 1;
-            cnf.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            cnf.Checks = Aurem.Config.Checks.SetupChecks.ToList();
             cnf.Setup = true;
         }
 

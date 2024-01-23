@@ -56,8 +56,8 @@ namespace Aurem.Random
 
         private void Update(IUnit u)
         {
-            ShareProviders.TryGetValue(u.Creator(), out var v1);
-            if (v1)
+            var success = ShareProviders.TryGetValue(u.Creator(), out var v1);
+            if (success && v1)
             {
                 var cs = new Share();
                 var offset = Constants.SignatureLength;

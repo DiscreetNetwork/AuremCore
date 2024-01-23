@@ -5,6 +5,7 @@ using Aurem.Serialize;
 using Aurem.Units;
 using AuremCore.Core;
 using AuremCore.FastLogger;
+using AuremCore.Tests;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -318,7 +319,26 @@ namespace Aurem.Creating
         {
             if (level <= Conf.LastLevel)
             {
-                if (Source != null) return await Source.Get();
+                byte[]? data = Source != null ? await Source.Get() : Array.Empty<byte>();
+
+                if (Source != null && Source is DefaultBlockAuthority blk)
+                {
+                    if (Epoch == Conf.NumberOfEpochs - 1 && level == Conf.LastLevel)
+                    {
+                        // send signal to block authority to pause minting on barrier of session
+                        blk.Pause();
+                    }
+                }
+                else if (Source != null && Source is BlockSchedulerDataSource bsc)
+                {
+                    if (Epoch == Conf.NumberOfEpochs - 1 && level == Conf.LastLevel)
+                    {
+                        // send signal to block scheduler to pause minting on barrier of session
+                        bsc.SetSessionBarrier();
+                    }
+                }
+
+                return data;
             }
 
             // in a rare case there can be timing units from previous epochs left in the queue. The purpose of this loop is to drain and ignore them.
@@ -383,6 +403,10 @@ namespace Aurem.Creating
             try
             {
                 await NewEpoch(Epoch, Array.Empty<byte>());
+                if (Source != null && Source is DefaultBlockAuthority blk)
+                {
+                    blk.Unpause();
+                }
 
                 while (!token.IsCancellationRequested)
                 {

@@ -23,7 +23,7 @@ namespace Aurem.Model
             var data = new List<byte[]>(round.Count);
             foreach (var u in round)
             {
-                if (u.Dealing())
+                if (!u.Dealing())
                 {
                     data.Add(u.Data());
                 }
