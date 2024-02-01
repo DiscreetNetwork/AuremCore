@@ -522,6 +522,7 @@ namespace AuremCore
             Console.WriteLine("    local - runs a local instance of the aurem protocol from the committee and member files available in the current directory");
             Console.WriteLine("    build <registryEndpoint> <memberFilePath> <committeeFilePath> - communicates with registry and other nodes to build a consensus committee file and member file");
             Console.WriteLine("    run <memberFilePath> <committeeFilePath> - runs the aurem protocol using the specified committee and member files");
+            Console.WriteLine("    testnet <memberFilePath> <committeeFilePath> <useBlockAuthority> - runs the aurem protocol with sessioning with the specified committee and member files, and true or false to use the block authority");
         }
 
         public static async Task Run(string[] args)
@@ -535,7 +536,7 @@ namespace AuremCore
             if (args[0] == "hr")
             {
                 var fs = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.hr.txt");
-                Console.WriteLine();
+
                 foreach (var f in fs)
                 {
                     if (File.Exists(f)) File.Delete(f);
@@ -606,14 +607,75 @@ namespace AuremCore
 
                 var conf = new RunAurem.AuremSettings();
 
-                conf.RandomBytesPerUnit = 1048576;
+                conf.RandomBytesPerUnit = 1024 * 10;
                 conf.KeysAddrsFilename = args[2];
                 conf.PrivFilename = args[1];
                 conf.UseLocalServer = UseLocalServers;
                 conf.Output = 3;
                 conf.UseBlockScheduler = true;
+                conf.Sessions = 3;
                 conf.WaitForNodes = true;
                 conf.Local = false;
+
+                try
+                {
+                    await RunAurem.Run(conf);
+                }
+                catch (Exception e)
+                {
+                    await Console.Out.WriteLineAsync($"FATAL; Process failed to complete: {e.Message}\n{e.StackTrace}");
+                }
+                finally
+                {
+                    Console.ResetColor();
+                    await Console.Out.WriteLineAsync($"Node has completed.");
+                }
+            }
+            else if (args[0] == "testnet")
+            {
+                if (args.Length < 2)
+                {
+                    await Console.Out.WriteLineAsync("Testnet: expects at least one keyword (help to see command format)");
+                    return;
+                }
+
+                if (args[1] == "help")
+                {
+                    await Console.Out.WriteLineAsync("Testnet: testnet <memberFilePath> <committeeFilePath> <useBlockAuthority>");
+                    return;
+                }
+
+                if (args.Length < 3)
+                {
+                    await Console.Out.WriteLineAsync("Testnet: invalid format (help to see command format)");
+                    return;
+                }
+
+                var conf = new RunAurem.AuremSettings();
+
+                conf.RandomBytesPerUnit = 1024 * 10;
+                conf.KeysAddrsFilename = args[2];
+                conf.PrivFilename = args[1];
+                conf.UseLocalServer = UseLocalServers;
+                conf.Output = 3;
+                conf.UseBlockScheduler = true;
+                conf.Sessions = 3;
+                conf.WaitForNodes = true;
+                conf.Local = false;
+                conf.Testnet = true;
+                conf.Epochs = 10;
+                conf.EpochLength = 1001; // 9 * (101 + 0 - 1) = 900 total confirmation rounds per session
+                conf.Sessions = -1;
+
+                if (args.Length > 3 && (args[3].ToLower().Trim() == "true" || args[3].ToLower().Trim() == "t" || args[3].ToLower().Trim() == "yes" || args[3].ToLower().Trim() == "y"))
+                {
+                    await Console.Out.WriteLineAsync("Testnet: Block authority is true");
+                    conf.UseBlockAuthority = true;
+                    conf.BlockAuthorityDataPort = 8370;
+                    conf.BlockAuthorityFinalizePort = 8371;
+                    conf.UseBlockScheduler = false;
+                    conf.Output = -1;
+                }
 
                 try
                 {

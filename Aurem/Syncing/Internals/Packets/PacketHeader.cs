@@ -13,10 +13,11 @@ namespace Aurem.Syncing.Internals.Packets
         public byte PacketID { get; set; }
         public uint Length { get; set; }
         public uint Checksum { get; set; }
+        public uint Session { get; set; }
 
         public int Size => StaticSize;
 
-        public static int StaticSize => 10;
+        public static int StaticSize => 14;
 
         public static byte DefaultNetworkID => 1;
 
@@ -27,12 +28,13 @@ namespace Aurem.Syncing.Internals.Packets
             Deserialize(data);
         }
 
-        public PacketHeader(byte packetID, IPacketBody body)
+        public PacketHeader(byte packetID, IPacketBody body, int sess)
         {
             NetworkID = DefaultNetworkID;
             PacketID = packetID;
             Length = (uint)body.Size;
             Checksum = body.Checksum();
+            Session = (uint)sess;
         }
 
         public void Serialize(Stream s)
@@ -44,6 +46,8 @@ namespace Aurem.Syncing.Internals.Packets
             BinaryPrimitives.WriteUInt32LittleEndian(uintBuf, Length);
             s.Write(uintBuf);
             BinaryPrimitives.WriteUInt32LittleEndian(uintBuf, Checksum);
+            s.Write(uintBuf);
+            BinaryPrimitives.WriteUInt32LittleEndian(uintBuf, Session);
             s.Write(uintBuf);
         }
 
@@ -59,6 +63,9 @@ namespace Aurem.Syncing.Internals.Packets
 
             s.Read(uintBuf);
             Checksum = BinaryPrimitives.ReadUInt32LittleEndian(uintBuf);
+
+            s.Read(uintBuf);
+            Session = BinaryPrimitives.ReadUInt32LittleEndian(uintBuf);
         }
 
         public void Deserialize(ReadOnlySpan<byte> s)
@@ -67,6 +74,7 @@ namespace Aurem.Syncing.Internals.Packets
             PacketID = s[1];
             Length = BinaryPrimitives.ReadUInt32LittleEndian(s.Slice(2));
             Checksum = BinaryPrimitives.ReadUInt32LittleEndian(s.Slice(6));
+            Session = BinaryPrimitives.ReadUInt32LittleEndian(s.Slice(10));
         }
     }
 }

@@ -20,6 +20,40 @@ namespace Aurem.Syncing
 
         private List<IService> servers;
         private List<IService> subservices;
+        private Config.Config Conf;
+
+        public Syncer(Config.Config conf, IOrderer orderer, Logger log, bool setup, Network nfetch, Network ngossip, Network nmcast)
+        {
+            servers = new List<IService>();
+            subservices = new List<IService>();
+            Exception? err;
+
+            (var serv, fetch) = FetchServer.NewServer(conf, orderer, nfetch, log.With().Val(Logging.Constants.Service, Logging.Constants.FetchService).Logger());
+            servers.Add(serv);
+
+            (serv, gossip) = GossipServer.NewServer(conf, orderer, ngossip, log.With().Val(Logging.Constants.Service, Logging.Constants.GossipService).Logger());
+            servers.Add(serv);
+
+            if (setup)
+            {
+                (serv, mcast) = RmcServer.NewServer(conf, orderer, nmcast, log.With().Val(Logging.Constants.Service, Logging.Constants.RMCService).Logger());
+                servers.Add(serv);
+            }
+            else
+            {
+                (serv, mcast) = MulticastServer.NewServer(conf, orderer, nmcast, log.With().Val(Logging.Constants.Service, Logging.Constants.MCService).Logger());
+                servers.Add(serv);
+            }
+
+            var networkService = new NetService(nfetch, true);
+            subservices.Add(networkService);
+            networkService = new NetService(ngossip, true);
+            subservices.Add(networkService);
+            networkService = new NetService(nmcast, true);
+            subservices.Add(networkService);
+
+            Conf = conf;
+        }
 
         public Syncer(Config.Config conf, IOrderer orderer, Logger log, bool setup)
         {
@@ -64,6 +98,8 @@ namespace Aurem.Syncing
                 (serv, mcast) = MulticastServer.NewServer(conf, orderer, net, log.With().Val(Logging.Constants.Service, Logging.Constants.MCService).Logger());
                 servers.Add(serv);
             }
+
+            Conf = conf;
         }
 
         public static (ISyncer, Exception?) New(Config.Config conf, IOrderer orderer, Logger log, bool setup)
@@ -78,11 +114,23 @@ namespace Aurem.Syncing
             }
         }
 
+        public static (ISyncer, Exception?) NewSessioned(Config.Config conf, IOrderer orderer, Logger log, Network f, Network g, Network m, bool setup)
+        {
+            try
+            {
+                return (new Syncer(conf, orderer, log, setup, f, g, m), null);
+            }
+            catch (Exception e)
+            {
+                return (null!, e);
+            }
+        }
+
         public Task Multicast(IUnit u) => mcast(u);
 
         public Task RequestFetch(ushort pid, ulong[] ids) => fetch(pid, ids);
 
-        public Task RequestGossip(ushort pid) => gossip(pid);
+        public Task<bool> RequestGossip(ushort pid) => gossip(pid);
 
         public async Task Start()
         {
@@ -94,7 +142,6 @@ namespace Aurem.Syncing
             foreach (var server in servers)
             {
                 await server.Start();
-                //await Console.Out.WriteLineAsync("server started");
             }
         }
 
@@ -134,17 +181,20 @@ namespace Aurem.Syncing
         private sealed class NetService : IService
         {
             private Network wrapped;
+            private bool soft;
 
-            public NetService(Network netserv)
+            public NetService(Network netserv, bool soft = false)
             {
                 wrapped = netserv;
+                this.soft = soft;
             }
 
             public Task<Exception?> Start() =>Task.FromResult<Exception?>(null);
 
             public Task StopAsync()
             {
-                return wrapped.StopAsync();
+                if (soft) return wrapped.SoftStopAsync();
+                else return wrapped.StopAsync();
             }
         }
 

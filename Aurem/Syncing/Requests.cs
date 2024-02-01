@@ -9,7 +9,7 @@ namespace Aurem.Syncing
 {
     public static class Requests
     {
-        public delegate Task Gossip(ushort pid);
+        public delegate Task<bool> Gossip(ushort pid);
         public delegate Task Fetch(ushort pid, ulong[] unitIDs);
         public delegate Task Multicast(IUnit u);
     }

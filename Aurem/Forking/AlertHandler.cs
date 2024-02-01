@@ -67,6 +67,7 @@ namespace Aurem.Forking
 
         public ushort MyPid;
         public ushort NProc;
+        public int Session;
         public IOrderer Orderer;
         public IPublicKey[] Keys;
         //public ReliableMulticast Rmc;
@@ -82,11 +83,15 @@ namespace Aurem.Forking
         protected ConcurrentDictionary<ReqKey, TaskCompletionSource<AlertRequestCommitment>> Requests;
         protected ConcurrentDictionary<RmcServer.SigKey, TaskCompletionSource<RmcSignature>> MemberSigTasks;
         protected Keychain Kchain;
+        
+        internal bool Sessioned;
 
         public AlertHandler(Config.Config conf, IOrderer orderer, ReliableMulticast rmc, Network netserv, Logger log)
         {
             MyPid = conf.Pid;
             NProc = conf.NProc;
+            Session = conf.Session;
+            Sessioned = conf.Sessioned;
             Keys = conf.PublicKeys.ToArray();
             Orderer = orderer;
             Out = new();
@@ -100,7 +105,7 @@ namespace Aurem.Forking
             Observable = new SafeObservable<ForkData>();
             Log = log;
 
-            Network.AddHandle(PersistentIn);
+            Network.AddHandle(PersistentIn, Session);
 
             conf.AddCheck(CheckCommitment);
         }
@@ -147,14 +152,14 @@ namespace Aurem.Forking
 
         private RmcInstance NewOutgoingInstance(ulong id, byte[] data)
         {
-            var res = RmcInstance.NewOutgoing(id, data, Kchain, MyPid);
+            var res = RmcInstance.NewOutgoing(id, data, Kchain, MyPid, Session);
 
             return Out.AddOrUpdate(id, res, (a, x) => x);
         }
 
         private (RmcIncoming, Exception?) NewIncomingInstance(ulong id, ushort pid)
         {
-            var res = new RmcIncoming(id, pid, Kchain, MyPid);
+            var res = new RmcIncoming(id, pid, Kchain, MyPid, Session);
 
             var success = In.AddOrUpdate(id, res, (a, x) => x);
             return (success, success != res ? new Exception("duplicate incoming") : null);
@@ -636,7 +641,7 @@ namespace Aurem.Forking
                     string worf = "Write";
                     try
                     {
-                        Network.Send(requester, new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 1)));
+                        Network.Send(requester, new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 1), Session));
                     }
                     catch (Exception ex)
                     {
@@ -662,7 +667,7 @@ namespace Aurem.Forking
                 if (exc != null) throw exc;
 
                 f = "Write";
-                var p = new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 0, comm, (pf.Body as RmcSendFinished)!));
+                var p = new Packet(PacketID.CommResp, new AlertRequestCommitment(requested, MyPid, 0, comm, (pf.Body as RmcSendFinished)!), Session);
                 Network.Send(requester, p);
             }
             catch (Exception ex)
@@ -681,7 +686,7 @@ namespace Aurem.Forking
 
             try
             {
-                var p = new Packet(PacketID.RequestComm, new RequestComm(0, MyPid, (byte)AlertState.Request, pu.Hash()));
+                var p = new Packet(PacketID.RequestComm, new RequestComm(0, MyPid, (byte)AlertState.Request, pu.Hash()), Session);
 
                 var t = Requests.GetOrAdd(new ReqKey(pu.Hash(), pid), _ => new TaskCompletionSource<AlertRequestCommitment>());
                 
@@ -842,9 +847,9 @@ namespace Aurem.Forking
             }
         }
 
-        private void CheckCommitment(IUnit u, IDag _)
+        private async Task CheckCommitment(IUnit u, IDag _)
         {
-            if (HandleForkerUnit(u).GetAwaiter().GetResult() && !HasCommitmentTo(u))
+            if (await HandleForkerUnit(u) && !HasCommitmentTo(u))
             {
                 throw new NoCommitmentException("missing commitment to fork");
             }
@@ -867,7 +872,7 @@ namespace Aurem.Forking
             }
 
             var _mm = await Orderer.MaxUnits(u.EpochID());
-            var maxes = _mm.Get(creator);
+            var maxes = _mm?.Get(creator);
             if (maxes == null || maxes.Count == 0)
             {
                 return false;
@@ -875,6 +880,13 @@ namespace Aurem.Forking
 
             // we can only have one max because the creator is not a forker yet.
             var max = maxes.First();
+
+            // one final check to make sure the max unit is from the same epoch
+            if (max.EpochID() != u.EpochID())
+            {
+                return false;
+            }
+
             if (max.Height() >= u.Height())
             {
                 var v = max;

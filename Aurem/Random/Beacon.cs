@@ -54,6 +54,8 @@ namespace Aurem.Random
             dag.AddCheck((u, dag) => {
                 var ex = CheckCompliance(u, dag);
                 if (ex != null) throw ex;
+
+                return Task.CompletedTask;
             });
             dag.BeforeInsert(Update);
             Dag = dag;
@@ -80,7 +82,7 @@ namespace Aurem.Random
 
             foreach (var u in units)
             {
-                if (ShareProviders[pid][u.Creator()])
+                if (ShareProviders[pid].ContainsKey(u.Creator()) && ShareProviders[pid][u.Creator()])
                 {
                     var ushares = new List<Share>();
                     foreach (var sc in Subcoins[pid].Keys)

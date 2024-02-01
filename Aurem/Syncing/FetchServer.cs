@@ -20,6 +20,7 @@ namespace Aurem.Syncing
     public class FetchServer : IService
     {
         protected ushort Pid;
+        protected int Session;
         protected IOrderer Orderer;
         protected Network Netserv;
         protected uint[] SyncIDs;
@@ -31,6 +32,7 @@ namespace Aurem.Syncing
         protected FetchServer(Config.Config conf, IOrderer orderer, Network netserv, Logger log)
         {
             Pid = conf.Pid;
+            Session = conf.Session;
             Orderer = orderer;
             Netserv = netserv;
             SyncIDs = new uint[conf.NProc];
@@ -38,6 +40,8 @@ namespace Aurem.Syncing
             StopOut = new CancellationTokenSource();
             Orders = new();
             Log = log;
+
+            Netserv.AddHandle(In, Session);
         }
 
         public static (IService, Requests.Fetch) NewServer(Config.Config conf, IOrderer orderer, Network netserv, Logger log)
@@ -66,7 +70,7 @@ namespace Aurem.Syncing
             }
 
             var sid = Interlocked.Increment(ref SyncIDs[pid]);
-            var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(pid, sid, unitIDs));
+            var p = new Packet(PacketID.FETCHREQUEST, new FetchRequestUnits(Pid, sid, unitIDs), Session);
             Orders.Add(((ulong)sid << 16) + pid, true);
             Netserv.Send(pid, p);
             Log.Info().Val(Logging.Constants.PID, pid).Val(Logging.Constants.OSID, sid).Msg(Logging.Constants.SyncStarted);
@@ -82,28 +86,28 @@ namespace Aurem.Syncing
                         if (pb.Pid >= SyncIDs.Length)
                         {
                             Log.Warn().Val(Logging.Constants.PID, pb.Pid).Msg("Called by a stranger");
-
-                            var log = Log.With().Val(Logging.Constants.PID, pb.Pid).Val(Logging.Constants.ISID, pb.Sid).Logger();
-                            log.Info().Msg(Logging.Constants.SyncStarted);
-
-                            IUnit[] units;
-                            try
-                            {
-                                units = await Orderer.UnitsByID(pb.UnitIDs);
-                            }
-                            catch (Exception ex)
-                            {
-                                log.Error().Str("where", "Fetch.In.GetUnits").Msg(ex.Message);
-                                return;
-                            }
-
-                            log.Debug().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SendUnits);
-
-                            var resp = new Packet(PacketID.FETCHRESPONSE, new FetchSendUnits(pb.Pid, pb.Sid, units));
-                            Netserv.Send(pb.Pid, resp);
-
-                            log.Info().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SyncCompleted);
                         }
+
+                        var log = Log.With().Val(Logging.Constants.PID, pb.Pid).Val(Logging.Constants.ISID, pb.Sid).Logger();
+                        log.Info().Msg(Logging.Constants.SyncStarted);
+
+                        IUnit[] units;
+                        try
+                        {
+                            units = await Orderer.UnitsByID(pb.UnitIDs);
+                        }
+                        catch (Exception ex)
+                        {
+                            log.Error().Str("where", "Fetch.In.GetUnits").Msg(ex.Message);
+                            return;
+                        }
+
+                        log.Debug().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SendUnits);
+
+                        var resp = new Packet(PacketID.FETCHRESPONSE, new FetchSendUnits(Pid, pb.Sid, units), Session);
+                        Netserv.Send(pb.Pid, resp);
+
+                        log.Info().Val(Logging.Constants.Sent, units.Length).Msg(Logging.Constants.SyncCompleted);
                     }
                     break;
                 case (byte)PacketID.FETCHRESPONSE:

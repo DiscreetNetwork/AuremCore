@@ -26,6 +26,7 @@ namespace Aurem.Syncing
 
         protected ushort Pid;
         protected ushort NProc;
+        protected int Session;
         protected IOrderer Orderer;
         protected Network Netserv;
         protected Channel<MCastRequest>[] Requests;
@@ -42,12 +43,13 @@ namespace Aurem.Syncing
 
             Pid = conf.Pid;
             NProc = conf.NProc;
+            Session = conf.Session;
             Orderer = orderer;
             Netserv = network;
             StopOut = new CancellationTokenSource();
             Log = log;
 
-            network.AddHandle(In);
+            network.AddHandle(In, Session);
         }
 
         public static (IService, Requests.Multicast) NewServer(Config.Config conf, IOrderer orderer, Network network, Logger log)
@@ -81,12 +83,11 @@ namespace Aurem.Syncing
                 return;
             }
 
-
             var indices = ShuffleOrder(NProc);
             foreach (var idx in indices)
             {
                 if (idx == Pid) continue;
-                Netserv.Send((ushort)idx, new Packet(PacketID.MCASTSEND, new MCastSendUnit(u)));
+                Netserv.Send((ushort)idx, new Packet(PacketID.MCASTSEND, new MCastSendUnit(u), Session));
                 Log.Info().Val(Logging.Constants.Height, u.Height()).Val(Logging.Constants.PID, idx).Msg(Logging.Constants.SentUnit);
             }
         }

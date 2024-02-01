@@ -33,7 +33,8 @@ namespace Aurem.Random
 
         public (byte[], Exception?) DealingData(uint epoch)
         {
-            if (WTKey.ShareProviders[Pid])
+            var success = WTKey.ShareProviders.TryGetValue(Pid, out var present);
+            if (success && present)
             {
                 return (WTKey.CreateShare(Coin.Nonce(0, epoch))!.Marshal(), null);
             }

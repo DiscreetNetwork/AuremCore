@@ -15,7 +15,7 @@ namespace Aurem.Model
         /// Request gossip with the given committee member.
         /// </summary>
         /// <param name="proc">The pid corresponding to the committee member to request gossip with.</param>
-        public Task RequestGossip(ushort proc);
+        public Task<bool> RequestGossip(ushort proc);
 
         /// <summary>
         /// Sends a request to the given committee member for units with the given IDs.

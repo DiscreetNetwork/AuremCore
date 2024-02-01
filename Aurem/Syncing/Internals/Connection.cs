@@ -33,6 +33,7 @@ namespace Aurem.Syncing.Internals
 
         private SemaphoreSlim _readLock;
         private SemaphoreSlim _writeLock;
+        private ulong _reads;
 
         public Connection(TcpClient tcpClient, TimeSpan timeout, P2PSecretKey? key, List<P2PPublicKey>? theirKeys, Network network)
         {
@@ -48,6 +49,13 @@ namespace Aurem.Syncing.Internals
 
             _readLock = new SemaphoreSlim(1, 1);
             _writeLock = new SemaphoreSlim(1, 1);
+            _reads = 0;
+        }
+
+        public void Restart()
+        {
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
         }
 
         /// <summary>
@@ -66,6 +74,7 @@ namespace Aurem.Syncing.Internals
 
             // 1. Accept challenge
             var challenge = new byte[ChallengeLength];
+            //await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: accept challenge from {_tcpClient.Client.RemoteEndPoint}");
             await _tcpClient.GetStream().ReadAsync(challenge, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
@@ -81,7 +90,7 @@ namespace Aurem.Syncing.Internals
             var px = new byte[2];
             BinaryPrimitives.WriteUInt16LittleEndian(px, pid);
             var response = challengeSig.Concat(px);
-            
+
             // 3. Send signed challenge (response) and our PID
             await _tcpClient.GetStream().WriteAsync(response, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
@@ -99,6 +108,7 @@ namespace Aurem.Syncing.Internals
 
             if (ack[0] == 0x01)
             {
+                //await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: acknowledge {_tcpClient.Client.RemoteEndPoint}");
                 Acknowledge();
                 cts.Dispose();
 
@@ -127,6 +137,7 @@ namespace Aurem.Syncing.Internals
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
             // 1. Send challenge
+            //await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: send challenge to {_tcpClient.Client.RemoteEndPoint}");
             await _tcpClient.GetStream().WriteAsync(challenge, cts.Token);
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
@@ -148,7 +159,7 @@ namespace Aurem.Syncing.Internals
             {
                 throw new Exception("connection has been cancelled");
             }
-            
+
             // 3. Verify the response
             var challengeSig = new Signature().Unmarshal(response.AsSpan(0));
             var pid = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(Constants.SignatureLength));
@@ -161,6 +172,8 @@ namespace Aurem.Syncing.Internals
             {
                 throw new Exception("connection verification failed");
             }
+
+            //await Console.Out.WriteLineAsync($"[{(_network.Conf.Setup ? "SET" : "CON")}]{_network.prefix}: verified response {_tcpClient.Client.RemoteEndPoint}");
 
             cts.Dispose();
             return pid;
@@ -185,10 +198,12 @@ namespace Aurem.Syncing.Internals
             Acknowledge();
         }
 
-        public bool Acknowledged { get
+        public bool Acknowledged
+        {
+            get
             {
                 return Interlocked.Read(ref _verified) > 0;
-            } 
+            }
         }
 
         public void Acknowledge()
@@ -215,7 +230,10 @@ namespace Aurem.Syncing.Internals
 
             try
             {
-                if (p != null) await SendAsync(p);
+                if (p != null)
+                {
+                    await SendAsync(p);
+                }
                 while (_packetQueue.Reader.TryRead(out var packet) && !_cts.IsCancellationRequested)
                 {
                     await SendAsync(packet);
@@ -234,7 +252,6 @@ namespace Aurem.Syncing.Internals
 
         internal async Task SendAsync(Packet p)
         {
-            //await Console.Out.WriteLineAsync($"sending packet {(PacketID)p.Header.PacketID}");
             if (p != null)
             {
                 var dataStream = new MemoryStream();
@@ -295,7 +312,7 @@ namespace Aurem.Syncing.Internals
                 numBytesRead += await _tcpClient.GetStream().ReadAsync(data.AsMemory(numBytesRead, data.Length - numBytesRead), cts.Token);
             }
 
-            
+
             if (cts.IsCancellationRequested && !_cts.IsCancellationRequested)
             {
                 throw new Exception("Receive operation on connection timed out.");
@@ -305,11 +322,11 @@ namespace Aurem.Syncing.Internals
                 // Stop() was called
                 return null;
             }
-            else if(numBytesRead != header.Length)
+            else if (numBytesRead != header.Length)
             {
                 throw new Exception("Did not read entire header; invalid data");
             }
-            
+
             cts.Dispose();
 
             var pb = Packet.DecodePacketBody((PacketID)header.PacketID, data);
@@ -325,9 +342,16 @@ namespace Aurem.Syncing.Internals
             return p;
         }
 
-        public async Task ReceiveAll()
+        public async Task<Exception?> ReceiveAll()
         {
+            if (Interlocked.Read(ref _reads) >= 1)
+            {
+                // do not allow simultaneous read operations
+                return null;
+            }
+
             await _readLock.WaitAsync();
+            Interlocked.Increment(ref _reads);
 
             try
             {
@@ -336,15 +360,22 @@ namespace Aurem.Syncing.Internals
                     var p = await Receive();
                     if (p != null)
                     {
-                        if (_network.OnReceive != null)
+                        if (_network.OnReceive.ContainsKey((int)p!.Header.Session) && _network.OnReceive[(int)p!.Header.Session] != null)
                         {
-                            await _network.OnReceive(p);
+                            await _network.OnReceive[(int)p!.Header.Session]!.Invoke(p);
                         }
                     }
                 }
+
+                return null;
+            }
+            catch (Exception e)
+            {
+                return e;
             }
             finally
             {
+                Interlocked.Decrement(ref _reads);
                 _readLock.Release();
             }
         }

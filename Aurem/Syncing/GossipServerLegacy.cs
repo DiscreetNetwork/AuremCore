@@ -70,28 +70,26 @@ namespace Aurem.Syncing
             await InPool.StopAsync();
         }
 
-        public async Task Request(ushort pid)
+        public async Task<bool> Request(ushort pid)
         {
             var success = Requests.Writer.TryWrite(pid);
             if (!success)
             {
                 Log.Warn().Msg(Logging.Constants.RequestOverload);
             }
+
+            return true;
         }
 
         public async Task In()
         {
             (var conn, var err) = await DelegateExtensions.InvokeAndCaptureExceptionAsync(Netserv.Listen);
             if (err != null) return;
-            if (conn is TCPConn _conn) _conn.Debug_RegisterPrintActivity();
-
-            //await Console.Out.WriteLineAsync($"In for pid={Pid}, with {conn.RemoteEndPoint}");
 
             try
             {
                 // accept handshake
                 (var pid, var sid, err) = await Handshakes.AcceptGreeting(conn);
-                //await Console.Out.WriteLineAsync("Gossip.In: Accepted greeting");
                 if (err != null)
                 {
                     Log.Error().Str("where", "Gossip.In.Greeting").Msg(err.Message);
@@ -103,15 +101,6 @@ namespace Aurem.Syncing
                     Log.Warn().Val(Logging.Constants.PID, pid).Msg("Called by a stranger");
                     return;
                 }
-
-                //if (Tokens[pid].CurrentCount > 0)
-                //{
-                //    await Console.Out.WriteLineAsync("Gossip.In has an available lock");
-                //}
-                //if (Tokens[pid].CurrentCount == 0)
-                //{
-                //    return;
-                //}
 
                 await Tokens[pid].WaitAsync();
 
@@ -196,7 +185,6 @@ namespace Aurem.Syncing
             }
 
             await Tokens[remotePid].WaitAsync();
-            //await Console.Out.WriteLineAsync($"Out for pid={Pid}");
 
             try
             {

@@ -17,6 +17,7 @@ namespace Aurem.Syncing.Internals.Packets
 
         public int Size => Header.Size + Body.Size;
 
+        // TODO: change as many byte array copies over to spans referencing a single serialized byte array (same for serialize() calls)
         public Packet() { }
 
         public Packet(ReadOnlySpan<byte> data)
@@ -30,13 +31,13 @@ namespace Aurem.Syncing.Internals.Packets
             Body = body;
         }
 
-        public Packet(byte type, IPacketBody body)
+        public Packet(byte type, IPacketBody body, int sess)
         {
-            Header = new PacketHeader(type, body);
+            Header = new PacketHeader(type, body, sess);
             Body = body;
         }
 
-        public Packet(PacketID type, IPacketBody body) : this((byte)type, body)
+        public Packet(PacketID type, IPacketBody body, int sess) : this((byte)type, body, sess)
         {
         }
 
@@ -57,7 +58,7 @@ namespace Aurem.Syncing.Internals.Packets
         public void Deserialize(ReadOnlySpan<byte> data)
         {
             Header.Deserialize(data);
-            Body = DecodePacketBody((PacketID)Header.PacketID, data);
+            Body = DecodePacketBody((PacketID)Header.PacketID, data.Slice(PacketHeader.StaticSize));
         }
 
         public static IPacketBody DecodePacketBody(PacketID t, Stream s)

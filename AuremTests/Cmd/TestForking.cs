@@ -121,11 +121,11 @@ namespace AuremTests.Cmd
                 this.dag = dag;
             }
 
-            public Task<List<Exception?>?> AddPreunits(ushort id, params IPreunit[] preunits)
+            public async Task<List<Exception?>?> AddPreunits(ushort id, params IPreunit[] preunits)
             {
                 List<Exception?> errs = Enumerable.Repeat<Exception?>(null, preunits?.Length ?? 0).ToList();
 
-                if (preunits == null) return Task.FromResult<List<Exception?>?>(null);
+                if (preunits == null) return null;
 
                 for (int i = 0; i < preunits.Length; i++)
                 {
@@ -151,7 +151,7 @@ namespace AuremTests.Cmd
                     }
 
                     var freeUnit = dag.BuildUnit(pu, parents);
-                    err = dag.Check(freeUnit);
+                    err = await dag.Check(freeUnit);
                     if (err != null)
                     {
                         errs[i] = err;
@@ -161,7 +161,7 @@ namespace AuremTests.Cmd
                     dag.Insert(freeUnit);
                 }
 
-                return Task.FromResult(errs.Any(x => x != null) ? errs : null);
+                return errs.Any(x => x != null) ? errs : null;
             }
 
             public Task Close() => Task.CompletedTask;

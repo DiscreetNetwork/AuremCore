@@ -72,7 +72,7 @@ namespace Aurem.Linear
         public int GetMaxDecideLevel(int dagMaxLevel)
         {
             var deterministicLevel = UC.Level() + (int)CommonVoteDeterministicPrefix;
-            if (dagMaxLevel - 1 < deterministicLevel)
+            if (dagMaxLevel - 2 < deterministicLevel)
             {
                 if (deterministicLevel > dagMaxLevel) return dagMaxLevel;
                 return deterministicLevel;

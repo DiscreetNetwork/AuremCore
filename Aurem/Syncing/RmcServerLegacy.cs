@@ -46,7 +46,7 @@ namespace Aurem.Syncing
             State = new ReliableMulticast(conf.RMCPublicKeys, conf.RMCPrivateKey);
             Log = log;
             InPool = new WorkerPool(InPoolSize * conf.NProc, In);
-            conf.AddCheck((u, d) => FinishedRMC(u, d).GetAwaiter().GetResult());
+            conf.AddCheck((u, d) => FinishedRMC(u, d));
             
             multicastInProgress = new SemaphoreSlim(1, 1);
             Quit = false;
@@ -89,7 +89,6 @@ namespace Aurem.Syncing
 
         public async Task Send(IUnit u)
         {
-            //await Console.Out.WriteLineAsync($"unit id:  {u.UnitID()}, current process = {Pid}");
             var rlock = await Mx.ReaderLockAsync();
 
             try
@@ -473,8 +472,8 @@ namespace Aurem.Syncing
         public async Task Multicast(IUnit u)
         {
             var id = u.UnitID();
-            //await Console.Out.WriteLineAsync($"unit id: {id}, pid={Pid}");
             var data = DelegateExtensions.InvokeAndCaptureException(EncodeUtil.EncodeUnit, u, out var err);
+
             if (err != null)
             {
                 Log.Error().Str("where", "RmcServer.Send.EncodeUnit").Msg(err.Message);

@@ -52,7 +52,6 @@ namespace Aurem.Forking
 
         public void Start()
         {
-            Listens.Add(1);
             _ = Task.Run(async () => await HandleConns());
             Log.Log().Msg(Logging.Constants.ServiceStarted);
         }
@@ -61,7 +60,16 @@ namespace Aurem.Forking
         {
             Interlocked.Exchange(ref Quit, 1);
             await Listens.WaitAsync();
-            await Netserv.StopAsync();
+
+            if (Handler.Sessioned)
+            {
+                await Netserv.SoftStopAsync();
+            }
+            else
+            {
+                await Netserv.StopAsync();
+            }
+
             Log.Log().Msg(Logging.Constants.ServiceStopped);
         }
 

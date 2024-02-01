@@ -14,6 +14,7 @@ namespace Aurem.Dag
         private readonly object[] locks;
         private ushort Max;
         private List<IUnit> Empty;
+        public static ISlottedUnits None { get; private set; }
 
         public SlottedUnits(ushort n)
         {
@@ -25,6 +26,11 @@ namespace Aurem.Dag
             Max = n;
             Empty = new();
             locks = Enumerable.Range(0, n).Select(x => new object()).ToArray();
+        }
+
+        static SlottedUnits()
+        {
+            None = new SlottedUnits(0);
         }
 
         /// <summary>

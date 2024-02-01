@@ -2,6 +2,7 @@
 using Aurem.Logging;
 using Aurem.Model;
 using Aurem.Model.Exceptions;
+using AuremCore.Core;
 using AuremCore.FastLogger;
 using System;
 using System.Collections.Concurrent;
@@ -30,14 +31,14 @@ namespace Aurem.Adding
         public IAlerter Alerter;
         public Config.Config Conf;
         public ISyncer Syncer;
-        public Queue<WaitingPreunit>[] Ready;
+        public ConcurrentQueue<WaitingPreunit>[] Ready;
         public ConcurrentDictionary<Hash, WaitingPreunit> Waiting;
         public ConcurrentDictionary<ulong, WaitingPreunit> WaitingByID;
         public ConcurrentDictionary<ulong, MissingPreunit> Missing;
         public bool Finished;
         private readonly object _finishedLock = new object();
         public Logger Log;
-        public ulong WaitGroup;
+        public WaitGroup Wg;
         public SemaphoreSlim Mx;
         
         public Adder(IDag dag, Config.Config conf, ISyncer syncer, IAlerter alert, Logger log)
@@ -46,23 +47,22 @@ namespace Aurem.Adding
             Alerter = alert;
             Conf = conf;
             Syncer = syncer;
-            Ready = new Queue<WaitingPreunit>[dag.NProc()];
+            Ready = new ConcurrentQueue<WaitingPreunit>[dag.NProc()];
             Waiting = new(new Hash.HashEqualityComparer());
             WaitingByID = new();
             Missing = new();
             Finished = false;
-            WaitGroup = 0;
+            Wg = new();
             Mx = new(1, 1);
             Log = log.With().Val(Constants.Service, Constants.AdderService).Logger();
             for (int i = 0; i < Ready.Length; i++)
             {
                 if (i == conf.Pid) continue;
-                Ready[i] = new(conf.EpochLength);
+                Ready[i] = new();
                 var ch = Ready[i];
+                Wg.Add(1);
                 _ = Task.Run(async () =>
                 {
-                    Interlocked.Increment(ref WaitGroup);
-
                     try
                     {
                         while (true)
@@ -80,7 +80,7 @@ namespace Aurem.Adding
                     }
                     finally
                     {
-                        Interlocked.Decrement(ref WaitGroup);
+                        Wg.Done();
                     }
                 });
             }
@@ -91,10 +91,7 @@ namespace Aurem.Adding
         public async Task Close()
         {
             lock (_finishedLock) Finished = true;
-            while (Interlocked.Read(ref WaitGroup) > 0)
-            {
-                await Task.Delay(100);
-            }
+            await Wg.WaitAsync();
 
             Log.Info().Msg(Constants.ServiceStopped);
         }
@@ -167,8 +164,7 @@ namespace Aurem.Adding
             }
             catch (Exception ex)
             {
-                //await Console.Out.WriteLineAsync($"AddPreunits failed bc {ex.Message}");
-                throw ex;
+                return new List<Exception?> { ex };
             }
         }
 
@@ -204,6 +200,7 @@ namespace Aurem.Adding
 
                             caught = await Alerter.ResolveMissingCommitment(caught, wp.Pu, wp.Source);
                             if (caught != null) break;
+                            parents.Add(parent);
                         }
                     }
 
@@ -227,7 +224,7 @@ namespace Aurem.Adding
                 await Alerter.Lock(freeUnit.Creator());
                 try
                 {
-                    var err = Dag.Check(freeUnit);
+                    var err = await Dag.Check(freeUnit);
                     err = await Alerter.ResolveMissingCommitment(err, freeUnit, wp.Source);
                     if (err != null)
                     {
@@ -289,10 +286,7 @@ namespace Aurem.Adding
             if (wp.WaitingParents == 0 && wp.MissingParents == 0)
             {
                 lock (_finishedLock) if (Finished) return;
-                lock (Ready[wp.Pu.Creator()])
-                {
-                    Ready[wp.Pu.Creator()].Enqueue(wp);
-                }
+                Ready[wp.Pu.Creator()].Enqueue(wp);
             }
         }
 
@@ -303,14 +297,12 @@ namespace Aurem.Adding
         /// <param name="wp"></param>
         public void RegisterMissing(ulong id, WaitingPreunit wp)
         {
-            if (Missing.ContainsKey(id))
-            {
-                Missing[id].AddNeeding(wp);
-            }
-            else
+            if (!Missing.ContainsKey(id))
             {
                 Missing[id] = new MissingPreunit();
             }
+
+            Missing[id].AddNeeding(wp);
         }
 
         /// <summary>
@@ -333,7 +325,7 @@ namespace Aurem.Adding
                     var id = IPreunit.ID(h, (ushort)creator, epoch);
                     if (!WaitingByID.ContainsKey(id))
                     {
-                        if (Missing.ContainsKey(id))
+                        if (!Missing.ContainsKey(id))
                         {
                             mp = new MissingPreunit();
                             Missing[id] = mp;

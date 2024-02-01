@@ -19,6 +19,10 @@ namespace Aurem.Config
         public ushort Pid { get; set; }
         public ushort NProc { get; set; }
 
+        // session
+        public int Session { get; set; } = 0;
+        public bool Sessioned { get; set; } = false;
+
         // epoch
         public int EpochLength { get; set; }
         public int NumberOfEpochs { get; set; }
@@ -49,7 +53,7 @@ namespace Aurem.Config
         public List<string> RMCAddresses { get; set; }
         public string RMCNetType { get; set; }
         public List<string> GossipAddresses { get; set; }
-        public string GossipNetType { get; set; }   
+        public string GossipNetType { get; set; }
         public List<string> FetchAddresses { get; set; }
         public string FetchNetType { get; set; }
         public List<string> MCastAddresses { get; set; }
@@ -67,10 +71,74 @@ namespace Aurem.Config
         // extra
         public bool IsLocal { get; set; } = false;
 
+        public bool Setup { get; set; } = false;
+
         public void AddCheck(UnitChecker check)
         {
             if (Checks == null) Checks = new();
             Checks.Add(check);
+        }
+
+        public Config Clone()
+        {
+            var c = new Config();
+            c.Pid = Pid;
+            c.NProc = NProc;
+            c.Session = Session;
+            c.Sessioned = Sessioned;
+            c.EpochLength = EpochLength;
+            c.NumberOfEpochs = NumberOfEpochs;
+            c.LastLevel = LastLevel;
+            c.CanSkipLevel = CanSkipLevel;
+            c.Checks = Checks;
+
+            c.LogFile = LogFile;
+            c.LogHuman = LogHuman;
+            c.LogLevel = LogLevel;
+            c.LogBuffer = LogBuffer;
+            c.WTKey = WTKey;
+            c.PrivateKey = PrivateKey;
+            c.PublicKeys = PublicKeys;
+            c.P2PPublicKeys = P2PPublicKeys;
+            c.P2PSecretKey = P2PSecretKey;
+            c.RMCPrivateKey = RMCPrivateKey;
+            c.RMCPublicKeys = RMCPublicKeys;
+
+            c.GossipAbove = GossipAbove;
+            c.FetchInterval = FetchInterval;
+            c.GossipInterval = GossipInterval;
+            c.Timeout = Timeout;
+            c.RMCAddresses = RMCAddresses;
+            c.RMCNetType = RMCNetType;
+            c.GossipAddresses = GossipAddresses;
+            c.GossipNetType = GossipNetType;
+            c.FetchAddresses = FetchAddresses;
+            c.FetchNetType = FetchNetType;
+            c.MCastAddresses = MCastAddresses;
+            c.MCastNetType = MCastNetType;
+            c.GossipWorkers = GossipWorkers;
+            c.FetchWorkers = FetchWorkers;
+
+            c.OrderStartLevel = OrderStartLevel;
+            c.CRPFixedPrefix = CRPFixedPrefix;
+            c.ZeroVoteRoundForCommonVote = ZeroVoteRoundForCommonVote;
+            c.FirstDecidingRound = FirstDecidingRound;
+            c.CommonVoteDeterministicPrefix = CommonVoteDeterministicPrefix;
+
+            c.IsLocal = IsLocal;
+            c.Setup = Setup;
+
+            // reset checks
+            if (c.Setup)
+            {
+                c.Checks = Aurem.Config.Checks.SetupChecks.ToList();
+            }
+            else
+            {
+                c.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            }
+
+            return c;
         }
 
         private static Config RequiredByLinear()
@@ -91,6 +159,7 @@ namespace Aurem.Config
             cnf.EpochLength = 30;
             cnf.NumberOfEpochs = 3;
             cnf.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            cnf.Setup = false;
         }
 
         private static void AddSetupConf(Config cnf)
@@ -100,7 +169,8 @@ namespace Aurem.Config
             cnf.CRPFixedPrefix = 0;
             cnf.EpochLength = 1;
             cnf.NumberOfEpochs = 1;
-            cnf.Checks = Aurem.Config.Checks.ConsensusChecks.ToList();
+            cnf.Checks = Aurem.Config.Checks.SetupChecks.ToList();
+            cnf.Setup = true;
         }
 
         private static void AddLogConf(Config cnf, string logFile)
@@ -115,7 +185,7 @@ namespace Aurem.Config
         {
             cnf.Timeout = TimeSpan.FromSeconds(5);
             cnf.FetchInterval = TimeSpan.FromSeconds(1);
-            cnf.GossipInterval = TimeSpan.FromMilliseconds(500);
+            cnf.GossipInterval = TimeSpan.FromMilliseconds(1000);
             cnf.GossipAbove = 50;
 
             cnf.RMCNetType = "tcp";

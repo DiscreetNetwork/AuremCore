@@ -21,6 +21,19 @@ namespace Aurem.Model
         /// </summary>
         public int[] Heights { get; set; }
 
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append('{');
+            for (int i = 0; i < Heights.Length; i++)
+            {
+                sb.Append(Heights[i].ToString());
+                if (i < Heights.Length - 1) sb.Append(", ");
+            }
+
+            return $"{{{Epoch}: [{sb}]}}";
+        }
+
         public static DagInfo MaxView(IDag dag)
         {
             var maxes = dag.MaximalUnitsPerProcess();

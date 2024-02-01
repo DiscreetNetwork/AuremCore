@@ -52,8 +52,6 @@ namespace Aurem.Syncing.Internals.Packets.Bodies
             DagInfo = dagInfo;
             _units = units;
             _preunits = units;
-
-            //Console.WriteLine($"GOSSIPINFOPACKET: sz={Size}");
         }
 
         public GossipInfoPacket(ReadOnlySpan<byte> data)

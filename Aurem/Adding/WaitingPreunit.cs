@@ -33,7 +33,7 @@ namespace Aurem.Adding
         /// <summary>
         /// List of other preunits that has this preunit as parent.
         /// </summary>
-        public List<WaitingPreunit> Children = null!;
+        public List<WaitingPreunit> Children = new();
 
         /// <summary>
         /// Flag for signaling problems with adding this unit.

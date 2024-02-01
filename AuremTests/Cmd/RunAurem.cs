@@ -91,11 +91,23 @@ namespace AuremTests.Cmd
 
             public bool UseBlockScheduler { get; set; } = false;
 
+            public bool UseBlockAuthority { get; set; } = false;
+
+            public bool Testnet { get; set; } = false;
+
+            public int BlockAuthorityFinalizePort { get; set; } = 8371;
+
+            public int BlockAuthorityDataPort { get; set; } = 8370;
+
+            public int EpochLength { get; set; } = 0;
+
             public TimeSpan BlockSchedule { get; set; } = TimeSpan.FromSeconds(1);
 
             public bool WaitForNodes { get; set; } = false;
 
             public bool Local { get; set; } = false;
+
+            public int Sessions { get; set; } = 1;
         }
 
         public static async Task Run(AuremSettings settings)
@@ -137,6 +149,12 @@ namespace AuremTests.Cmd
                 consensusConfig.NumberOfEpochs = settings.Epochs;
             }
 
+            if (settings.EpochLength > 0)
+            {
+                consensusConfig.EpochLength = settings.EpochLength;
+                consensusConfig.LastLevel = consensusConfig.EpochLength + consensusConfig.OrderStartLevel - 1;
+            }
+
             if (settings.Units > 0)
             {
                 consensusConfig.EpochLength = settings.Units;
@@ -148,10 +166,20 @@ namespace AuremTests.Cmd
                 consensusConfig.IsLocal = true;
             }
 
-            IDataSource ds = (settings.RandomBytesPerUnit >= 32) ? new AuremCore.Tests.RandomDataSource(settings.RandomBytesPerUnit) : new AuremCore.Tests.RandomDataSource(32);
-            if (settings.UseBlockScheduler)
+            IDataSource ds = new AuremCore.Tests.RandomDataSource(Math.Max(settings.RandomBytesPerUnit, 32));
+            if (settings.UseBlockScheduler && !settings.UseBlockAuthority && !settings.Testnet)
             {
-                ds = new AuremCore.Tests.BlockSchedulerDataSource(Math.Max(settings.RandomBytesPerUnit, 32), settings.BlockSchedule, consensusConfig.NProc, consensusConfig.Pid);
+                ds = new AuremCore.Tests.BlockSchedulerDataSource(Math.Max(settings.RandomBytesPerUnit, 32), settings.BlockSchedule, consensusConfig.NProc, consensusConfig.Pid, false);
+            }
+            else if (settings.Testnet && !settings.UseBlockAuthority)
+            {
+                ds = new AuremCore.Tests.BlockSchedulerDataSource(0, settings.BlockSchedule, consensusConfig.NProc, consensusConfig.Pid, true);
+            }
+            else if (settings.UseBlockAuthority)
+            {
+                var blockAuth = new DefaultBlockAuthority();
+                _ = Task.Run(async () => await blockAuth.Start(settings.BlockAuthorityFinalizePort, settings.BlockAuthorityDataPort));
+                ds = blockAuth;
             }
 
             var preblockSink = Channel.CreateUnbounded<Preblock>();
@@ -172,6 +200,10 @@ namespace AuremTests.Cmd
                     {
                         await AuremCore.Tests.PreblockConsumers.PrintingPreblockConsumer(consensusConfig.Pid, preblockSink.Reader);
                     }
+                    else if (settings.UseBlockAuthority)
+                    {
+                        await ((DefaultBlockAuthority)ds).Finalize(preblockSink.Reader);
+                    }
                     else
                     {
                         await AuremCore.Tests.PreblockConsumers.NopPreblockConsumer(preblockSink.Reader);
@@ -182,37 +214,6 @@ namespace AuremTests.Cmd
                     done.Cancel();
                 }
             });
-
-            Func<Task>? start;
-            Func<Task>? stop;
-
-            if (settings.Setup)
-            {
-                var setupConfig = Config.NewSetup(member, committee);
-                if (settings.Local)
-                {
-                    setupConfig.IsLocal = true;
-                }
-                DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
-                if (err != null)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
-                    return;
-                }
-                (start, stop, err) = Aurem.Run.Process.Create(setupConfig, consensusConfig, ds, preblockSink.Writer);
-            }
-            else
-            {
-                (start, stop, err) = Aurem.Run.Process.NoBeacon(consensusConfig, ds, preblockSink.Writer);
-            }
-
-            if (err != null)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                await Console.Out.WriteLineAsync($"Process failed to start: {err.Message}");
-                return;
-            }
 
             if (settings.WaitForNodes)
             {
@@ -320,15 +321,130 @@ namespace AuremTests.Cmd
                 await Console.Out.WriteLineAsync("WaitForNodes: all nodes online");
             }
 
-            await start!.Invoke();
-            while (!done.IsCancellationRequested)
+            if (settings.Sessions == 1)
             {
-                //Console.WriteLine("Process finished; waiting for termination...");
-                await Task.Delay(3000, done.Token).ContinueWith(t => t.Exception == default);
-            }
-            await stop!.Invoke();
+                Func<Task>? start;
+                Func<Task>? stop;
 
-            await Task.Delay(1000);
+                if (settings.Setup)
+                {
+                    var setupConfig = Config.NewSetup(member, committee);
+                    if (settings.Local)
+                    {
+                        setupConfig.IsLocal = true;
+                    }
+                    DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
+                    if (err != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
+                        return;
+                    }
+                    (start, stop, err) = Aurem.Run.Process.Create(setupConfig, consensusConfig, ds, preblockSink.Writer);
+                }
+                else
+                {
+                    (start, stop, err) = Aurem.Run.Process.NoBeacon(consensusConfig, ds, preblockSink.Writer);
+                }
+
+                if (err != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await Console.Out.WriteLineAsync($"Process failed to start: {err.Message}");
+                    return;
+                }
+
+                await Console.Out.WriteLineAsync("Starting...");
+                await start!.Invoke();
+                while (!done.IsCancellationRequested)
+                {
+                    //Console.WriteLine("Process finished; waiting for termination...");
+                    await Task.Delay(3000, done.Token).ContinueWith(t => t.Exception == default);
+                }
+                await stop!.Invoke();
+
+                await Task.Delay(1000);
+            }
+            else if (settings.Sessions > 1)
+            {
+                var signaler = Channel.CreateBounded<bool>(1);
+                var setupConfig = Config.NewSetup(member, committee);
+                DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
+                if (err != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
+                    return;
+                }
+                (var iterate, err) = Aurem.Run.Process.CreateSessioned(setupConfig, consensusConfig, ds, preblockSink.Writer, signaler.Writer);
+
+                if (err != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await Console.Out.WriteLineAsync($"Process failed to start: {err.Message}");
+                    return;
+                }
+
+                await Console.Out.WriteLineAsync("Starting...");
+                for (int i = 0; i < settings.Sessions; i++)
+                {
+                    await Console.Out.WriteLineAsync($"Starting session {i}...");
+                    (var start, var stop, err) = iterate!.Invoke();
+                    if (err != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        await Console.Out.WriteLineAsync($"Process failed to start session {i}: {err.Message}");
+                        return;
+                    }
+                    await start!.Invoke();
+
+                    // wait for the end of the session
+                    await signaler.Reader.ReadAsync();
+
+                    await stop!.Invoke(i == settings.Sessions - 1);
+                }
+            }
+            else
+            {
+                var signaler = Channel.CreateBounded<bool>(1);
+                var setupConfig = Config.NewSetup(member, committee);
+                DelegateExtensions.InvokeAndCaptureException(Checks.ValidSetup, setupConfig, out err);
+                if (err != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await Console.Out.WriteLineAsync($"Invalid setup configuration: {err.Message}\n{err.StackTrace}");
+                    return;
+                }
+                (var iterate, err) = Aurem.Run.Process.CreateSessioned(setupConfig, consensusConfig, ds, preblockSink.Writer, signaler.Writer);
+
+                if (err != null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await Console.Out.WriteLineAsync($"Process failed to start: {err.Message}");
+                    return;
+                }
+
+                await Console.Out.WriteLineAsync("Starting...");
+                int i = 0;
+                while (true)
+                {
+                    await Console.Out.WriteLineAsync($"Starting session {i}...");
+                    (var start, var stop, err) = iterate!.Invoke();
+                    if (err != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        await Console.Out.WriteLineAsync($"Process failed to start session {i}: {err.Message}");
+                        return;
+                    }
+                    await start!.Invoke();
+
+                    // wait for the end of the session
+                    await signaler.Reader.ReadAsync();
+
+                    await stop!.Invoke(false);
+                    i++;
+                }
+            }
         }
     }
 }

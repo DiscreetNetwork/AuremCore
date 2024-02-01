@@ -28,12 +28,15 @@ namespace Aurem.Syncing.Internals
         private CancellationTokenSource cancellationTokenSource;
         private Logger Log;
         private TimeSpan timeout = TimeSpan.FromSeconds(15);
-        private Config.Config Conf;
         private WaitGroup taskWg;
+        private SemaphoreSlim StartSemaphore;
+        private bool started;
 
-        internal Func<Packet, Task> OnReceive = (_) => Task.CompletedTask; 
+        internal Dictionary<int, Func<Packet, Task>> OnReceive { get; private set; }
+        internal string prefix;
+        internal Config.Config Conf;
 
-        public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf)
+        public Network(string local, string[] remotes, Logger log, TimeSpan timeout, Config.Config conf, string prefix = "")
         {
             localEndpoint = IPEndPoint.Parse(local);
             var listenp = new IPEndPoint(IPAddress.Any, localEndpoint.Port);
@@ -49,11 +52,46 @@ namespace Aurem.Syncing.Internals
             connsDialed = new Connection[remoteAddresses.Length];
             connsListened = new Connection[remoteAddresses.Length];
             taskWg = new WaitGroup();
+            OnReceive = new();
+
+            started = false;
+            StartSemaphore = new SemaphoreSlim(1, 1);
+            this.prefix = prefix;
         }
 
-        public void AddHandle(Func<Packet, Task> handle)
+        public void Update(Config.Config conf)
         {
-            OnReceive += handle;
+            if (conf.Session == 0 || OnReceive.Keys.Count == 0) return;
+
+            for (int i = OnReceive.Keys.Min(); i < Conf.Session - 1; i++)
+            {
+                if (OnReceive.ContainsKey(i))
+                {
+                    OnReceive.Remove(i);
+                }
+            }
+
+            Conf = conf;
+        }
+
+        public void AddHandle(Func<Packet, Task> handle, int session)
+        {
+            if (OnReceive.ContainsKey(session))
+            {
+                OnReceive[session] += handle;
+            }
+            else
+            {
+                OnReceive[session] = handle;
+            }
+        }
+
+        public void RemoveHandle(Func<Packet, Task> handle, int session)
+        {
+            if (OnReceive.ContainsKey(session))
+            {
+                OnReceive[session] -= handle;
+            }
         }
 
         // TODO: make more efficient
@@ -64,7 +102,6 @@ namespace Aurem.Syncing.Internals
             if (connsDialed[pid] != null) return connsDialed[pid];
 
             // parse the connection
-            //await Console.Out.WriteLineAsync($"Dial pid={pid}, total addresses={remoteAddresses?.Length}");
             if (pid >= remoteAddresses.Length) throw new ArgumentOutOfRangeException(nameof(pid));
             var addr = remoteAddresses[pid];
 
@@ -123,14 +160,44 @@ namespace Aurem.Syncing.Internals
         public async Task Start()
         {
             // listen
+            try
+            {
+                await StartSemaphore.WaitAsync();
+                if (started)
+                {
+                    return;
+                }
+                else
+                {
+                    started = true;
+                }
+            }
+            finally
+            {
+                StartSemaphore.Release();
+            }
+
+            var rwg = new WaitGroup();
+            rwg.Add(connsListened.Length - 1);
             _ = Task.Run(async () =>
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
                 {
-                    var x = await Listen();
-                    if (x == null)
+                    try
                     {
-                        await Task.Delay(50, cancellationTokenSource.Token);
+                        var x = await Listen();
+                        if (x == null)
+                        {
+                            await Task.Delay(50, cancellationTokenSource.Token);
+                        }
+                        else
+                        {
+                            rwg.Done();
+                        }
+                    }
+                    catch
+                    {
+                        continue;
                     }
                 }
             });
@@ -144,13 +211,24 @@ namespace Aurem.Syncing.Internals
                 ushort pid = (ushort)i;
                 _ = Task.Run(async () =>
                 {
-                    await Dial(pid);
-                    swg.Done();
+                    while (true)
+                    {
+                        try
+                        {
+                            var x = await Dial(pid);
+                            swg.Done();
+                            return;
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                    }
                 });
             }
 
-            await swg.WaitAsync();
-            //await Console.Out.WriteLineAsync($"Server started for pid={Conf.Pid}");
+            await Task.WhenAll(swg.WaitAsync(), rwg.WaitAsync());
+
             _ = Task.Run(async () =>
             {
                 try
@@ -188,6 +266,12 @@ namespace Aurem.Syncing.Internals
             {
                 conn?.Stop();
             }
+        }
+
+        public async Task SoftStopAsync()
+        {
+            await taskWg.WaitAsync();
+            // cts continues and conns continue
         }
 
         private async Task HandleNetworkActivity()

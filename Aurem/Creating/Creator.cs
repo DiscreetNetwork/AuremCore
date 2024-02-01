@@ -5,6 +5,7 @@ using Aurem.Serialize;
 using Aurem.Units;
 using AuremCore.Core;
 using AuremCore.FastLogger;
+using AuremCore.Tests;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -133,28 +134,29 @@ namespace Aurem.Creating
             Log.Info().Val(Constants.Epoch, u.EpochID()).Val(Constants.Height, u.Height()).Val(Constants.Level, level).Msg(Constants.UnitCreated);
 
             // FIXME remove
-            //if (Conf.IsLocal)
-            //{
-            //    if (data != null && data.Length > 0 && Conf.Pid == 0)
-            //    {
-            //        await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
-            //    }
-            //    else if (Conf.Pid == 0)
-            //    {
-            //        await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
-            //    }
-            //}
-            //else
-            //{
-            //    if (data != null && data.Length > 0)
-            //    {
-            //        await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
-            //    }
-            //    else
-            //    {
-            //        await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
-            //    }
-            //}
+            // Brandon 01/20/2024 1:30AM -- I think I'll keep this here for now
+            if (Conf.IsLocal)
+            {
+                if (data != null && data.Length > 0 && Conf.Pid == 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                }
+                else if (Conf.Pid == 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                }
+            }
+            else
+            {
+                if (data != null && data.Length > 0)
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} Data={u.Data()?.Length ?? 0} new unit created with data");
+                }
+                else
+                {
+                    await Console.Out.WriteLineAsync($"[{DateTime.Now:HH:mm:ss.ffff}] PID={Conf.Pid} Epoch={u.EpochID()} Level={u.Level()} Height={u.Height()} new unit created");
+                }
+            }
 
             await Send(u);
             await Update(u);
@@ -317,7 +319,26 @@ namespace Aurem.Creating
         {
             if (level <= Conf.LastLevel)
             {
-                if (Source != null) return await Source.Get();
+                byte[]? data = Source != null ? await Source.Get() : Array.Empty<byte>();
+
+                if (Source != null && Source is DefaultBlockAuthority blk)
+                {
+                    if (Epoch == Conf.NumberOfEpochs - 1 && level == Conf.LastLevel)
+                    {
+                        // send signal to block authority to pause minting on barrier of session
+                        blk.Pause();
+                    }
+                }
+                else if (Source != null && Source is BlockSchedulerDataSource bsc)
+                {
+                    if (Epoch == Conf.NumberOfEpochs - 1 && level == Conf.LastLevel)
+                    {
+                        // send signal to block scheduler to pause minting on barrier of session
+                        bsc.SetSessionBarrier();
+                    }
+                }
+
+                return data;
             }
 
             // in a rare case there can be timing units from previous epochs left in the queue. The purpose of this loop is to drain and ignore them.
@@ -382,6 +403,10 @@ namespace Aurem.Creating
             try
             {
                 await NewEpoch(Epoch, Array.Empty<byte>());
+                if (Source != null && Source is DefaultBlockAuthority blk)
+                {
+                    blk.Unpause();
+                }
 
                 while (!token.IsCancellationRequested)
                 {
